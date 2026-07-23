@@ -1,16 +1,8 @@
 # ============================================================================
-# EasyPaste — GitHub Actions 自动打包发布
+# EasyPaste — GitHub Actions 自动打包发布（ad-hoc 签名版）
 #
-# 触发条件：创建或更新 GitHub Release（tag v*）时自动运行
-#
-# 前置配置（在 GitHub → Settings → Secrets and variables → Actions 中添加）：
-#   DEV_ID_P12_BASE64     — Developer ID Application 证书的 base64 编码
-#   DEV_ID_P12_PASSWORD   — 证书密码（无密码则留空）
-#   APPLE_ID              — Apple ID 邮箱（用于公证）
-#   APPLE_APP_PASSWORD    — Apple App-Specific Password
-#   APPLE_TEAM_ID         — Apple Developer Team ID
-#   SPARKLE_ED_PRIVATE_KEY— Sparkle EdDSA 私钥（用于签名 DMG）
-#   UPDATES_REPO_SSH      — 更新源仓库的 SSH deploy key
+# 无需 Apple Developer 账号，使用 ad-hoc 签名 + 手动安装引导
+# 触发条件：创建 tag v* 时自动运行，或手动触发
 # ============================================================================
 
 name: Build & Release
@@ -21,33 +13,26 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
-      deploy_to_pages:
-        description: '部署到 GitHub Pages（更新源仓库）'
+      skip_notarization:
+        description: '跳过公证（ad-hoc 签名时无需公证）'
         type: boolean
         default: true
         required: false
 
-permissions:
-  contents: write   # 发布 Release
-  pages: write      # 部署到 GitHub Pages
-
 env:
   APP_NAME: EasyPaste
   BUNDLE_ID: com.easypaste.app
-  ROOT_DIR: ${{ github.workspace }}
 
 jobs:
   # ──────────────────────────────────────────────
-  # Job 1: 构建、签名、公证、打 DMG
+  # Job 1: 构建 DMG 并上传到 Release
   # ──────────────────────────────────────────────
   build:
-    name: Build & Notarize
+    name: Build DMG
     runs-on: macos-15
     outputs:
       version: ${{ steps.version.outputs.version }}
-      build: ${{ steps.version.outputs.build }}
       dmg_path: ${{ steps.package.outputs.dmg_path }}
-      signature: ${{ steps.signature.outputs.signature }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,54 +44,32 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install create-dmg jq
+          brew install create-dmg jq python3
 
-      # ── 导入 Developer ID 证书 ──
-      - name: Import Developer ID Certificate
-        env:
-          DEV_ID_P12_BASE64: ${{ secrets.DEV_ID_P12_BASE64 }}
-          DEV_ID_P12_PASSWORD: ${{ secrets.DEV_ID_P12_PASSWORD }}
+      # ── 下载 Sparkle.framework ──
+      - name: Setup Sparkle
         run: |
-          set -euo pipefail
-          KEYCHAIN=build.keychain
-          KEYCHAIN_PASSWORD=$(uuidgen)
+          SPARKLE_VERSION="2.8.1"
+          SPARKLE_DIR="$HOME/.cache/sparkle-${SPARKLE_VERSION}"
           
-          # 创建临时 keychain
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security list-keychains -d user -s "$KEYCHAIN" login.keychain
-          security default-keychain -s "$KEYCHAIN"
-          
-          # 导入 .p12 证书（处理 base64 解码差异）
-          echo "$DEV_ID_P12_BASE64" | base64 --decode 2>/dev/null > dev_id.p12 || \
-            echo "$DEV_ID_P12_BASE64" | base64 -d 2>/dev/null > dev_id.p12 || \
-            python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode(sys.stdin.read()))" < <(echo "$DEV_ID_P12_BASE64") > dev_id.p12
-          
-          # 根据是否有密码决定参数
-          if [ -n "${DEV_ID_P12_PASSWORD:-}" ]; then
-            security import dev_id.p12 \
-              -k "$KEYCHAIN" \
-              -P "$DEV_ID_P12_PASSWORD" \
-              -T /usr/bin/codesign \
-              -T /usr/bin/security
-          else
-            security import dev_id.p12 \
-              -k "$KEYCHAIN" \
-              -T /usr/bin/codesign \
-              -T /usr/bin/security
+          if [ ! -d "$SPARKLE_DIR" ]; then
+            curl -L "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" \
+              -o /tmp/sparkle.tar.xz
+            tar -xJf /tmp/sparkle.tar.xz -C /tmp/
+            for dir in /tmp/Sparkle-*/Sparkle.framework /tmp/Sparkle*/bin/Sparkle.framework; do
+              if [ -d "$dir" ]; then
+                cp -R "$dir" "$SPARKLE_DIR"
+                break
+              fi
+            done
+            rm -f /tmp/sparkle.tar.xz
           fi
           
-          # 设置 key partition list 以便 codesign 可以访问
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          
-          rm -f dev_id.p12
-          echo "✓ Certificate imported successfully"
+          echo "SPARKLE_FRAMEWORK=$SPARKLE_DIR" >> "$GITHUB_ENV"
 
       # ── 构建 SPM 项目 ──
       - name: Build with Swift Package Manager
         run: |
-          cd "$ROOT_DIR"
           swift build -c release
           echo "✓ SPM build completed"
 
@@ -116,7 +79,7 @@ jobs:
         run: |
           set -euo pipefail
           BIN_PATH="$(swift build --show-bin-path)/$APP_NAME"
-          APP_BUNDLE="$ROOT_DIR/dist/$APP_NAME.app"
+          APP_BUNDLE="$GITHUB_WORKSPACE/dist/$APP_NAME.app"
           
           rm -rf "$APP_BUNDLE"
           mkdir -p "$APP_BUNDLE/Contents/MacOS"
@@ -126,157 +89,67 @@ jobs:
           cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
           chmod +x "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
           
-          # 拷贝 Sparkle.framework（从 DerivedData 或 SPM cache）
-          SPARKLE_SRC=""
-          for dir in \
-            "$HOME/Library/Developer/Xcode/DerivedData"/*/Build/Products/Release/Sparkle.framework \
-            "$HOME/Library/Developer/Xcode/DerivedData"/*/Build/Products/Debug/Sparkle.framework \
-            "$ROOT_DIR/.build/checkouts/Sparkle/Sparkle.framework"; do
-            if [ -d "$dir" ]; then
-              SPARKLE_SRC="$dir"
-              break
-            fi
-          done
-          
-          if [ -n "$SPARKLE_SRC" ]; then
-            cp -R "$SPARKLE_SRC" "$APP_BUNDLE/Contents/Frameworks/"
-            echo "✓ Sparkle.framework copied"
+          # 拷贝 Sparkle.framework
+          if [ -d "${{ env.SPARKLE_FRAMEWORK }}" ]; then
+            cp -R "${{ env.SPARKLE_FRAMEWORK }}" "$APP_BUNDLE/Contents/Frameworks/"
             
-            # 重新签名 Sparkle 嵌套组件
-            SPARKLE_FRAMEWORK="$APP_BUNDLE/Contents/Frameworks/Sparkle.framework"
-            find "$SPARKLE_FRAMEWORK" -type f -name "*.dylib" -exec codesign --force \
-              --sign "Developer ID Application" --timestamp --options runtime {} \;
-            find "$SPARKLE_FRAMEWORK" -type d -name "*.xpc" -exec codesign --force \
-              --sign "Developer ID Application" --timestamp --options runtime {} \;
-            codesign --force --sign "Developer ID Application" --timestamp \
-              --options runtime "$SPARKLE_FRAMEWORK"
-          else
-            echo "⚠️  Sparkle.framework not found in CI — app will run without auto-update"
-            echo "    Add Sparkle to the project via Xcode SPM or place it in Frameworks/ manually."
+            # 重新签名 Sparkle 嵌套组件（ad-hoc 签名）
+            SPARKLE_FW="$APP_BUNDLE/Contents/Frameworks/Sparkle.framework"
+            find "$SPARKLE_FW" -type f -name "*.dylib" -exec codesign --force \
+              --sign - {} \; 2>/dev/null || true
+            codesign --force --sign - "$SPARKLE_FW" 2>/dev/null || true
+            
+            echo "✓ Sparkle.framework copied and signed"
           fi
           
-          # 生成 Info.plist
           VERSION="${GITHUB_REF_NAME#v}"
           BUILD_NUM="${{ github.run_number }}"
           
-          /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $VERSION" \
-            "$APP_BUNDLE/Contents/Info.plist" 2>/dev/null || true
-          
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$BUILD_NUM" >> "$GITHUB_OUTPUT"
-          echo "app_bundle=$APP_BUNDLE" >> "$GITHUB_OUTPUT"
 
-      # ── 代码签名 ──
+      # ── ad-hoc 代码签名 ──
       - name: Code Sign App
         run: |
           set -euo pipefail
-          APP="$ROOT_DIR/dist/$APP_NAME.app"
+          APP="$GITHUB_WORKSPACE/dist/$APP_NAME.app"
           
-          # 使用 Developer ID 签名
-          codesign --force --timestamp --options runtime \
-            --sign "Developer ID Application" \
-            --keychain build.keychain \
-            "$APP"
+          # ad-hoc 签名（免费，无需 Developer ID）
+          codesign --force --sign - --timestamp=none "$APP"
           
-          # 验证签名
-          codesign --verify --deep --strict --verbose=4 "$APP"
-          echo "✓ App signed and verified"
-
-      # ── 公证 ──
-      - name: Notarize App
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          set -euo pipefail
-          APP="$ROOT_DIR/dist/$APP_NAME.app"
-          ZIP_NAME="/tmp/${{ env.APP_NAME }}-notarize.zip"
-          
-          ditto -c -k --keepParent "$APP" "$ZIP_NAME"
-          
-          xcrun notarytool submit "$ZIP_NAME" \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_APP_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" \
-            --wait \
-            --keychain build.keychain
-          
-          xcrun stapler staple "$APP"
-          echo "✓ App notarized and stapled"
+          echo "✓ App signed with ad-hoc signature"
 
       # ── 创建 DMG ──
       - name: Create DMG
         id: package
         run: |
           set -euo pipefail
-          APP="$ROOT_DIR/dist/$APP_NAME.app"
+          APP="$GITHUB_WORKSPACE/dist/$APP_NAME.app"
           VERSION="${GITHUB_REF_NAME#v}"
-          DMG_DIR="$ROOT_DIR/dist"
-          DMG_FILE="$DMG_DIR/${{ env.APP_NAME }}-${VERSION}.dmg"
+          DMG_FILE="$GITHUB_WORKSPACE/dist/${APP_NAME}-${VERSION}.dmg"
           
-          # 使用 create-dmg 创建安装盘
-          create-dmg \
-            --volname "${{ env.APP_NAME }}" \
-            --window-size 600 400 \
-            --icon-size 100 \
-            --app-drop-link 450 180 \
-            --no-internet-enable \
-            "$DMG_FILE" \
-            "$ROOT_DIR/dist/"
+          # 准备 staging 目录
+          STAGING="$GITHUB_WORKSPACE/staging"
+          rm -rf "$STAGING"
+          mkdir -p "$STAGING"
+          cp -R "$APP" "$STAGING/$APP_NAME.app"
+          ln -s /Applications "$STAGING/Applications"
+          
+          # 创建 DMG
+          hdiutil create -srcfolder "$STAGING" -volname "$APP_NAME" \
+            -fs HFS+ -format UDZO \
+            "$DMG_FILE"
+          
+          rm -rf "$STAGING"
           
           echo "dmg_path=$DMG_FILE" >> "$GITHUB_OUTPUT"
           echo "✓ DMG created: $DMG_FILE"
-
-      # ── 公证 DMG ──
-      - name: Notarize DMG
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          set -euo pipefail
-          DMG="${{ steps.package.outputs.dmg_path }}"
-          xcrun notarytool submit "$DMG" \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_APP_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" \
-            --wait \
-            --keychain build.keychain
-          xcrun stapler staple "$DMG"
-          echo "✓ DMG notarized and stapled"
-
-      # ── 用 Sparkle EdDSA 签名 DMG ──
-      - name: Sign DMG with Sparkle
-        id: signature
-        env:
-          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
-        run: |
-          set -euo pipefail
-          DMG="${{ steps.package.outputs.dmg_path }}"
-          
-          # 下载 Sparkle CLI 工具
-          curl -L https://github.com/sparkle-project/Sparkle/releases/download/2.8.1/Sparkle.tar.xz | tar xJ
-          SPARKLE_BIN="Sparkle*/bin"
-          
-          # 写入私钥文件
-          printf "%s" "$SPARKLE_ED_PRIVATE_KEY" > sparkle_ed25519.key
-          
-          # 签名 DMG
-          "$SPARKLE_BIN/sign_update" --ed-key-file sparkle_ed25519.key "$DMG" > signature.txt
-          
-          # 提取签名
-          SIG=$(grep -oP 'sparkle:edSignature="\K[^"]+' signature.txt || echo "")
-          echo "signature=$SIG" >> "$GITHUB_OUTPUT"
-          echo "✓ DMG signed with Sparkle EdDSA"
-          cat signature.txt
 
       # ── 提取版本信息 ──
       - name: Extract version
         id: version
         run: |
           set -euo pipefail
-          APP="$ROOT_DIR/dist/${{ env.APP_NAME }}.app"
           VERSION="${GITHUB_REF_NAME#v}"
           BUILD_NUM="${{ github.run_number }}"
           SIZE=$(stat -f%z "${{ steps.package.outputs.dmg_path }}")
@@ -296,57 +169,48 @@ jobs:
 
       # ── 生成 appcast.xml ──
       - name: Generate appcast.xml
-        env:
-          UPDATE_BASE_URL: https://liudding.github.io/easypaste-updates
         run: |
           set -euo pipefail
           VERSION="${{ steps.version.outputs.version }}"
           BUILD="${{ steps.version.outputs.build }}"
           SIZE="${{ steps.version.outputs.size }}"
-          SIG="${{ steps.outputs.signature }}"
           DMG_FILE="${{ env.APP_NAME }}-${VERSION}.dmg"
-          DMG_URL="${{ env.UPDATE_BASE_URL }}/${DMG_FILE}"
+          DMG_URL="https://github.com/liudding/EasyPaste/releases/download/${GITHUB_REF_NAME}/${DMG_FILE}"
           
-          # 获取 GitHub Release body 作为 release notes
-          python3 <<'PYEOF'
-          import json, os
-          from html import escape as html_escape
+          # 获取 Release body 作为 release notes
+          python3 << 'PYEOF'
+          import json, os, html
           from datetime import datetime, timezone
           
           event = json.loads(open(os.environ["GITHUB_EVENT_PATH"]).read())
           release = event.get("release", {})
           raw_notes = release.get("body", "") or ""
           
-          # HTML 转义
-          release_notes = html_escape(raw_notes, quote=False)
+          release_notes = html.escape(raw_notes, quote=False)
           release_notes = release_notes.replace("\r\n", "\n").replace("\r", "\n")
           release_notes = release_notes.replace("\n", "<br />\n")
-          release_notes = release_notes.replace("]]>", "]]]]><![CDATA[>")
           
           version = os.environ["VERSION"]
           build = os.environ["BUILD"]
           size = os.environ["SIZE"]
-          sig = os.environ["SIG"]
           dmg_url = os.environ["DMG_URL"]
           pub_date = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
           
           appcast = f"""<?xml version="1.0" encoding="utf-8"?>
           <rss version="2.0" xmlns:sparkle="https://sparkle-project.org/schema/sparkle" xmlns:dc="https://purl.org/dc/elements/1.1/">
             <channel>
-              <title>{html_escape(os.environ["APP_NAME"])} Updates</title>
-              <link>{html_escape(os.environ["UPDATE_BASE_URL"])}/</link>
-              <description>Latest updates for {html_escape(os.environ["APP_NAME"])}</description>
+              <title>{html.escape(os.environ["APP_NAME"])} Updates</title>
+              <link>https://liudding.github.io/easypaste-updates/</link>
+              <description>Latest updates for {html.escape(os.environ["APP_NAME"])}</description>
               <item>
-                <title>Version {html_escape(version)}</title>
+                <title>Version {html.escape(version)}</title>
                 <description><![CDATA[{release_notes}]]></description>
                 <pubDate>{pub_date}</pubDate>
                 <enclosure url="{dmg_url}"
                            sparkle:version="{build}"
-                           sparkle:shortVersionString="{html_escape(version)}"
-                           sparkle:edSignature="{sig}"
+                           sparkle:shortVersionString="{html.escape(version)}"
                            length="{size}"
                            type="application/octet-stream" />
-                {'<dc:creator>' + html_escape(os.environ.get("AUTHOR", "GitHub Actions")) + '</dc:creator>' if os.environ.get("AUTHOR") else ''}
               </item>
             </channel>
           </rss>"""
@@ -355,60 +219,17 @@ jobs:
               f.write(appcast)
           print("✓ appcast.xml generated")
           PYEOF
+        env:
+          APP_NAME: ${{ env.APP_NAME }}
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD: ${{ steps.version.outputs.build }}
+          SIZE: ${{ steps.version.outputs.size }}
+          DMG_URL: "https://github.com/liudding/EasyPaste/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.version.outputs.version }}.dmg"
 
-      # ── 部署到 GitHub Pages ──
+      # ── 部署 appcast 到 GitHub Pages ──
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./
           keep_files: true
-
-  # ──────────────────────────────────────────────
-  # Job 2: 部署 appcast.xml 到独立的 updates 仓库
-  # ──────────────────────────────────────────────
-  deploy-updates:
-    name: Deploy Updates
-    needs: build
-    runs-on: ubuntu-latest
-    if: always() && needs.build.result == 'success'
-    steps:
-      - name: Checkout main repo
-        uses: actions/checkout@v4
-
-      - name: Setup deploy key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.UPDATES_REPO_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null || true
-
-      - name: Clone updates repo
-        env:
-          GIT_SSH_COMMAND: 'ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no'
-        run: |
-          git clone git@github.com:liudding/easypaste-updates.git /tmp/easypaste-updates
-
-      - name: Copy DMG and appcast
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          DMG_FILE="dist/${{ env.APP_NAME }}-${VERSION}.dmg"
-          
-          # 从 artifact 获取 DMG（如果 upload 失败则跳过）
-          if [ -f "$DMG_FILE" ]; then
-            cp "$DMG_FILE" /tmp/easypaste-updates/
-          fi
-          
-          cp appcast.xml /tmp/easypaste-updates/
-          cp README.md /tmp/easypaste-updates/ 2>/dev/null || true
-
-      - name: Commit and push
-        env:
-          GIT_SSH_COMMAND: 'ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no'
-        working-directory: /tmp/easypaste-updates
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add .
-          git commit -m "Release ${{ github.ref_name }}" || echo "No changes to commit"
-          git push origin main
