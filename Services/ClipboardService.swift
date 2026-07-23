@@ -28,6 +28,11 @@ final class ClipboardService {
         }
         guard var item = makeItem() else { return }
         item.sourceApplication = frontmost?.localizedName
+        item.sourceApplicationBundleID = frontmost?.bundleIdentifier
+        // 自动检测色值文本 → 重分类为 .colorValue
+        if item.kind == .text && item.isColorValue {
+            item.kind = .colorValue
+        }
         onItem?(item)
     }
 
@@ -57,6 +62,7 @@ final class ClipboardService {
             case .file: pasteboard.setString((item.fileURLs ?? []).map(\.path).joined(separator: "\n"), forType: .string)
             case .image:
                 if let data = item.imageData, let image = NSImage(data: data) { pasteboard.writeObjects([image]) }
+            case .colorValue: pasteboard.setString(item.text ?? "", forType: .string)
             }
         } else {
             switch item.kind {
@@ -65,6 +71,7 @@ final class ClipboardService {
             case .image:
                 if let data = item.imageData, let image = NSImage(data: data) { pasteboard.writeObjects([image]) }
             case .file: pasteboard.writeObjects((item.fileURLs ?? []).map { $0 as NSURL })
+            case .colorValue: pasteboard.setString(item.text ?? "", forType: .string)
             }
         }
         lastChangeCount = pasteboard.changeCount

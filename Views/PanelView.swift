@@ -8,6 +8,7 @@ struct PanelView: View {
     let clipboard: ClipboardService
     @Bindable var settings: AppSettings
     @Bindable var panelState: PanelState
+    let onOpenSettings: () -> Void
     @FocusState private var searchFocused: Bool
     @FocusState private var boardFieldFocused: Bool
 
@@ -15,11 +16,12 @@ struct PanelView: View {
 
     var body: some View {
         ZStack {
-            VStack(spacing: 12) {
+            VStack(spacing: 0) {
                 header
+                    .padding(.horizontal, 14).padding(.top, 14)
                 clipStrip
+                    .padding(.top, 12).padding(.bottom, 14)
             }
-            .padding(14)
             .background(.ultraThinMaterial)
             .background(Color(red: 0.07, green: 0.075, blue: 0.09).opacity(0.82))
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -35,8 +37,16 @@ struct PanelView: View {
         }
         .onChange(of: searchFocused) { _, value in panelState.searchFocused = value }
         .onChange(of: panelState.searchExpanded) { _, value in if !value { searchFocused = false } }
-        .onChange(of: store.filteredItems.map(\.id)) { _, ids in
-            if panelState.selectedID == nil || !ids.contains(panelState.selectedID!) { panelState.selectedID = ids.first }
+        .onChange(of: store.query) { _, _ in validateSelection() }
+        .onChange(of: store.selectedBoardID) { _, _ in validateSelection() }
+        .onChange(of: store.selectedKind) { _, _ in validateSelection() }
+    }
+
+    /// 检查当前选中项是否仍在过滤结果中，不在则选第一个。
+    private func validateSelection() {
+        let items = store.filteredItems
+        if panelState.selectedID == nil || !items.contains(where: { $0.id == panelState.selectedID }) {
+            panelState.selectedID = items.first?.id
         }
     }
 
@@ -174,13 +184,7 @@ struct PanelView: View {
 
     private func openSettingsWindow() {
         panelState.hidePanel()
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
-        // macOS 14+ 移除了 sendAction(showSettingsWindow:)；
-        // 通过 EnvironmentValues 直接调用 openSettings 动作。
-        DispatchQueue.main.async {
-            EnvironmentValues().openSettings()
-        }
+        onOpenSettings()
     }
 
     // MARK: Clip strip
@@ -197,7 +201,7 @@ struct PanelView: View {
                 } else if isVertical {
                     ScrollView(.vertical) { LazyVStack(spacing: 10) { cards }.padding(.vertical, 2) }
                 } else {
-                    ScrollView(.horizontal) { LazyHStack(spacing: 10) { cards }.padding(.vertical, 2) }
+                    ScrollView(.horizontal) { LazyHStack(spacing: 10) { cards }.padding(.horizontal, 14) }
                 }
             }
             .scrollIndicators(.hidden)
@@ -282,6 +286,11 @@ struct PanelView: View {
                     ForEach(item.fileURLs ?? [], id: \.self) { Text($0.path).font(.system(size: 12)).textSelection(.enabled) }
                 }
             }
+        case .colorValue:
+            ZStack {
+                (item.resolvedColorValue ?? item.kind.defaultColor)
+                Text(item.text ?? "").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
+            }
         }
     }
 }
@@ -308,51 +317,116 @@ private struct ClipCardView: View {
     @State private var draftTitle = ""
     @FocusState private var renameFocused: Bool
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 4) {
-                Image(systemName: item.kind.symbol).font(.system(size: 11, weight: .semibold)).foregroundStyle(.orange)
-                Text(item.kind.title).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
-                Spacer()
-                if item.isFavorite { Image(systemName: "star.fill").font(.system(size: 9)).foregroundStyle(.yellow) }
-            }
-            preview.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            if renaming {
-                TextField("名称", text: $draftTitle)
-                    .textFieldStyle(.plain).font(.system(size: 12, weight: .semibold))
-                    .padding(.horizontal, 6).padding(.vertical, 3)
-                    .background(.white.opacity(0.12), in: .rect(cornerRadius: 6))
-                    .focused($renameFocused)
-                    .onSubmit { onRenameCommit(item.id, draftTitle) }
-                    .onAppear { draftTitle = item.displayTitle; renameFocused = true }
-            } else {
-                Text(item.displayTitle).font(.system(size: 12, weight: .semibold)).lineLimit(1)
-            }
-            HStack { Text(item.sourceApplication ?? "剪贴板").lineLimit(1); Spacer(); Text(item.createdAt, style: .relative) }
-                .font(.system(size: 9)).foregroundStyle(.tertiary)
+    /// 卡片头部区背景色：优先 pin board 色 → app icon 提取色 → 类型默认色。
+    /// 色值类型 header 不使用解析色值本身，依然走 app icon 色 → 默认色逻辑。
+    private var headerColor: Color {
+        // 1) 有 pin board 则用 board 色
+        if let boardID = item.boardID,
+           let board = boards.first(where: { $0.id == boardID }) {
+            return board.swiftUIColor
         }
-        .padding(10)
-        .frame(width: vertical ? nil : 150, height: vertical ? 120 : 150)
+        // 2) 有 app icon 提取色
+        if let appColor = item.sourceAppDominantColor {
+            return appColor
+        }
+        // 3) 类型默认色兜底
+        return item.kind.defaultColor
+    }
+
+    /// 来源 app icon（从缓存读取 22×22 缩放版本）。
+    private var sourceAppIconImage: NSImage? {
+        AppIconCache.shared.icon(forBundleID: item.sourceApplicationBundleID, displaySize: 22)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // ── 头部区：flat color 背景 + 类型 icon + 标题 + time ago + app icon ──
+            cardHeader
+            // ── 内容区 + Footer：按类型分化 ──
+            VStack(alignment: .leading, spacing: 0) {
+                cardBody
+                    .padding(.horizontal, item.kind == .colorValue ? 0 : 10)
+                    .padding(.top, item.kind == .colorValue ? 0 : 6)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: item.kind == .colorValue ? .center : .topLeading)
+                if item.kind != .colorValue {
+                    cardFooter
+                        .padding(.horizontal, 10).padding(.bottom, 7)
+                }
+            }
+            .background(bodyFooterBackground, in: .rect(bottomLeadingRadius: 12, bottomTrailingRadius: 12))
+        }
+        .frame(width: vertical ? nil : 170, height: vertical ? nil : 160)
         .frame(maxWidth: vertical ? .infinity : nil)
-        .background(selected ? Color.orange.opacity(0.22) : Color.white.opacity(0.06), in: .rect(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? .orange : .white.opacity(0.07), lineWidth: selected ? 1.5 : 1))
+        .frame(minHeight: vertical ? 80 : nil)
+        .clipShape(.rect(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? headerColor : .white.opacity(0.07), lineWidth: selected ? 1.5 : 1))
         .contentShape(.rect)
-        .onTapGesture(count: 2) { onPaste(item) }
-        .onTapGesture(count: 1) { onSelect() }
+        .onTapGesture { onSelect() }
+        .simultaneousGesture(TapGesture(count: 2).onEnded { onPaste(item) })
         .itemProvider { makeProvider() }
         .contextMenu { contextMenu }
     }
 
-    @ViewBuilder private var preview: some View {
+    // MARK: Header
+
+    private var cardHeader: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 5) {
+                Image(systemName: item.kind.symbol).font(.system(size: 10, weight: .semibold)).foregroundStyle(.white)
+                if renaming {
+                    TextField("名称", text: $draftTitle)
+                        .textFieldStyle(.plain).font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .focused($renameFocused)
+                        .onSubmit { onRenameCommit(item.id, draftTitle) }
+                        .onAppear { draftTitle = item.displayTitle; renameFocused = true }
+                } else {
+                    Text(item.displayTitle).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white).lineLimit(1)
+                }
+                Spacer(minLength: 2)
+                // 最右侧：来源 app icon
+                if let appIcon = sourceAppIconImage {
+                    Image(nsImage: appIcon).frame(width: 22, height: 22)
+                }
+                if item.isFavorite { Image(systemName: "star.fill").font(.system(size: 8)).foregroundStyle(.yellow) }
+            }
+            Text(timeAgoString(from: item.createdAt)).font(.system(size: 9)).foregroundStyle(.white.opacity(0.65))
+        }
+        .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, 6)
+        .background(headerColor.opacity(0.85))
+        .clipShape(.rect(topLeadingRadius: 12, topTrailingRadius: 12))
+    }
+
+    /// 将 Date 转成 "2分钟前"、"1小时前" 等简短的 time ago 格式。
+    private func timeAgoString(from date: Date) -> String {
+        let interval = Date.now.timeIntervalSince(date)
+        if interval < 60 { return "刚刚" }
+        if interval < 3600 { return "\(Int(interval / 60))分钟前" }
+        if interval < 86400 { return "\(Int(interval / 3600))小时前" }
+        if interval < 604800 { return "\(Int(interval / 86400))天前" }
+        if interval < 2592000 { return "\(Int(interval / 604800))周前" }
+        let months = Int(interval / 2592000)
+        if months < 12 { return "\(months)月前" }
+        return "\(Int(interval / 31536000))年前"
+    }
+
+    // MARK: Body (content area, varies by type)
+
+    @ViewBuilder private var cardBody: some View {
         switch item.kind {
+        case .colorValue:
+            // 貌值：body 不需要再填色（卡片背景已是该色值），居中显示色值文本
+            Text(item.text ?? "").font(.system(size: 14, weight: .bold))
+                .foregroundStyle(isLightColor(item.resolvedColorValue ?? item.kind.defaultColor) ? .black : .white)
         case .image:
-            if let data = item.imageData, let image = NSImage(data: data) {
+            if let image = ImageSizeCache.shared.image(for: item) {
                 Image(nsImage: image).resizable().scaledToFill()
                     .frame(maxWidth: .infinity, maxHeight: .infinity).clipShape(.rect(cornerRadius: 6))
             }
         case .link:
+            // 链接：body 展示网页预览（host + 缩略摘要）
             VStack(alignment: .leading, spacing: 3) {
-                Text(item.url?.host ?? "").font(.system(size: 10, weight: .bold)).foregroundStyle(.orange)
+                Text(item.url?.host ?? "").font(.system(size: 11, weight: .bold)).foregroundStyle(headerColor)
                 Text(item.url?.absoluteString ?? "").font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(3)
             }
         case .file:
@@ -364,6 +438,49 @@ private struct ClipCardView: View {
             Text(item.detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(4).multilineTextAlignment(.leading)
         }
     }
+
+    // MARK: Footer (varies by type)
+
+    @ViewBuilder private var cardFooter: some View {
+        switch item.kind {
+        case .text:
+            Text("\(item.characterCount) 字符").font(.system(size: 9)).foregroundStyle(.tertiary)
+        case .link:
+            HStack(spacing: 4) {
+                Text(item.linkFooterTitle).lineLimit(1).font(.system(size: 9, weight: .medium)).foregroundStyle(.secondary)
+                Text(item.linkFooterURL).lineLimit(1).font(.system(size: 8)).foregroundStyle(.tertiary)
+            }
+        case .image:
+            if let sizeDesc = item.imageSizeDescription {
+                Text(sizeDesc).font(.system(size: 9)).foregroundStyle(.tertiary)
+            }
+        case .file:
+            Text(item.detail).font(.system(size: 9)).foregroundStyle(.tertiary)
+        case .colorValue:
+            Text(item.text ?? "").font(.system(size: 9)).foregroundStyle(.tertiary)
+        }
+    }
+
+    // MARK: Background
+
+    /// body+footer 区域的背景色（底部有圆角）。
+    private var bodyFooterBackground: Color {
+        if selected { return headerColor.opacity(0.18) }
+        // 色值类型 body 底色就是解析的色值颜色
+        if item.kind == .colorValue { return item.resolvedColorValue ?? item.kind.defaultColor }
+        return Color.white.opacity(0.06)
+    }
+
+    /// 判断一个颜色是否为亮色（用于决定文本用黑/白）。
+    private func isLightColor(_ color: Color) -> Bool {
+        // 粗略判断：取 RGB 亮度 > 0.5 就是亮色
+        let nsColor = NSColor(color)
+        guard let rgb = nsColor.usingColorSpace(.sRGB) else { return false }
+        let luminance = 0.299 * rgb.redComponent + 0.587 * rgb.greenComponent + 0.114 * rgb.blueComponent
+        return luminance > 0.5
+    }
+
+    // MARK: Context menu & drag provider (unchanged)
 
     @ViewBuilder private var contextMenu: some View {
         Button { onPaste(item) } label: { menuRow("粘贴到 \(targetName ?? "当前应用")", hint: "↩") }
@@ -403,6 +520,8 @@ private struct ClipCardView: View {
             if let data = item.imageData, let image = NSImage(data: data) { provider.registerObject(image, visibility: .all) }
         case .file:
             for url in item.fileURLs ?? [] { provider.registerObject(url as NSURL, visibility: .all) }
+        case .colorValue:
+            provider.registerObject(NSString(string: item.text ?? ""), visibility: .all)
         }
         if let payload = try? JSONEncoder().encode(ClipDragPayload(id: item.id)) {
             provider.registerDataRepresentation(forTypeIdentifier: UTType.easypasteClip.identifier, visibility: .all) { completion in

@@ -48,7 +48,6 @@ final class PanelController: NSObject, NSWindowDelegate {
             panelState.targetAppName = AppDelegate.invokingApplication?.localizedName
         }
 
-        store.pruneExpired(limitDays: settings.historyLimitDays)
         if panelState.selectedID == nil || !store.filteredItems.contains(where: { $0.id == panelState.selectedID }) {
             panelState.selectedID = store.filteredItems.first?.id
         }
@@ -65,7 +64,7 @@ final class PanelController: NSObject, NSWindowDelegate {
             panel.makeKeyAndOrderFront(nil)
             isAnimating = true
             NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.26
+                context.duration = 0.18
                 context.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 panel.animator().setFrame(finalFrame, display: true)
             } completionHandler: { [weak self] in
@@ -82,7 +81,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         isAnimating = true
         let offscreen = offscreenFrame(for: panel.frame)
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.2
+            context.duration = 0.15
             context.timingFunction = CAMediaTimingFunction(name: .easeIn)
             panel.animator().setFrame(offscreen, display: true)
         } completionHandler: { [weak self] in
@@ -149,7 +148,9 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel.isReleasedWhenClosed = false
         panel.isMovableByWindowBackground = false
         panel.delegate = self
-        panel.contentView = NSHostingView(rootView: PanelView(store: store, clipboard: clipboard, settings: settings, panelState: panelState))
+        panel.contentView = NSHostingView(rootView: PanelView(store: store, clipboard: clipboard, settings: settings, panelState: panelState, onOpenSettings: { [weak self] in
+            self?.openSettingsFromPanel()
+        }))
         self.panel = panel
         return panel
     }
@@ -276,6 +277,25 @@ final class PanelController: NSObject, NSWindowDelegate {
         let items = store.filteredItems
         if let id = panelState.selectedID, let item = items.first(where: { $0.id == id }) { return item }
         return items.first
+    }
+
+    private func openSettingsFromPanel() {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.async {
+            // 尝试查找已有的 Settings 窗口并置前
+            for window in NSApp.windows {
+                // SwiftUI Settings scene 的窗口标题通常是 "设置" 或 app 名
+                if window.title == "设置" || window.title.contains("EasyPaste 设置") || window.title.contains("Settings") {
+                    window.makeKeyAndOrderFront(nil)
+                    return
+                }
+            }
+            // 没找到已有窗口——用 sendAction 让 SwiftUI 打开（macOS 14+ 可能无效，
+            // 但菜单栏的 SettingsLink 是可靠的替代入口）
+            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+        }
     }
 
     private func paste(_ item: ClipboardItem, plain: Bool) {
