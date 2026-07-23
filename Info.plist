@@ -2,59 +2,40 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>EasyPaste</string>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.easypaste.app</string>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>EasyPaste</string>
+	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>0.1.2</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>15.0</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-    <key>NSPrincipalClass</key>
-    <string>NSApplication</string>
-    
-    <!-- ═══════════════════════════════════════════════
-		 Sparkle 自动更新配置
-		 ═══════════════════════════════════════════════ -->
+	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2025 EasyPaste. All rights reserved.</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
 	
-	<!-- 更新源地址：GitHub Pages 托管的 appcast.xml -->
+	<!-- Sparkle auto-update configuration -->
+	<!-- 部署 appcast.xml 后取消下面两行的注释 -->
+	<!--
 	<key>SUFeedURL</key>
 	<string>https://liudding.github.io/easypaste-updates/appcast.xml</string>
-	
-	<!-- 应用名称（用于更新对话框） -->
-	<key>SUPurchaseURL</key>
-	<string></string>
-	
-	<!-- 自动检查间隔（秒），默认 86400 (24小时) -->
-	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	
-	<!-- 每次检查的间隔（秒），避免过于频繁 -->
-	<key>SUFeedAllowMinorUpdates</key>
-	<true/>
-	
-	<!-- ═══════════════════════════════════════════════
-		 ⚠️ SUPublicEDKey 待配置
-		 
-		 生成密钥对后，将公钥替换下面的占位符：
-		 
-		 1. 运行 Sparkle 的 generate_keys 工具
-		 2. 复制输出的公钥字符串
-		 3. 替换下方 <string>...</string> 中的内容
-		 ═══════════════════════════════════════════════ -->
-	<!-- <key>SUPublicEDKey</key> -->
-	<!-- <string>你的SUPublicEDKey占位符</string> -->
-	
-	<!-- 发布通道（可选，用于区分 stable / beta） -->
-	<!-- <key>SUPreferredUpdateChannel</key> -->
-	<!-- <string>stable</string> -->
+	<key>SUPublicEDKey</key>
+	<string>YOUR_SPARKLE_PUBLIC_ED_KEY_HERE</string>
+	-->
 </dict>
 </plist>

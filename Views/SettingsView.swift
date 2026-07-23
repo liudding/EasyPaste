@@ -13,6 +13,7 @@ struct SettingsView: View {
             general.tabItem { Label("通用", systemImage: "gear") }
             privacy.tabItem { Label("隐私", systemImage: "hand.raised") }
             shortcuts.tabItem { Label("快捷键", systemImage: "keyboard") }
+            updates.tabItem { Label("更新", systemImage: "arrow.down.circle") }
         }
         .padding(20)
         .frame(width: 480, height: 440)
@@ -125,5 +126,50 @@ struct SettingsView: View {
 
     private var invokeBinding: Binding<Shortcut> {
         Binding(get: { settings.invokeShortcut }, set: { settings.invokeShortcut = $0; onInvokeShortcutChanged($0) })
+    }
+    
+    // MARK: Updates
+    
+    private var updates: some View {
+        Form {
+            Section("自动更新") {
+                Button("检查更新…") {
+                    SparkleBridge.shared.checkForUpdates()
+                }
+                
+                let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "未知"
+                let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "未知"
+                
+                LabeledContent("当前版本") { Text("\(version) (\(build))") }
+                
+                #if canImport(Sparkle)
+                LabeledContent("更新引擎") {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("Sparkle 已启用")
+                }
+                #else
+                LabeledContent("更新引擎") {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text("仅开发模式（需 Xcode 构建）")
+                }
+                #endif
+            }
+            
+            Section("更新说明") {
+                Text("新版本将在此处显示更新说明。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            
+            Section("配置") {
+                Text("部署 appcast.xml 后，取消 Info.plist 中 SUFeedURL 和 SUPublicEDKey 的注释即可启用自动更新。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+        }
+        .formStyle(.grouped)
     }
 }
