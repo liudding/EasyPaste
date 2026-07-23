@@ -19,7 +19,13 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
+    inputs:
+      deploy_to_pages:
+        description: '部署到 GitHub Pages（更新源仓库）'
+        type: boolean
+        default: true
+        required: false
 
 permissions:
   contents: write   # 发布 Release
