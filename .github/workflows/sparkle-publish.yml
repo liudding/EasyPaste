@@ -338,14 +338,6 @@ jobs:
               f.write(appcast)
           print("✓ appcast.xml generated")
           PYEOF
-        env:
-          APP_NAME: ${{ env.APP_NAME }}
-          VERSION: ${{ steps.version.outputs.version }}
-          BUILD: ${{ steps.version.outputs.build }}
-          SIZE: ${{ steps.version.outputs.size }}
-          SIG: ${{ steps.outputs.signature }}
-          DMG_URL: ${{ env.UPDATE_BASE_URL }}/${{ env.APP_NAME }}-${{ steps.version.outputs.version }}.dmg
-          UPDATE_BASE_URL: https://liudding.github.io/easypaste-updates
 
       # ── 部署到 GitHub Pages ──
       - name: Deploy to GitHub Pages

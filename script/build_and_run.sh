@@ -20,12 +20,16 @@ pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 
 # ── Build via SPM ──
 echo "=== Building EasyPaste ==="
-swift build
+swift build --disable-sandbox
 
 rm -rf "$APP_BUNDLE"
 mkdir -p "$(dirname "$APP_BINARY")"
-cp "$(swift build --show-bin-path)/$APP_NAME" "$APP_BINARY"
+cp "$(swift build --show-bin-path --disable-sandbox)/$APP_NAME" "$APP_BINARY"
 chmod +x "$APP_BINARY"
+
+# ── Copy icon into Resources ──
+mkdir -p "$APP_BUNDLE/Contents/Resources"
+cp "$ROOT_DIR/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/"
 
 # ── Generate Info.plist ──
 cat >"$APP_BUNDLE/Contents/Info.plist" <<PLIST
@@ -37,6 +41,7 @@ cat >"$APP_BUNDLE/Contents/Info.plist" <<PLIST
     <key>CFBundleName</key><string>$APP_NAME</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>LSMinimumSystemVersion</key><string>15.0</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>NSPrincipalClass</key><string>NSApplication</string>
 </dict></plist>
 PLIST
