@@ -176,10 +176,10 @@ struct PanelView: View {
         panelState.hidePanel()
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+        // macOS 14+ 移除了 sendAction(showSettingsWindow:)；
+        // 通过 EnvironmentValues 直接调用 openSettings 动作。
         DispatchQueue.main.async {
-            if !NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) {
-                NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-            }
+            EnvironmentValues().openSettings()
         }
     }
 

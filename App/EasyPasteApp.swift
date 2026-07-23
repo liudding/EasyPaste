@@ -24,6 +24,12 @@ struct EasyPasteApp: App {
 
         Settings {
             SettingsView(settings: services.settings, store: services.store, onInvokeShortcutChanged: { _ in services.registerShortcut() })
+                .onAppear {
+                    // 设置窗口出现时确保 app 激活、窗口置前
+                    // （SettingsLink / openSettings 不一定自动激活 app）。
+                    NSApp.setActivationPolicy(.regular)
+                    NSApp.activate(ignoringOtherApps: true)
+                }
         }
     }
 }

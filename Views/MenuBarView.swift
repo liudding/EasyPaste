@@ -15,20 +15,12 @@ struct MenuBarView: View {
             }
             Divider()
         }
-        Button("设置…") { openSettings() }
+        // SettingsLink 是 macOS 14+ 官方方式打开 Settings 场景；
+        // sendAction(showSettingsWindow:) 在 Sonoma+ 已被移除。
+        SettingsLink { Text("设置…") }
         Button("关于 EasyPaste") { AboutPresenter.show() }
         Divider()
         Button("退出 EasyPaste") { NSApp.terminate(nil) }
-    }
-
-    private func openSettings() {
-        NSApp.activate(ignoringOtherApps: true)
-        DispatchQueue.main.async {
-            // macOS 14+ 使用 showSettingsWindow:；13 用 showPreferencesWindow:
-            if !NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) {
-                NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-            }
-        }
     }
 }
 
