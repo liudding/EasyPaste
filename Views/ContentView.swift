@@ -18,7 +18,7 @@ struct ContentView: View {
                 Divider().overlay(Color.white.opacity(0.08))
                 ScrollView {
                     if store.filteredItems.isEmpty { emptyState }
-                    else { LazyVGrid(columns: columns, spacing: 14) { ForEach(store.filteredItems) { item in ClipCard(item: item, selected: selectedIDs.contains(item.id), store: store, clipboard: clipboard).onTapGesture { toggleSelection(item.id) } } }.padding(22) }
+                    else { LazyVGrid(columns: columns, spacing: 14) { ForEach(store.filteredItems) { item in ClipCard(item: item, selected: selectedIDs.contains(item.id), store: store, clipboard: clipboard, onSelect: { toggleSelection(item.id) }) } }.padding(22) }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -82,7 +82,7 @@ private struct SidebarButton: View {
 }
 
 private struct ClipCard: View {
-    let item: ClipboardItem; let selected: Bool; let store: ClipboardStore; let clipboard: ClipboardService
+    let item: ClipboardItem; let selected: Bool; let store: ClipboardStore; let clipboard: ClipboardService; let onSelect: () -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             preview.frame(maxWidth: .infinity, minHeight: 112)
@@ -92,7 +92,11 @@ private struct ClipCard: View {
         }
         .padding(12).background(selected ? Color.orange.opacity(0.28) : Color.white.opacity(0.07), in: .rect(cornerRadius: 14))
         .overlay { RoundedRectangle(cornerRadius: 14).stroke(selected ? .orange : .white.opacity(0.07), lineWidth: 1) }
-        .contentShape(.rect).onTapGesture(count: 2) { clipboard.paste(item) }
+        .contentShape(.rect)
+        // Declare the higher-count gesture first so a single tap waits for the
+        // double-tap to fail instead of swallowing it.
+        .onTapGesture(count: 2) { clipboard.paste(item) }
+        .onTapGesture(count: 1) { onSelect() }
         .contextMenu { Button("Copy") { clipboard.copy(item) }; Button("Paste") { clipboard.paste(item) }; Divider(); Button(item.isFavorite ? "Remove Favorite" : "Favorite") { store.toggleFavorite(item.id) }; Button("Delete", role: .destructive) { store.delete([item.id]) } }
     }
     @ViewBuilder private var preview: some View {

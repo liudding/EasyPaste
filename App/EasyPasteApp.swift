@@ -23,13 +23,15 @@ struct EasyPasteApp: App {
         MenuBarExtra("EasyPaste", systemImage: "clipboard") {
             MenuBarView(store: store, clipboard: clipboard)
         }
+        .menuBarExtraStyle(.menu)
         Settings { SettingsView(store: store) }
     }
 }
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private static var invokingApplication: NSRunningApplication?
+    /// The app that was frontmost when the library was last invoked — the paste target.
+    private(set) static var invokingApplication: NSRunningApplication?
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
     }
@@ -38,19 +40,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // already have made EasyPaste the frontmost application.
         let previousApplication = NSWorkspace.shared.frontmostApplication
         DispatchQueue.main.async {
-            invokingApplication = previousApplication?.processIdentifier == ProcessInfo.processInfo.processIdentifier ? nil : previousApplication
+            // Keep the existing target when the shortcut fires while EasyPaste is
+            // already frontmost (e.g. pressing ⌘⇧V inside our own window).
+            if let previousApplication, previousApplication.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+                invokingApplication = previousApplication
+            }
             NSApp.setActivationPolicy(.regular)
             NSApp.activate(ignoringOtherApps: true)
             NSApp.windows.first(where: { $0.canBecomeKey })?.makeKeyAndOrderFront(nil)
             NotificationCenter.default.post(name: .easyPasteLibraryShown, object: nil)
         }
-    }
-
-    static func returnToInvokingApplication() -> pid_t? {
-        guard let invokingApplication else { return nil }
-        NSApp.hide(nil)
-        guard invokingApplication.activate(options: [.activateAllWindows]) else { return nil }
-        return invokingApplication.processIdentifier
     }
 }
 

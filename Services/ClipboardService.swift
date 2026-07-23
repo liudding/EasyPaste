@@ -1,5 +1,6 @@
 import AppKit
 @preconcurrency import ApplicationServices
+import Carbon.HIToolbox
 import Foundation
 
 @MainActor
@@ -54,33 +55,72 @@ final class ClipboardService {
 
     func paste(_ item: ClipboardItem) {
         copy(item)
-        guard requestAccessibilityIfNeeded() else { return }
-        let targetProcess = AppDelegate.returnToInvokingApplication()
-        let delay: TimeInterval = targetProcess == nil ? 0 : 0.35
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.sendPasteKeystroke(to: targetProcess) }
+        guard ensureAccessibilityPermission() else { return }
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        // If some other app is frontmost right now (e.g. paste was chosen from the
+        // menu-bar menu, which never activates EasyPaste), that app is the target.
+        // Otherwise fall back to the app that invoked the library window.
+        let frontmost = NSWorkspace.shared.frontmostApplication
+        let target: NSRunningApplication?
+        if let frontmost, frontmost.processIdentifier != ownPID {
+            target = frontmost
+        } else {
+            target = AppDelegate.invokingApplication
+        }
+        performPaste(into: target)
     }
 
-    private func requestAccessibilityIfNeeded() -> Bool {
+    private func ensureAccessibilityPermission() -> Bool {
         if AXIsProcessTrusted() { return true }
-        let preferenceKey = "hasRequestedAccessibilityPermission"
-        guard !UserDefaults.standard.bool(forKey: preferenceKey) else { return false }
-        UserDefaults.standard.set(true, forKey: preferenceKey)
+        // The system prompt only appears once per app identity (and ad-hoc signed
+        // rebuilds get a new identity), so also surface our own guidance every
+        // time — pasting must never fail silently.
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         AXIsProcessTrustedWithOptions(options)
+        let alert = NSAlert()
+        alert.messageText = "Accessibility Permission Required"
+        alert.informativeText = "EasyPaste needs Accessibility access to paste into other apps. Enable EasyPaste in System Settings, then paste again. The clip is already on your clipboard, so ⌘V works manually too."
+        alert.addButton(withTitle: "Open Settings")
+        alert.addButton(withTitle: "Later")
+        if alert.runModal() == .alertFirstButtonReturn {
+            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+        }
         return false
     }
 
-    private func sendPasteKeystroke(to processIdentifier: pid_t?) {
-        let source = CGEventSource(stateID: .combinedSessionState)
-        let down = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true)
-        let up = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false)
-        down?.flags = .maskCommand; up?.flags = .maskCommand
-        if let processIdentifier {
-            down?.postToPid(processIdentifier)
-            up?.postToPid(processIdentifier)
-        } else {
-            down?.post(tap: .cghidEventTap)
-            up?.post(tap: .cghidEventTap)
+    private func performPaste(into target: NSRunningApplication?) {
+        NSApp.hide(nil)
+        if let target, !target.isTerminated {
+            target.activate(options: [.activateAllWindows])
         }
+        waitForTargetFocus(target, attempts: 0)
+    }
+
+    /// Activation is asynchronous; poll until the target app is really frontmost
+    /// (or give up after ~1s) before posting the keystroke.
+    private func waitForTargetFocus(_ target: NSRunningApplication?, attempts: Int) {
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        let frontmostPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        let settled = target.map { frontmostPID == $0.processIdentifier } ?? (frontmostPID != nil && frontmostPID != ownPID)
+        if settled || attempts >= 25 {
+            postPasteKeystroke()
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in
+            self?.waitForTargetFocus(target, attempts: attempts + 1)
+        }
+    }
+
+    /// Post ⌘V through the HID event tap so it is indistinguishable from a real
+    /// keystroke. `postToPid` bypasses the HID layer and is ignored by many apps.
+    private func postPasteKeystroke() {
+        let source = CGEventSource(stateID: .hidSystemState)
+        let keyCode = CGKeyCode(kVK_ANSI_V)
+        let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true)
+        let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
+        down?.flags = .maskCommand
+        up?.flags = .maskCommand
+        down?.post(tap: .cghidEventTap)
+        up?.post(tap: .cghidEventTap)
     }
 }
