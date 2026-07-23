@@ -99,6 +99,12 @@ jobs:
           cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
           chmod +x "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
           
+          # 拷贝 Info.plist（含 CFBundleIconFile、CFBundleShortVersionString 等）
+          if [ -f "$GITHUB_WORKSPACE/Info.plist" ]; then
+            cp "$GITHUB_WORKSPACE/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
+            echo "✓ Info.plist copied"
+          fi
+          
           # 拷贝 AppIcon.icns
           if [ -f "$GITHUB_WORKSPACE/AppIcon.icns" ]; then
             cp "$GITHUB_WORKSPACE/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/"
