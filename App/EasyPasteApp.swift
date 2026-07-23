@@ -1,71 +1,92 @@
 import AppKit
+import Observation
 import SwiftUI
 
 @main
 struct EasyPasteApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var store = ClipboardStore()
-    @State private var clipboard = ClipboardService()
-    @State private var shortcut = GlobalShortcutService()
+    @State private var services: AppServices
+
+    init() {
+        let services = AppServices()
+        _services = State(initialValue: services)
+        appDelegate.services = services
+    }
 
     var body: some Scene {
-        WindowGroup(id: "library") {
-            ContentView(store: store, clipboard: clipboard)
-                .task {
-                    clipboard.onItem = { store.add($0) }
-                    clipboard.start()
-                    shortcut.registerDefaultShortcut { AppDelegate.showLibrary() }
-                }
-        }
-        .defaultSize(width: 1_020, height: 680)
-        .commands { PasteCommands(store: store, clipboard: clipboard) }
-
-        MenuBarExtra("EasyPaste", systemImage: "clipboard") {
-            MenuBarView(store: store, clipboard: clipboard)
+        MenuBarExtra("EasyPaste", systemImage: "clipboard.on.clipboard", isInserted: Binding(
+            get: { services.settings.showInMenuBar },
+            set: { services.settings.showInMenuBar = $0 }
+        )) {
+            MenuBarView(store: services.store, clipboard: services.clipboard, onShowPanel: { services.showPanel() })
         }
         .menuBarExtraStyle(.menu)
-        Settings { SettingsView(store: store) }
+
+        Settings {
+            SettingsView(settings: services.settings, store: services.store, onInvokeShortcutChanged: { _ in services.registerShortcut() })
+        }
     }
+}
+
+/// 组合根：集中持有 store / clipboard / settings / 快捷键 / 面板控制器，负责启动接线。
+@Observable @MainActor
+final class AppServices {
+    let settings = AppSettings()
+    let store: ClipboardStore
+    let clipboard = ClipboardService()
+    let shortcut = GlobalShortcutService()
+    let panelState = PanelState()
+    private(set) var panel: PanelController?
+
+    init() {
+        store = ClipboardStore(iCloud: false)
+    }
+
+    func boot() {
+        NSApp.setActivationPolicy(.regular)
+        clipboard.settings = settings
+        clipboard.onItem = { [weak self] item in self?.store.add(item) }
+        clipboard.start()
+
+        store.setICloudSyncEnabled(settings.iCloudSync)
+        store.historyLimitDays = settings.historyLimitDays
+        store.pruneExpired()
+
+        panel = PanelController(store: store, clipboard: clipboard, settings: settings, panelState: panelState)
+
+        settings.onStorageLocationChanged = { [weak self] in
+            self?.store.setICloudSyncEnabled(self?.settings.iCloudSync ?? false)
+        }
+        settings.onHistoryLimitChanged = { [weak self] in
+            guard let self else { return }
+            self.store.historyLimitDays = self.settings.historyLimitDays
+            self.store.pruneExpired()
+        }
+
+        registerShortcut()
+    }
+
+    func registerShortcut() {
+        shortcut.register(shortcut: settings.invokeShortcut) { [weak self] in
+            self?.panel?.toggle()
+        }
+    }
+
+    func showPanel() { panel?.show() }
 }
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// The app that was frontmost when the library was last invoked — the paste target.
-    private(set) static var invokingApplication: NSRunningApplication?
+    var services: AppServices?
+    /// 唤起面板时记录的前台应用——粘贴时作为目标应用的回退来源。
+    static var invokingApplication: NSRunningApplication?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.regular)
+        services?.boot()
     }
-    static func showLibrary() {
-        // Capture synchronously: by the next main-loop turn the hot-key handler may
-        // already have made EasyPaste the frontmost application.
-        let previousApplication = NSWorkspace.shared.frontmostApplication
-        DispatchQueue.main.async {
-            // Keep the existing target when the shortcut fires while EasyPaste is
-            // already frontmost (e.g. pressing ⌘⇧V inside our own window).
-            if let previousApplication, previousApplication.processIdentifier != ProcessInfo.processInfo.processIdentifier {
-                invokingApplication = previousApplication
-            }
-            NSApp.setActivationPolicy(.regular)
-            NSApp.activate(ignoringOtherApps: true)
-            NSApp.windows.first(where: { $0.canBecomeKey })?.makeKeyAndOrderFront(nil)
-            NotificationCenter.default.post(name: .easyPasteLibraryShown, object: nil)
-        }
-    }
-}
 
-extension Notification.Name {
-    static let easyPasteLibraryShown = Notification.Name("easyPasteLibraryShown")
-}
-
-private struct PasteCommands: Commands {
-    let store: ClipboardStore
-    let clipboard: ClipboardService
-    var body: some Commands {
-        CommandMenu("Clipboard") {
-            Button("Paste Most Recent") { if let item = store.filteredItems.first { clipboard.paste(item) } }
-                .keyboardShortcut("v", modifiers: [.command, .shift])
-            Button("Clear History") { store.delete(Set(store.items.map(\.id))) }
-                .keyboardShortcut(.delete, modifiers: [.command, .option])
-        }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { services?.showPanel() }
+        return true
     }
 }

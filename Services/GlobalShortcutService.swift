@@ -1,13 +1,13 @@
 import Carbon.HIToolbox
 import Foundation
 
-/// A narrow AppKit/Carbon bridge: the app owns presentation; Carbon only delivers Cmd–Shift–V globally.
+/// Carbon 桥：注册一个可配置的全局热键，触发时回调 app。面板/设置负责决定回调动作。
 final class GlobalShortcutService {
     private var hotKeyRef: EventHotKeyRef?
     private var handlerRef: EventHandlerRef?
     private var action: (() -> Void)?
 
-    func registerDefaultShortcut(action: @escaping () -> Void) {
+    func register(shortcut: Shortcut, action: @escaping () -> Void) {
         unregister()
         self.action = action
         let eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
@@ -19,7 +19,7 @@ final class GlobalShortcutService {
             return noErr
         }, 1, [eventType], pointer, &handlerRef)
         let id = EventHotKeyID(signature: OSType(0x4550_4153), id: 1) // EPAS
-        RegisterEventHotKey(UInt32(kVK_ANSI_V), UInt32(cmdKey | shiftKey), id, GetEventDispatcherTarget(), 0, &hotKeyRef)
+        RegisterEventHotKey(UInt32(shortcut.keyCode), shortcut.carbonModifiers, id, GetEventDispatcherTarget(), 0, &hotKeyRef)
     }
 
     func unregister() {
