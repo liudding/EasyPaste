@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key>
+	<string>EasyPaste</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.easypaste.app</string>
+	<key>CFBundleName</key>
+	<string>EasyPaste</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>15.0</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	
+	<!-- ═══════════════════════════════════════════════
+		 Sparkle 自动更新配置
+		 ═══════════════════════════════════════════════ -->
+	
+	<!-- 更新源地址：GitHub Pages 托管的 appcast.xml -->
+	<key>SUFeedURL</key>
+	<string>https://liudding.github.io/easypaste-updates/appcast.xml</string>
+	
+	<!-- 应用名称（用于更新对话框） -->
+	<key>SUPurchaseURL</key>
+	<string></string>
+	
+	<!-- 自动检查间隔（秒），默认 86400 (24小时) -->
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	
+	<!-- 每次检查的间隔（秒），避免过于频繁 -->
+	<key>SUFeedAllowMinorUpdates</key>
+	<true/>
+	
+	<!-- ═══════════════════════════════════════════════
+		 ⚠️ SUPublicEDKey 待配置
+		 
+		 生成密钥对后，将公钥替换下面的占位符：
+		 
+		 1. 运行 Sparkle 的 generate_keys 工具
+		 2. 复制输出的公钥字符串
+		 3. 替换下方 <string>...</string> 中的内容
+		 ═══════════════════════════════════════════════ -->
+	<!-- <key>SUPublicEDKey</key> -->
+	<!-- <string>你的SUPublicEDKey占位符</string> -->
+	
+	<!-- 发布通道（可选，用于区分 stable / beta） -->
+	<!-- <key>SUPreferredUpdateChannel</key> -->
+	<!-- <string>stable</string> -->
+</dict>
+</plist>

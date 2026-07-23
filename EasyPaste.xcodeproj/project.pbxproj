@@ -1,0 +1,449 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A0000001 /* EasyPasteApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000101; };
+		A0000002 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000102; };
+		A0000003 /* ClipboardItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000103; };
+		A0000004 /* PanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000104; };
+		A0000005 /* Shortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000105; };
+		A0000006 /* AppIconCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000106; };
+		A0000007 /* ClipboardService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000107; };
+		A0000008 /* GlobalShortcutService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000108; };
+		A0000009 /* PanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000109; };
+		A0000010 /* SparkleBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000110; };
+		A0000011 /* ClipboardStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000111; };
+		A0000012 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000112; };
+		A0000013 /* PanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000113; };
+		A0000014 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000114; };
+		A0000015 /* ShortcutRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000115; };
+		A0000016 /* EasyPasteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000116; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A0000101 /* EasyPasteApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EasyPasteApp.swift; sourceTree = "<group>"; };
+		A0000102 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		A0000103 /* ClipboardItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardItem.swift; sourceTree = "<group>"; };
+		A0000104 /* PanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelState.swift; sourceTree = "<group>"; };
+		A0000105 /* Shortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shortcut.swift; sourceTree = "<group>"; };
+		A0000106 /* AppIconCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconCache.swift; sourceTree = "<group>"; };
+		A0000107 /* ClipboardService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardService.swift; sourceTree = "<group>"; };
+		A0000108 /* GlobalShortcutService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalShortcutService.swift; sourceTree = "<group>"; };
+		A0000109 /* PanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelController.swift; sourceTree = "<group>"; };
+		A0000110 /* SparkleBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkleBridge.swift; sourceTree = "<group>"; };
+		A0000111 /* ClipboardStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardStore.swift; sourceTree = "<group>"; };
+		A0000112 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
+		A0000113 /* PanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelView.swift; sourceTree = "<group>"; };
+		A0000114 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A0000115 /* ShortcutRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderView.swift; sourceTree = "<group>"; };
+		A0000116 /* EasyPasteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EasyPasteTests.swift; sourceTree = "<group>"; };
+		A0000201 /* EasyPaste.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EasyPaste.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A0000202 /* EasyPasteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EasyPasteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A0000301 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A0000302 /* Test Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A0000400 /* Root */ = {
+			isa = PBXGroup;
+			children = (
+				A0000401 /* EasyPaste */,
+				A0000402 /* Tests */,
+				A0000403 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A0000401 /* EasyPaste */ = {
+			isa = PBXGroup;
+			children = (
+				A0000410 /* App */,
+				A0000411 /* Models */,
+				A0000412 /* Services */,
+				A0000413 /* Stores */,
+				A0000414 /* Views */,
+			);
+			path = EasyPaste;
+			sourceTree = "<group>";
+		};
+		A0000402 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				A0000420 /* EasyPasteTests */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		A0000403 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A0000201 /* EasyPaste.app */,
+				A0000202 /* EasyPasteTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A0000410 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A0000101 /* EasyPasteApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		A0000411 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A0000102 /* AppSettings.swift */,
+				A0000103 /* ClipboardItem.swift */,
+				A0000104 /* PanelState.swift */,
+				A0000105 /* Shortcut.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A0000412 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A0000106 /* AppIconCache.swift */,
+				A0000107 /* ClipboardService.swift */,
+				A0000108 /* GlobalShortcutService.swift */,
+				A0000109 /* PanelController.swift */,
+				A0000110 /* SparkleBridge.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A0000413 /* Stores */ = {
+			isa = PBXGroup;
+			children = (
+				A0000111 /* ClipboardStore.swift */,
+			);
+			path = Stores;
+			sourceTree = "<group>";
+		};
+		A0000414 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A0000112 /* MenuBarView.swift */,
+				A0000113 /* PanelView.swift */,
+				A0000114 /* SettingsView.swift */,
+				A0000115 /* ShortcutRecorderView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A0000420 /* EasyPasteTests */ = {
+			isa = PBXGroup;
+			children = (
+				A0000116 /* EasyPasteTests.swift */,
+			);
+			path = EasyPasteTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A0000501 /* EasyPaste */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A0000601;
+			buildPhases = (
+				A0000701 /* Sources */,
+				A0000301 /* Frameworks */,
+				A0000801 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = EasyPaste;
+			productName = EasyPaste;
+			productReference = A0000201 /* EasyPaste.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A0000502 /* EasyPasteTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A0000602;
+			buildPhases = (
+				A0000702 /* Sources */,
+				A0000302 /* Frameworks */,
+				A0000802 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A0000901 /* PBXTargetDependency */,
+			);
+			name = EasyPasteTests;
+			productName = EasyPasteTests;
+			productReference = A0000202 /* EasyPasteTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A0000A01 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A0000501 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+					A0000502 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = A0000B01;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				zh-Hans,
+			);
+			mainGroup = A0000400;
+			productRefGroup = A0000403 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A0000501 /* EasyPaste */,
+				A0000502 /* EasyPasteTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A0000801 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A0000802 /* Test Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A0000701 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A0000001 /* EasyPasteApp.swift in Sources */,
+				A0000002 /* AppSettings.swift in Sources */,
+				A0000003 /* ClipboardItem.swift in Sources */,
+				A0000004 /* PanelState.swift in Sources */,
+				A0000005 /* Shortcut.swift in Sources */,
+				A0000006 /* AppIconCache.swift in Sources */,
+				A0000007 /* ClipboardService.swift in Sources */,
+				A0000008 /* GlobalShortcutService.swift in Sources */,
+				A0000009 /* PanelController.swift in Sources */,
+				A0000010 /* SparkleBridge.swift in Sources */,
+				A0000011 /* ClipboardStore.swift in Sources */,
+				A0000012 /* MenuBarView.swift in Sources */,
+				A0000013 /* PanelView.swift in Sources */,
+				A0000014 /* SettingsView.swift in Sources */,
+				A0000015 /* ShortcutRecorderView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A0000702 /* Test Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A0000016 /* EasyPasteTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A0000901 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A0000501 /* EasyPaste */;
+			targetProxy = A0000902 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		A0000902 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A0000A01 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A0000501;
+			remoteInfo = EasyPaste;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin XCBuildConfiguration section */
+		A0000C01 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				INFOPLIST_FILE = Info.plist;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A0000C02 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTION = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				INFOPLIST_FILE = Info.plist;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		A0000C03 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_TESTING_EXTENSION_LIFECYCLE = YES;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				INFOPLIST_FILE = EasyPasteTests/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = com.easypaste.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		A0000C04 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_TESTING_EXTENSION_LIFECYCLE = YES;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				INFOPLIST_FILE = EasyPasteTests/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = com.easypaste.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		A0000C05 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.easypaste.app;
+				PRODUCT_NAME = EasyPaste;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		A0000C06 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.easypaste.app;
+				PRODUCT_NAME = EasyPaste;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A0000B01 /* Build configuration list for PBXProject "EasyPaste" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A0000C01 /* Debug */,
+				A0000C02 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A0000601 /* Build configuration list for PBXNativeTarget "EasyPaste" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A0000C05 /* Debug */,
+				A0000C06 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A0000602 /* Build configuration list for PBXNativeTarget "EasyPasteTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A0000C03 /* Debug */,
+				A0000C04 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = A0000A01 /* Project object */;
+}

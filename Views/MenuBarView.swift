@@ -15,6 +15,12 @@ struct MenuBarView: View {
             }
             Divider()
         }
+        
+        // Sparkle 检查更新菜单项
+        Button("检查更新…") {
+            SparkleBridge.shared.checkForUpdates()
+        }
+        
         // SettingsLink 是 macOS 14+ 官方方式打开 Settings 场景；
         // sendAction(showSettingsWindow:) 在 Sonoma+ 已被移除。
         SettingsLink { Text("设置…") }

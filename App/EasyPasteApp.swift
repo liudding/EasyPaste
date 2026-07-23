@@ -88,6 +88,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static var invokingApplication: NSRunningApplication?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // 初始化 Sparkle 更新服务（在 AppKit 启动阶段）
+        _ = SparkleBridge.shared
         services?.boot()
     }
 
