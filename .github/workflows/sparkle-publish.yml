@@ -99,6 +99,14 @@ jobs:
           cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
           chmod +x "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
           
+          # 拷贝 AppIcon.icns
+          if [ -f "$GITHUB_WORKSPACE/AppIcon.icns" ]; then
+            cp "$GITHUB_WORKSPACE/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/"
+            echo "✓ AppIcon.icns copied"
+          else
+            echo "⚠️  AppIcon.icns not found — app will show generic icon"
+          fi
+          
           # 拷贝 Sparkle.framework
           if [ -d "${{ env.SPARKLE_FRAMEWORK }}" ]; then
             cp -R "${{ env.SPARKLE_FRAMEWORK }}" "$APP_BUNDLE/Contents/Frameworks/"
@@ -145,6 +153,20 @@ jobs:
           cp -R "$APP" "$STAGING/$APP_NAME.app"
           ln -s /Applications "$STAGING/Applications"
           
+          # 添加安装说明文件
+          printf '%s\n' \
+            "安装方法：" \
+            "1. 将 EasyPaste.app 拖到 Applications 文件夹" \
+            "2. 首次打开如遇安全警告：" \
+            "   → 打开'系统设置 → 隐私与安全性'" \
+            "   → 点击'仍要打开'" \
+            "   或右键点击应用 → 打开" \
+            "" \
+            "更新方式：" \
+            "EasyPaste 支持自动检查更新。" \
+            "菜单栏 → 检查更新…" \
+            > "$STAGING/README.txt"
+
           # 创建 DMG
           hdiutil create -srcfolder "$STAGING" -volname "$APP_NAME" \
             -fs HFS+ -format UDZO \
