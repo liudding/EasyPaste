@@ -78,13 +78,24 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN" login.keychain
           security default-keychain -s "$KEYCHAIN"
           
-          # 导入 .p12 证书
-          echo "$DEV_ID_P12_BASE64" | base64 -D > dev_id.p12
-          security import dev_id.p12 \
-            -k "$KEYCHAIN" \
-            -P "${DEV_ID_P12_PASSWORD:-}" \
-            -T /usr/bin/codesign \
-            -T /usr/bin/security
+          # 导入 .p12 证书（处理 base64 解码差异）
+          echo "$DEV_ID_P12_BASE64" | base64 --decode 2>/dev/null > dev_id.p12 || \
+            echo "$DEV_ID_P12_BASE64" | base64 -d 2>/dev/null > dev_id.p12 || \
+            python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode(sys.stdin.read()))" < <(echo "$DEV_ID_P12_BASE64") > dev_id.p12
+          
+          # 根据是否有密码决定参数
+          if [ -n "${DEV_ID_P12_PASSWORD:-}" ]; then
+            security import dev_id.p12 \
+              -k "$KEYCHAIN" \
+              -P "$DEV_ID_P12_PASSWORD" \
+              -T /usr/bin/codesign \
+              -T /usr/bin/security
+          else
+            security import dev_id.p12 \
+              -k "$KEYCHAIN" \
+              -T /usr/bin/codesign \
+              -T /usr/bin/security
+          fi
           
           # 设置 key partition list 以便 codesign 可以访问
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
