@@ -19,6 +19,9 @@ on:
         default: true
         required: false
 
+permissions:
+  contents: write   # 创建 Release 和上传资产
+
 env:
   APP_NAME: EasyPaste
   BUNDLE_ID: com.easypaste.app
@@ -170,7 +173,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.package.outputs.dmg_path }}
-          generate_release_notes: true
+          body: "Release ${{ github.ref_name }}"
           draft: false
           prerelease: false
 
