@@ -44,6 +44,7 @@ final class AppSettings {
     ] { didSet { save() } }
     var invokeShortcut: Shortcut = .invokeDefault { didSet { save() } }
     var boardSwitchShortcut: Shortcut = .boardSwitchDefault { didSet { save() } }
+    var hasCompletedOnboarding = false { didSet { save() } }
 
     var onStorageLocationChanged: (() -> Void)?
     var onHistoryLimitChanged: (() -> Void)?
@@ -74,6 +75,40 @@ final class AppSettings {
         var ignoredApps: [IgnoredApp]
         var invokeShortcut: Shortcut
         var boardSwitchShortcut: Shortcut
+        var hasCompletedOnboarding: Bool
+
+        init(panelPosition: PanelPosition, openAtLogin: Bool, iCloudSync: Bool,
+             showInMenuBar: Bool, soundName: String, alwaysPastePlainText: Bool,
+             historyStepIndex: Int, ignoredApps: [IgnoredApp],
+             invokeShortcut: Shortcut, boardSwitchShortcut: Shortcut,
+             hasCompletedOnboarding: Bool) {
+            self.panelPosition = panelPosition
+            self.openAtLogin = openAtLogin
+            self.iCloudSync = iCloudSync
+            self.showInMenuBar = showInMenuBar
+            self.soundName = soundName
+            self.alwaysPastePlainText = alwaysPastePlainText
+            self.historyStepIndex = historyStepIndex
+            self.ignoredApps = ignoredApps
+            self.invokeShortcut = invokeShortcut
+            self.boardSwitchShortcut = boardSwitchShortcut
+            self.hasCompletedOnboarding = hasCompletedOnboarding
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            panelPosition = try c.decode(PanelPosition.self, forKey: .panelPosition)
+            openAtLogin = try c.decode(Bool.self, forKey: .openAtLogin)
+            iCloudSync = try c.decode(Bool.self, forKey: .iCloudSync)
+            showInMenuBar = try c.decode(Bool.self, forKey: .showInMenuBar)
+            soundName = try c.decode(String.self, forKey: .soundName)
+            alwaysPastePlainText = try c.decode(Bool.self, forKey: .alwaysPastePlainText)
+            historyStepIndex = try c.decode(Int.self, forKey: .historyStepIndex)
+            ignoredApps = try c.decode([IgnoredApp].self, forKey: .ignoredApps)
+            invokeShortcut = try c.decode(Shortcut.self, forKey: .invokeShortcut)
+            boardSwitchShortcut = try c.decode(Shortcut.self, forKey: .boardSwitchShortcut)
+            hasCompletedOnboarding = try c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
+        }
     }
 
     private func load() {
@@ -89,6 +124,7 @@ final class AppSettings {
         ignoredApps = snapshot.ignoredApps
         invokeShortcut = snapshot.invokeShortcut
         boardSwitchShortcut = snapshot.boardSwitchShortcut
+        hasCompletedOnboarding = snapshot.hasCompletedOnboarding
     }
 
     func save() {
@@ -96,7 +132,8 @@ final class AppSettings {
                                 showInMenuBar: showInMenuBar, soundName: soundName,
                                 alwaysPastePlainText: alwaysPastePlainText, historyStepIndex: historyStepIndex,
                                 ignoredApps: ignoredApps, invokeShortcut: invokeShortcut,
-                                boardSwitchShortcut: boardSwitchShortcut)
+                                boardSwitchShortcut: boardSwitchShortcut,
+                                hasCompletedOnboarding: hasCompletedOnboarding)
         UserDefaults.standard.set(try? JSONEncoder().encode(snapshot), forKey: defaultsKey)
     }
 

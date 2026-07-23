@@ -21,6 +21,9 @@ final class PanelController: NSObject, NSWindowDelegate {
     private var isAnimating = false
     private var hiding = false
 
+    /// 从 SwiftUI 场景捕获的 openSettings 动作（由 AppServices 注入）。
+    var openSettings: (() -> Void)?
+
     var isVisible: Bool { panel?.isVisible ?? false }
 
     init(store: ClipboardStore, clipboard: ClipboardService, settings: AppSettings, panelState: PanelState) {
@@ -281,20 +284,40 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     private func openSettingsFromPanel() {
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
-        DispatchQueue.main.async {
-            // 尝试查找已有的 Settings 窗口并置前
+        // 等待面板隐藏动画完成（0.15s），避免 .floating 层级面板遮挡设置窗口。
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            NSApp.activate(ignoringOtherApps: true)
+
+            // 1. 已有设置窗口则直接置前
             for window in NSApp.windows {
-                // SwiftUI Settings scene 的窗口标题通常是 "设置" 或 app 名
-                if window.title == "设置" || window.title.contains("EasyPaste 设置") || window.title.contains("Settings") {
+                if window === self.panel { continue }
+                if window.title == "设置" || window.title.contains("Settings") {
                     window.makeKeyAndOrderFront(nil)
                     return
                 }
             }
-            // 没找到已有窗口——用 sendAction 让 SwiftUI 打开（macOS 14+ 可能无效，
-            // 但菜单栏的 SettingsLink 是可靠的替代入口）
+
+            // 2. 优先使用从 SwiftUI 场景捕获的 openSettings 动作（macOS 14+ 官方 API，最可靠）
+            if let open = self.openSettings {
+                open()
+                return
+            }
+
+            // 3. 在主菜单中查找"设置…"菜单项并触发其 action
+            if let mainMenu = NSApp.mainMenu {
+                for item in mainMenu.items {
+                    guard let submenu = item.submenu else { continue }
+                    for menuItem in submenu.items {
+                        if menuItem.action == Selector(("showSettingsWindow:")) {
+                            NSApp.sendAction(menuItem.action!, to: menuItem.target, from: nil)
+                            return
+                        }
+                    }
+                }
+            }
+
+            // 4. 最终兜底：直接 sendAction（macOS 15 上可能无效）
             NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
         }
     }
 

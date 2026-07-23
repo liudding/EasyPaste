@@ -19,11 +19,13 @@ struct EasyPasteApp: App {
             set: { services.settings.showInMenuBar = $0 }
         )) {
             MenuBarView(store: services.store, clipboard: services.clipboard, onShowPanel: { services.showPanel() })
+            SettingsActionCapture(services: services)
         }
         .menuBarExtraStyle(.menu)
 
         Settings {
             SettingsView(settings: services.settings, store: services.store, onInvokeShortcutChanged: { _ in services.registerShortcut() })
+                .background(SettingsActionCapture(services: services))
                 .onAppear {
                     // 设置窗口出现时确保 app 激活、窗口置前
                     // （SettingsLink / openSettings 不一定自动激活 app）。
@@ -42,7 +44,12 @@ final class AppServices {
     let clipboard = ClipboardService()
     let shortcut = GlobalShortcutService()
     let panelState = PanelState()
+    private let onboarding = OnboardingWindowController()
     private(set) var panel: PanelController?
+    /// 从 SwiftUI 场景层次中捕获的 openSettings 动作。
+    /// PanelView 在独立 NSHostingView 中，无法直接访问 @Environment(\.openSettings)，
+    /// 需要在场景内部捕获后传递给 PanelController 使用。
+    var openSettingsAction: (() -> Void)?
 
     init() {
         store = ClipboardStore(iCloud: false)
@@ -59,6 +66,7 @@ final class AppServices {
         store.pruneExpired()
 
         panel = PanelController(store: store, clipboard: clipboard, settings: settings, panelState: panelState)
+        panel?.openSettings = { [weak self] in self?.openSettingsAction?() }
 
         settings.onStorageLocationChanged = { [weak self] in
             self?.store.setICloudSyncEnabled(self?.settings.iCloudSync ?? false)
@@ -70,6 +78,14 @@ final class AppServices {
         }
 
         registerShortcut()
+
+        // 首次启动时展示引导（延迟以确保窗口已完全就绪）
+        if !settings.hasCompletedOnboarding {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                guard let self else { return }
+                self.onboarding.show(settings: self.settings)
+            }
+        }
     }
 
     func registerShortcut() {
@@ -96,5 +112,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag { services?.showPanel() }
         return true
+    }
+}
+
+/// 在 SwiftUI 场景层次中捕获 @Environment(\.openSettings) 动作。
+/// PanelView 寄宿在独立 NSHostingView 中，无法访问该环境值；
+/// 通过此视图捕获后存入 AppServices，供 PanelController 使用。
+private struct SettingsActionCapture: View {
+    @Environment(\.openSettings) private var openSettings
+    let services: AppServices
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .onAppear { services.openSettingsAction = { openSettings() } }
     }
 }
