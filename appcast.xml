@@ -5,13 +5,13 @@
     <link>https://liudding.github.io/easypaste-updates/</link>
     <description>Latest updates for EasyPaste</description>
     <item>
-      <title>Version 0.1.2</title>
+      <title>Version 0.1.3</title>
       <description><![CDATA[]]></description>
-      <pubDate>Thu, 23 Jul 2026 15:50:01 +0000</pubDate>
-      <enclosure url="https://github.com/liudding/EasyPaste/releases/download/v0.1.2/EasyPaste-0.1.2.dmg"
-                 sparkle:version="9"
-                 sparkle:shortVersionString="0.1.2"
-                 length="3029468"
+      <pubDate>Thu, 23 Jul 2026 15:59:00 +0000</pubDate>
+      <enclosure url="https://github.com/liudding/EasyPaste/releases/download/v0.1.3/EasyPaste-0.1.3.dmg"
+                 sparkle:version="10"
+                 sparkle:shortVersionString="0.1.3"
+                 length="3026277"
                  type="application/octet-stream" />
     </item>
   </channel>
