@@ -15,6 +15,18 @@ APP_BINARY="$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
 MODE="${1:-run}"
 
+# ── Resolve code-signing identity ──
+# 检测顺序：Developer ID Application（可分发+公证）> Apple Development（免费账号通用开发证，本地/内测可用）> Mac Developer > 退回 ad-hoc。
+# 说明：ad-hoc 无身份，每次编译 cdhash 都变，TCC 辅助功能授权会失效需重授；用证书则 Team ID 稳定，无需重授。
+SIGN_IDENTITY=""
+for _pat in "Developer ID Application:" "Apple Development:" "Mac Developer:"; do
+    if /usr/bin/security find-identity -v -p codesigning 2>/dev/null | grep -q "$_pat"; then
+        SIGN_IDENTITY=$(/usr/bin/security find-identity -v -p codesigning 2>/dev/null | grep "$_pat" | head -1 | awk -F'"' '{print $2}')
+        break
+    fi
+done
+echo "=== Code signing: ${SIGN_IDENTITY:-ad-hoc (no signing identity found)} ==="
+
 # ── Kill existing app ──
 pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 
@@ -58,11 +70,15 @@ if [ -d "$SPARKLE_SRC" ]; then
     mkdir -p "$APP_BUNDLE/Contents/Frameworks"
     cp -R "$SPARKLE_SRC" "$APP_BUNDLE/Contents/Frameworks/"
     
-    # 重新签名 Sparkle 嵌套组件
+    # 重新签名 Sparkle 嵌套组件（必须与主 app 用同一身份，否则 library validation 会拒绝加载）
     SPARKLE_FRAMEWORK="$APP_BUNDLE/Contents/Frameworks/Sparkle.framework"
-    find "$SPARKLE_FRAMEWORK" -type f -name "*.dylib" -exec codesign --force \
-      --sign - --timestamp=none {} \; 2>/dev/null || true
-    codesign --force --sign - --timestamp=none "$SPARKLE_FRAMEWORK" 2>/dev/null || true
+    if [ -n "$SIGN_IDENTITY" ]; then
+        find "$SPARKLE_FRAMEWORK" -type f -name "*.dylib" -exec codesign --force --sign "$SIGN_IDENTITY" {} \; 2>/dev/null || true
+        codesign --force --sign "$SIGN_IDENTITY" "$SPARKLE_FRAMEWORK" 2>/dev/null || true
+    else
+        find "$SPARKLE_FRAMEWORK" -type f -name "*.dylib" -exec codesign --force --sign - --timestamp=none {} \; 2>/dev/null || true
+        codesign --force --sign - --timestamp=none "$SPARKLE_FRAMEWORK" 2>/dev/null || true
+    fi
     
     echo "[build] ✓ Sparkle.framework copied and signed"
 else
@@ -70,7 +86,11 @@ else
 fi
 
 # ── Sign ──
-/usr/bin/codesign --force --sign - --timestamp=none "$APP_BUNDLE"
+if [ -n "$SIGN_IDENTITY" ]; then
+    /usr/bin/codesign --force --sign "$SIGN_IDENTITY" --entitlements "$ROOT_DIR/EasyPaste.entitlements" "$APP_BUNDLE"
+else
+    /usr/bin/codesign --force --sign - --timestamp=none "$APP_BUNDLE"
+fi
 
 # ── Run / Debug ──
 case "$MODE" in
