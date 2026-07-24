@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// 从屏幕边缘弹出的剪贴板面板内容：头部（搜索/标题/Pinboard/添加/更多）+ 横向滚动卡片 + 预览浮层。
 struct PanelView: View {
@@ -104,18 +105,16 @@ struct PanelView: View {
     private var boardChips: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
-                boardChip(title: "全部", color: .secondary, selected: store.selectedBoardID == nil) { store.selectedBoardID = nil }
-                    .dropDestination(for: ClipDragPayload.self) { payloads, _ in
-                        if let p = payloads.first { store.move(p.id, to: nil) }
-                        return true
-                    }
+                BoardChipView(title: "全部", color: .secondary, selected: store.selectedBoardID == nil) {
+                    store.selectedBoardID = nil
+                } onDrop: { clipID in
+                    store.move(clipID, to: nil)
+                }
                 ForEach(store.boards) { board in
-                    boardChip(title: board.name, color: board.swiftUIColor, selected: store.selectedBoardID == board.id) {
+                    BoardChipView(title: board.name, color: board.swiftUIColor, selected: store.selectedBoardID == board.id) {
                         store.selectedBoardID = board.id
-                    }
-                    .dropDestination(for: ClipDragPayload.self) { payloads, _ in
-                        if let p = payloads.first { store.move(p.id, to: board.id) }
-                        return true
+                    } onDrop: { clipID in
+                        store.move(clipID, to: board.id)
                     }
                 }
                 addBoardControl
@@ -125,18 +124,124 @@ struct PanelView: View {
         .scrollIndicators(.hidden)
     }
 
-    private func boardChip(title: String, color: Color, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 5) {
-                Circle().fill(color).frame(width: 7, height: 7)
-                Text(title).font(.system(size: 12, weight: .medium)).lineLimit(1)
+    private struct BoardChipView: View {
+        let title: String
+        let color: Color
+        let selected: Bool
+        let action: () -> Void
+        let onDrop: (UUID) -> Void
+
+        @State private var isTargeted = false
+        @State private var dropBounce = false
+
+        var body: some View {
+            Button(action: action) {
+                HStack(spacing: 5) {
+                    Circle().fill(color).frame(width: 7, height: 7)
+                    Text(title).font(.system(size: 12, weight: .medium)).lineLimit(1)
+                }
+                .padding(.horizontal, 10).padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill(selected ? color.opacity(0.28) : (isTargeted ? color.opacity(0.18) : .white.opacity(0.07)))
+                )
+                .overlay(Capsule().stroke(selected ? color.opacity(0.8) : (isTargeted ? color.opacity(0.5) : .clear), lineWidth: 1))
+                .foregroundStyle(selected ? .white : (isTargeted ? .primary : .secondary))
             }
-            .padding(.horizontal, 10).padding(.vertical, 5)
-            .background(selected ? color.opacity(0.28) : .white.opacity(0.07), in: Capsule())
-            .overlay(Capsule().stroke(selected ? color.opacity(0.8) : .clear, lineWidth: 1))
-            .foregroundStyle(selected ? .white : .secondary)
+            .buttonStyle(.plain)
+            .scaleEffect(isTargeted ? 1.05 : (dropBounce ? 1.15 : 1.0))
+            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isTargeted)
+            .animation(.spring(response: 0.3, dampingFraction: 0.5), value: dropBounce)
+            .background(
+                BoardChipDropZone(onTargeted: { targeted in
+                    isTargeted = targeted
+                }, onDrop: { clipID in
+                    dropBounce = true
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.5).delay(0.1)) {
+                        dropBounce = false
+                    }
+                    onDrop(clipID)
+                })
+            )
         }
-        .buttonStyle(.plain)
+    }
+
+    private struct BoardChipDropZone: NSViewRepresentable {
+        var onTargeted: (Bool) -> Void
+        var onDrop: (UUID) -> Void 
+
+        func makeNSView(context: Context) -> DroppableView {
+            let view = DroppableView()
+            view.onTargeted = onTargeted
+            view.onDrop = onDrop
+            return view
+        }
+        
+        func updateNSView(_ nsView: DroppableView, context: Context) {}
+
+        class DroppableView: NSView {
+            var onTargeted: (Bool) -> Void = { _ in }
+            var onDrop: (UUID) -> Void = { _ in }
+            var originalFrames: [Int: NSRect] = [:]
+
+            override init(frame: NSRect) {
+                super.init(frame: frame)
+                registerForDraggedTypes([NSPasteboard.PasteboardType(UTType.easypasteClip.identifier)])
+            }
+            required init?(coder: NSCoder) { fatalError() }
+
+            override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+                onTargeted(true)
+                originalFrames.removeAll()
+                
+                sender.enumerateDraggingItems(options: [], for: nil, classes: [NSPasteboardItem.self], searchOptions: [:]) { draggingItem, idx, stop in
+                    let currentFrame = draggingItem.draggingFrame
+                    self.originalFrames[idx] = currentFrame
+                    
+                    let scale: CGFloat = 0.5
+                    let newWidth = currentFrame.width * scale
+                    let newHeight = currentFrame.height * scale
+                    let offsetX = (currentFrame.width - newWidth) / 2
+                    let offsetY = (currentFrame.height - newHeight) / 2
+                    let newFrame = NSRect(x: currentFrame.origin.x + offsetX, y: currentFrame.origin.y + offsetY, width: newWidth, height: newHeight)
+                    
+                    if let firstComp = draggingItem.imageComponents?.first {
+                        draggingItem.setDraggingFrame(newFrame, contents: firstComp.contents)
+                    }
+                }
+                return .copy
+            }
+            
+            override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+                return .copy 
+            }
+            
+            override func draggingExited(_ sender: NSDraggingInfo?) {
+                onTargeted(false)
+                guard let sender = sender else { return }
+                
+                sender.enumerateDraggingItems(options: [], for: nil, classes: [NSPasteboardItem.self], searchOptions: [:]) { draggingItem, idx, stop in
+                    if let origFrame = self.originalFrames[idx] {
+                        draggingItem.setDraggingFrame(origFrame, contents: draggingItem.imageComponents?.first?.contents)
+                    }
+                }
+                originalFrames.removeAll()
+            }
+            
+            override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+                onTargeted(false)
+                guard let item = sender.draggingPasteboard.pasteboardItems?.first else { return false }
+                
+                if let data = item.data(forType: NSPasteboard.PasteboardType(UTType.easypasteClip.identifier)) {
+                    if let payload = try? JSONDecoder().decode(ClipDragPayload.self, from: data) {
+                        onDrop(payload.id)
+                        sender.animatesToDestination = true
+                        return true
+                    }
+                }
+                return false
+            }
+        }
     }
 
     @ViewBuilder private var addBoardControl: some View {
