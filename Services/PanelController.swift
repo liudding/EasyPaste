@@ -276,7 +276,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         panelState.selectedID = items[next].id
     }
 
-    private var selectedItem: ClipboardItem? {
+    private var selectedItem: Clip? {
         let items = store.filteredItems
         if let id = panelState.selectedID, let item = items.first(where: { $0.id == id }) { return item }
         return items.first
@@ -321,7 +321,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         }
     }
 
-    private func paste(_ item: ClipboardItem, plain: Bool) {
+    private func paste(_ item: Clip, plain: Bool) {
         // 同步移除面板，让目标 app 的窗口重新成为 key window，
         // 否则非激活面板仍是 key，⌘V 会被面板吞掉。
         panel?.orderOut(nil)

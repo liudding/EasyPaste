@@ -8,7 +8,7 @@ final class ClipboardService {
     private let pasteboard = NSPasteboard.general
     private var lastChangeCount = NSPasteboard.general.changeCount
     private var timer: Timer?
-    var onItem: ((ClipboardItem) -> Void)?
+    var onItem: ((Clip) -> Void)?
     var settings: AppSettings?
 
     func start() {
@@ -35,28 +35,28 @@ final class ClipboardService {
         }
         // 自动检测色值文本 → 重分类为 .colorValue
         if item.kind == .text && item.isColorValue {
-            item.kind = .colorValue
+            item.kind = .color
         }
         onItem?(item)
     }
 
-    private func makeItem() -> ClipboardItem? {
+    private func makeItem() -> Clip? {
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], !urls.isEmpty {
-            return ClipboardItem(kind: .file, fileURLs: urls)
+            return Clip(kind: .file, fileURLs: urls)
         }
         if let url = pasteboard.readObjects(forClasses: [NSURL.self], options: nil)?.first as? URL, url.scheme != "file" {
-            return ClipboardItem(kind: .link, url: url)
+            return Clip(kind: .link, url: url)
         }
         if let image = NSImage(pasteboard: pasteboard), let data = image.tiffRepresentation, data.count < 12_000_000 {
-            return ClipboardItem(kind: .image, imageData: data)
+            return Clip(kind: .image, imageData: data)
         }
         if let text = pasteboard.string(forType: .string), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return ClipboardItem(kind: text.hasPrefix("http://") || text.hasPrefix("https://") ? .link : .text, text: text, url: URL(string: text))
+            return Clip(kind: text.hasPrefix("http://") || text.hasPrefix("https://") ? .link : .text, text: text, url: URL(string: text))
         }
         return nil
     }
 
-    func copy(_ item: ClipboardItem, plainText: Bool = false) {
+    func copy(_ item: Clip, plainText: Bool = false) {
         let plain = plainText || (settings?.alwaysPastePlainText ?? false)
         pasteboard.clearContents()
         if plain {
@@ -66,7 +66,7 @@ final class ClipboardService {
             case .file: pasteboard.setString((item.fileURLs ?? []).map(\.path).joined(separator: "\n"), forType: .string)
             case .image:
                 if let data = item.imageData, let image = NSImage(data: data) { pasteboard.writeObjects([image]) }
-            case .colorValue: pasteboard.setString(item.text ?? "", forType: .string)
+            case .color: pasteboard.setString(item.text ?? "", forType: .string)
             }
         } else {
             switch item.kind {
@@ -75,13 +75,13 @@ final class ClipboardService {
             case .image:
                 if let data = item.imageData, let image = NSImage(data: data) { pasteboard.writeObjects([image]) }
             case .file: pasteboard.writeObjects((item.fileURLs ?? []).map { $0 as NSURL })
-            case .colorValue: pasteboard.setString(item.text ?? "", forType: .string)
+            case .color: pasteboard.setString(item.text ?? "", forType: .string)
             }
         }
         lastChangeCount = pasteboard.changeCount
     }
 
-    func paste(_ item: ClipboardItem, plainText: Bool = false) {
+    func paste(_ item: Clip, plainText: Bool = false) {
         copy(item, plainText: plainText)
         guard ensureAccessibilityPermission() else { return }
         let ownPID = ProcessInfo.processInfo.processIdentifier

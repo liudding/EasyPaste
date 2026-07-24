@@ -284,7 +284,7 @@ struct PanelView: View {
         }
     }
 
-    @ViewBuilder private func clipCard(for item: ClipboardItem) -> some View {
+    @ViewBuilder private func clipCard(for item: Clip) -> some View {
         ClipCardView(
             item: item,
             selected: panelState.selectedID == item.id,
@@ -312,14 +312,14 @@ struct PanelView: View {
         )
     }
 
-    private func paste(_ item: ClipboardItem, plain: Bool) {
+    private func paste(_ item: Clip, plain: Bool) {
         clipboard.paste(item, plainText: plain)
         panelState.hidePanel()
     }
 
     // MARK: Preview overlay
 
-    private func previewOverlay(_ item: ClipboardItem) -> some View {
+    private func previewOverlay(_ item: Clip) -> some View {
         ZStack {
             Color.black.opacity(0.55).clipShape(RoundedRectangle(cornerRadius: 16))
                 .onTapGesture { withAnimation { panelState.previewItem = nil } }
@@ -342,7 +342,7 @@ struct PanelView: View {
         .transition(.opacity)
     }
 
-    @ViewBuilder private func previewContent(_ item: ClipboardItem) -> some View {
+    @ViewBuilder private func previewContent(_ item: Clip) -> some View {
         switch item.kind {
         case .text:
             ScrollView { Text(item.text ?? "").font(.system(size: 13)).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled) }
@@ -361,7 +361,7 @@ struct PanelView: View {
                     ForEach(item.fileURLs ?? [], id: \.self) { Text($0.path).font(.system(size: 12)).textSelection(.enabled) }
                 }
             }
-        case .colorValue:
+        case .color:
             ZStack {
                 (item.resolvedColorValue ?? item.kind.defaultColor)
                 Text(item.text ?? "").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
@@ -373,21 +373,21 @@ struct PanelView: View {
 // MARK: - Clip card
 
 private struct ClipCardView: View {
-    let item: ClipboardItem
+    let item: Clip
     let selected: Bool
     let renaming: Bool
     let vertical: Bool
     let targetName: String?
     let boards: [Pasteboard]
     let onSelect: () -> Void
-    let onPaste: (ClipboardItem) -> Void
-    let onPastePlain: (ClipboardItem) -> Void
-    let onCopy: (ClipboardItem) -> Void
-    let onRename: (ClipboardItem) -> Void
+    let onPaste: (Clip) -> Void
+    let onPastePlain: (Clip) -> Void
+    let onCopy: (Clip) -> Void
+    let onRename: (Clip) -> Void
     let onRenameCommit: (UUID, String) -> Void
-    let onDelete: (ClipboardItem) -> Void
-    let onPin: (ClipboardItem, UUID?) -> Void
-    let onPreview: (ClipboardItem) -> Void
+    let onDelete: (Clip) -> Void
+    let onPin: (Clip, UUID?) -> Void
+    let onPreview: (Clip) -> Void
 
     @State private var draftTitle = ""
     @FocusState private var renameFocused: Bool
@@ -420,10 +420,10 @@ private struct ClipCardView: View {
             // ── 内容区 + Footer：按类型分化 ──
             VStack(alignment: .leading, spacing: 0) {
                 cardBody
-                    .padding(.horizontal, item.kind == .colorValue ? 0 : 10)
-                    .padding(.top, item.kind == .colorValue ? 0 : 6)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: item.kind == .colorValue ? .center : .topLeading)
-                if item.kind != .colorValue {
+                    .padding(.horizontal, item.kind == .color ? 0 : 10)
+                    .padding(.top, item.kind == .color ? 0 : 6)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: item.kind == .color ? .center : .topLeading)
+                if item.kind != .color {
                     cardFooter
                         .padding(.horizontal, 10).padding(.bottom, 7)
                 }
@@ -489,7 +489,7 @@ private struct ClipCardView: View {
 
     @ViewBuilder private var cardBody: some View {
         switch item.kind {
-        case .colorValue:
+        case .color:
             // 貌值：body 不需要再填色（卡片背景已是该色值），居中显示色值文本
             Text(item.text ?? "").font(.system(size: 14, weight: .bold))
                 .foregroundStyle(isLightColor(item.resolvedColorValue ?? item.kind.defaultColor) ? .black : .white)
@@ -531,7 +531,7 @@ private struct ClipCardView: View {
             }
         case .file:
             Text(item.detail).font(.system(size: 9)).foregroundStyle(.tertiary)
-        case .colorValue:
+        case .color:
             Text(item.text ?? "").font(.system(size: 9)).foregroundStyle(.tertiary)
         }
     }
@@ -542,7 +542,7 @@ private struct ClipCardView: View {
     private var bodyFooterBackground: Color {
         if selected { return headerColor.opacity(0.18) }
         // 色值类型 body 底色就是解析的色值颜色
-        if item.kind == .colorValue { return item.resolvedColorValue ?? item.kind.defaultColor }
+        if item.kind == .color { return item.resolvedColorValue ?? item.kind.defaultColor }
         return Color.white.opacity(0.06)
     }
 
@@ -595,7 +595,7 @@ private struct ClipCardView: View {
             if let data = item.imageData, let image = NSImage(data: data) { provider.registerObject(image, visibility: .all) }
         case .file:
             for url in item.fileURLs ?? [] { provider.registerObject(url as NSURL, visibility: .all) }
-        case .colorValue:
+        case .color:
             provider.registerObject(NSString(string: item.text ?? ""), visibility: .all)
         }
         if let payload = try? JSONEncoder().encode(ClipDragPayload(id: item.id)) {

@@ -7,7 +7,7 @@ final class PanelState {
     var selectedID: UUID?
     var searchExpanded = false
     var searchFocused = false
-    var previewItem: ClipboardItem?
+    var previewItem: Clip?
     var renamingID: UUID?
     var addingBoard = false
     var newBoardName = ""

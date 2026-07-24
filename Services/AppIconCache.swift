@@ -143,7 +143,7 @@ final class ImageSizeCache: @unchecked Sendable {
     @ObservationIgnored private var pendingThumbs: Set<UUID> = []
 
     /// 图片尺寸描述（仅读元数据，不做像素解码）。
-    func sizeDescription(for item: ClipboardItem) -> String? {
+    func sizeDescription(for item: Clip) -> String? {
         guard let data = item.imageData else { return nil }
         lock.lock()
         if let cached = sizeCache[item.id] {
@@ -165,7 +165,7 @@ final class ImageSizeCache: @unchecked Sendable {
     }
 
     /// 卡片缩略图：命中缓存立即返回；未命中则后台降采样（完成前返回已缓存的全尺寸图或 nil）。
-    func thumbnail(for item: ClipboardItem, maxPixel: Int = 340) -> NSImage? {
+    func thumbnail(for item: Clip, maxPixel: Int = 340) -> NSImage? {
         guard item.kind == .image, let data = item.imageData else { return nil }
         lock.lock()
         if let thumb = thumbCache[item.id] {
@@ -193,7 +193,7 @@ final class ImageSizeCache: @unchecked Sendable {
     }
 
     /// 全尺寸图（预览浮层用；首次访问解码一次并缓存）。
-    func image(for item: ClipboardItem) -> NSImage? {
+    func image(for item: Clip) -> NSImage? {
         guard item.kind == .image, let data = item.imageData else { return nil }
         lock.lock()
         if let cached = imageCache[item.id] {

@@ -4,7 +4,8 @@
 - SwiftPM 可执行 target，源码直接在仓库根目录（App/Models/Stores/Services/Views），`Package.swift` 用 `sources:` 指定。
 - 打包：`script/build_and_run.sh`（build → dist/EasyPaste.app → ad-hoc codesign → open）。
 - **WorkBuddy 沙箱内必须加 `--disable-sandbox`**（swift build/test/show-bin-path），否则 SwiftPM 嵌套 sandbox-exec 会 posix_spawn "Operation not permitted"。脚本本身未加，必要时手动分步执行。
-- ad-hoc 签名（`codesign --sign -`）每次重打包 cdhash 变化 → macOS 辅助功能(TCC)授权身份失效，需提醒用户重新授权。
+- ad-hoc 签名（`codesign --sign -`）无身份，cdhash 每次编译都变 → TCC 辅助功能授权必失效，每版需重授。
+- **签名自动检测已实现**（build_and_run.sh）：依次选 Developer ID Application > Apple Development > Mac Developer，都没有才退回 ad-hoc；Sparkle 嵌套组件用同一身份重签（否则 library validation 拒绝加载）。用户现有免费 `Apple Development: Ding Liu (JV4FM5Z2PZ)`（Team ID EEGY7XHC46）→ 开发构建身份稳定，辅助功能授权不再每次重授（仅**首次**换身份需重授一次）；但 Gatekeeper 不信任、不能分发给他人。正式分发仍须付费 Developer ID + 公证。
 - **swift build/test 卡死、build.db 膨胀到 GB 级**：根因曾是 `dist/dmg_staging/Applications -> /Applications` 符号链接残留（中断的 DMG 构建留下），`swift test` 的 llbuild 目录扫描跟随它索引整个 /Applications（54 万文件）。已根治：create_dmg.sh staging 改用包外 mktemp + trap 清理。**包根目录下（含 dist/）绝不能放指向大目录的符号链接**；再遇卡死先查包内符号链接和 build.db 大小。
 
 ## 架构要点

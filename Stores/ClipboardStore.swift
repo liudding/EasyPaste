@@ -3,11 +3,11 @@ import Observation
 
 @Observable @MainActor
 final class ClipboardStore {
-    private(set) var items: [ClipboardItem] = []
+    private(set) var items: [Clip] = []
     private(set) var boards: [Pasteboard] = [Pasteboard(name: "灵感", color: "orange"), Pasteboard(name: "工作", color: "blue")]
     private(set) var rules: [AutomationRule] = []
     var selectedBoardID: UUID? { didSet { invalidateFilterCache() } }
-    var selectedKind: ClipboardKind? { didSet { invalidateFilterCache() } }
+    var selectedKind: ClipKind? { didSet { invalidateFilterCache() } }
     var query = "" { didSet { invalidateFilterCache() } }
     var isFavoritesOnly = false { didSet { invalidateFilterCache() } }
     /// 历史保留天数（0 = 无限）。由 AppServices 从设置同步。
@@ -15,7 +15,7 @@ final class ClipboardStore {
     private var fileURL: URL
 
     // 缓存 filteredItems，避免每次访问都重新过滤
-    @ObservationIgnored private var _filteredCache: [ClipboardItem] = []
+    @ObservationIgnored private var _filteredCache: [Clip] = []
     @ObservationIgnored private var _filteredCacheValid = false
 
     private func invalidateFilterCache() { _filteredCacheValid = false }
@@ -26,7 +26,7 @@ final class ClipboardStore {
         load()
     }
 
-    var filteredItems: [ClipboardItem] {
+    var filteredItems: [Clip] {
         if _filteredCacheValid { return _filteredCache }
         let result = items.filter { item in
             (selectedBoardID == nil || item.boardID == selectedBoardID) &&
@@ -37,7 +37,7 @@ final class ClipboardStore {
         _filteredCacheValid = true
         return result
     }
-    func add(_ item: ClipboardItem) {
+    func add(_ item: Clip) {
         guard !items.contains(where: { $0.kind == item.kind && $0.displayTitle == item.displayTitle && $0.detail == item.detail }) else { return }
         var classified = item
         if let match = rules.first(where: { $0.matches(item) }) { classified.boardID = match.targetBoardID }
@@ -49,7 +49,7 @@ final class ClipboardStore {
     }
     func toggleFavorite(_ id: UUID) { update(id) { $0.isFavorite.toggle() } }
     func move(_ id: UUID, to board: UUID?) { update(id) { $0.boardID = board } }
-    func rename(_ id: UUID, title: String?) { update(id) { $0.customTitle = (title?.isEmpty == true) ? nil : title } }
+    func rename(_ id: UUID, title: String?) { update(id) { $0.title = (title?.isEmpty == true) ? nil : title } }
     func delete(_ ids: Set<UUID>) { items.removeAll { ids.contains($0.id) }; invalidateFilterCache(); save() }
     func clearAll() { items.removeAll(); invalidateFilterCache(); save() }
     func addBoard(named name: String, color: String = "purple") { boards.append(Pasteboard(name: name, color: color)); save() }
@@ -82,14 +82,14 @@ final class ClipboardStore {
         return URL.applicationSupportDirectory.appending(path: "EasyPaste/history.json")
     }
 
-    private func update(_ id: UUID, _ change: (inout ClipboardItem) -> Void) { guard let i = items.firstIndex(where: { $0.id == id }) else { return }; change(&items[i]); invalidateFilterCache(); save() }
+    private func update(_ id: UUID, _ change: (inout Clip) -> Void) { guard let i = items.firstIndex(where: { $0.id == id }) else { return }; change(&items[i]); invalidateFilterCache(); save() }
     private struct Archive: Codable {
-        var items: [ClipboardItem]; var boards: [Pasteboard]; var rules: [AutomationRule]
-        init(items: [ClipboardItem], boards: [Pasteboard], rules: [AutomationRule]) { self.items = items; self.boards = boards; self.rules = rules }
+        var items: [Clip]; var boards: [Pasteboard]; var rules: [AutomationRule]
+        init(items: [Clip], boards: [Pasteboard], rules: [AutomationRule]) { self.items = items; self.boards = boards; self.rules = rules }
         enum CodingKeys: String, CodingKey { case items, boards, rules }
         init(from decoder: Decoder) throws {
             let values = try decoder.container(keyedBy: CodingKeys.self)
-            items = try values.decode([ClipboardItem].self, forKey: .items)
+            items = try values.decode([Clip].self, forKey: .items)
             boards = try values.decode([Pasteboard].self, forKey: .boards)
             rules = try values.decodeIfPresent([AutomationRule].self, forKey: .rules) ?? []
         }
