@@ -71,7 +71,9 @@ final class PanelController: NSObject, NSWindowDelegate {
                 context.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 panel.animator().setFrame(finalFrame, display: true)
             } completionHandler: { [weak self] in
-                self?.isAnimating = false
+                Task { @MainActor in
+                    self?.isAnimating = false
+                }
             }
         }
         startMonitors()
@@ -88,9 +90,11 @@ final class PanelController: NSObject, NSWindowDelegate {
             context.timingFunction = CAMediaTimingFunction(name: .easeIn)
             panel.animator().setFrame(offscreen, display: true)
         } completionHandler: { [weak self] in
-            guard let self else { return }
-            if self.hiding { panel.orderOut(nil) }
-            self.isAnimating = false
+            Task { @MainActor in
+                guard let self else { return }
+                if self.hiding { panel.orderOut(nil) }
+                self.isAnimating = false
+            }
         }
         panelState.previewItem = nil
         panelState.renamingID = nil

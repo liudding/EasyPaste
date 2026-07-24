@@ -222,9 +222,9 @@ struct PanelView: View {
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if isVertical {
-                        ScrollView(.vertical) { LazyVStack(spacing: 10) { cards }.padding(.vertical, 2) }
+                        ScrollView(.vertical) { LazyVStack(spacing: 10) { cards(availableWidth: geo.size.width) }.padding(.vertical, 2) }
                     } else {
-                        ScrollView(.horizontal) { LazyHStack(spacing: 10) { cards }.padding(.horizontal, 14) }
+                        ScrollView(.horizontal) { LazyHStack(spacing: 10) { cards(availableWidth: geo.size.width) }.padding(.horizontal, 14) }
                     }
                 }
                 .scrollIndicators(.hidden)
@@ -278,18 +278,19 @@ struct PanelView: View {
         isVertical ? UnitPoint(x: 0.5, y: u) : UnitPoint(x: u, y: 0.5)
     }
 
-    @ViewBuilder private var cards: some View {
+    @ViewBuilder private func cards(availableWidth: CGFloat) -> some View {
         ForEach(store.filteredItems) { item in
-            clipCard(for: item)
+            clipCard(for: item, availableWidth: availableWidth)
         }
     }
 
-    @ViewBuilder private func clipCard(for item: Clip) -> some View {
+    @ViewBuilder private func clipCard(for item: Clip, availableWidth: CGFloat) -> some View {
         ClipCardView(
             item: item,
             selected: panelState.selectedID == item.id,
             renaming: panelState.renamingID == item.id,
             vertical: isVertical,
+            availableWidth: availableWidth,
             targetName: panelState.targetAppName,
             boards: store.boards,
             onSelect: { panelState.selectedID = item.id },
@@ -375,11 +376,20 @@ struct PanelView: View {
 
 // MARK: - Clip card
 
+/// 卡片内容区固定高度（pt）：无论剪贴项有无可预览内容，body 都占满这个高度。
+private let clipCardBodyHeight: CGFloat = 90
+/// 卡片 footer 固定占位高度（pt）：即使内容为空也保留此高度，避免 body 因 footer 塌陷而变高。
+private let clipCardFooterHeight: CGFloat = 20
+
 private struct ClipCardView: View {
     let item: Clip
     let selected: Bool
     let renaming: Bool
     let vertical: Bool
+    /// 卡片可用宽度：竖向（贴边）面板下卡片本应撑满面板宽度，但卡片若用 content-sized（width:nil），
+    /// 会把「无限宽」下发给子视图，导致 body 内 scaledToFill 的图片被放大到无限宽、整卡撑爆面板、头部被裁掉。
+    /// 因此竖向模式必须传入确定的可用宽度（= clipStrip 几何宽度），强制卡片定宽。
+    let availableWidth: CGFloat
     let targetName: String?
     let boards: [Pasteboard]
     let onSelect: () -> Void
@@ -416,26 +426,41 @@ private struct ClipCardView: View {
         AppIconCache.shared.icon(forBundleID: item.sourceApplicationBundleID, displaySize: 22)
     }
 
+    /// 内容区固定高度：色值卡片无 footer，需额外吃下 footer 高度使整卡与其余类型等高。
+    private var clipCardBodyRenderHeight: CGFloat {
+        item.kind == .color ? clipCardBodyHeight + clipCardFooterHeight : clipCardBodyHeight
+    }
+
+    /// 内容区 + Footer：body 高度固定，footer 占位固定，整块高度与剪贴内容无关。
+    @ViewBuilder private var cardBodyRegion: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // ZStack：底层 Color.clear 保证固定尺寸，上层 cardBody 叠加内容。
+            ZStack(alignment: item.kind == .color ? .center : .topLeading) {
+                Color.clear
+                cardBody
+                    .padding(.horizontal, item.kind == .color ? 0 : 10)
+                    .padding(.top, item.kind == .color ? 0 : 6)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: clipCardBodyRenderHeight)
+            .clipped()
+            if item.kind != .color {
+                cardFooter
+                    .padding(.horizontal, 10).padding(.bottom, 7)
+                    .frame(maxWidth: .infinity, minHeight: clipCardFooterHeight, alignment: .top)
+            }
+        }
+        .background(bodyFooterBackground, in: .rect(bottomLeadingRadius: 12, bottomTrailingRadius: 12))
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // ── 头部区：flat color 背景 + 类型 icon + 标题 + time ago + app icon ──
             cardHeader
             // ── 内容区 + Footer：按类型分化 ──
-            VStack(alignment: .leading, spacing: 0) {
-                cardBody
-                    .padding(.horizontal, item.kind == .color ? 0 : 10)
-                    .padding(.top, item.kind == .color ? 0 : 6)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: item.kind == .color ? .center : .topLeading)
-                if item.kind != .color {
-                    cardFooter
-                        .padding(.horizontal, 10).padding(.bottom, 7)
-                }
-            }
-            .background(bodyFooterBackground, in: .rect(bottomLeadingRadius: 12, bottomTrailingRadius: 12))
+            cardBodyRegion
         }
-        .frame(width: vertical ? nil : 170, height: vertical ? nil : 160)
-        .frame(maxWidth: vertical ? .infinity : nil)
-        .frame(minHeight: vertical ? 80 : nil)
+        .frame(width: vertical ? availableWidth : 170)
         .clipShape(.rect(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? headerColor : .white.opacity(0.07), lineWidth: selected ? 1.5 : 1))
         .contentShape(.rect)
@@ -459,7 +484,10 @@ private struct ClipCardView: View {
                         .onSubmit { onRenameCommit(item.id, draftTitle) }
                         .onAppear { draftTitle = item.displayTitle; renameFocused = true }
                 } else {
-                    Text(item.displayTitle).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white).lineLimit(1)
+                    Text(item.displayTitle.isEmpty ? " " : item.displayTitle)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
                 }
                 Spacer(minLength: 2)
                 // 最右侧：来源 app icon
@@ -498,8 +526,19 @@ private struct ClipCardView: View {
                 .foregroundStyle(isLightColor(item.resolvedColorValue ?? item.kind.defaultColor) ? .black : .white)
         case .image:
             if let image = ImageSizeCache.shared.thumbnail(for: item) {
-                Image(nsImage: image).resizable().scaledToFill()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity).clipShape(.rect(cornerRadius: 6))
+                // Color.clear 占据父级提议的尺寸，overlay 在其上绘制 scaledToFill 图片；
+                // 这样图片的布局尺寸 = Color.clear 的尺寸 = 父级提议尺寸，不会因宽图而撑爆卡片。
+                Color.clear.overlay(
+                    Image(nsImage: image).resizable().scaledToFill()
+                )
+                .clipShape(.rect(cornerRadius: 6))
+            } else {
+                // 图片数据为空时用 Color.clear 撑满区域，overlay 居中显示占位图标。
+                Color.clear.overlay(
+                    Image(systemName: "photo")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.tertiary)
+                )
             }
         case .link:
             // 链接：优先展示原始富文本格式，无则 fallback 到 URL 摘要或纯文本预览
@@ -552,6 +591,9 @@ private struct ClipCardView: View {
         case .image:
             if let sizeDesc = item.imageSizeDescription {
                 Text(sizeDesc).font(.system(size: 9)).foregroundStyle(.tertiary)
+            } else {
+                // 如果没有图片尺寸信息，也提供一个占位文本高度的视图，以确保 footer 高度绝对一致
+                Text(" ").font(.system(size: 9)).opacity(0)
             }
         case .file:
             Text(item.detail).font(.system(size: 9)).foregroundStyle(.tertiary)

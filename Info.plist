@@ -30,5 +30,19 @@
 	<string>© 2025 EasyPaste. All rights reserved.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeDescription</key>
+			<string>EasyPaste Clip</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.easypaste.clip</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<string>easypaste</string>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>
