@@ -19,6 +19,12 @@ struct CodableColor: Codable, Hashable {
     }
 }
 
+/// 一个 UTI 类型及其原始数据的键值对，用于保存多格式剪贴板数据。
+struct UTIEntry: Codable, Hashable, Equatable {
+    let uti: String
+    let data: Data
+}
+
 enum ClipKind: String, Codable, CaseIterable, Identifiable {
     case text, link, image, file, color
     var id: String { rawValue }
@@ -52,16 +58,22 @@ struct Clip: Codable, Identifiable, Hashable {
     var isFavorite: Bool
     var sourceApplication: String?
     var sourceApplicationBundleID: String?
+    /// 剪贴项在 macOS 剪贴板上的 Uniform Type Identifier（如 public.plain-text、public.html、public.png 等），用于标识原始数据类型。
+    var uti: String?
+    /// 对应 uti 的原始二进制数据，用于粘贴时保真写回剪贴板。
+    var utiData: Data?
+    /// 剪贴板上所有可用 UTI 类型及其原始数据，粘贴时全部写回以保真还原来源格式。
+    var allPasteboardData: [UTIEntry]?
     /// 创建时计算并持久化的来源 app icon 主色调（已编码为 sRGB 分量）。
     /// 旧数据无此字段时回退到 AppIconCache 计算。
     var sourceAppColor: CodableColor? = nil
     var title: String?
 
-    init(kind: ClipKind, text: String? = nil, url: URL? = nil, fileURLs: [URL]? = nil, imageData: Data? = nil) {
+    init(kind: ClipKind, text: String? = nil, url: URL? = nil, fileURLs: [URL]? = nil, imageData: Data? = nil, uti: String? = nil, utiData: Data? = nil, allPasteboardData: [UTIEntry]? = nil) {
         self.id = UUID(); self.kind = kind; self.createdAt = .now
         self.text = text; self.url = url; self.fileURLs = fileURLs; self.imageData = imageData
         self.boardID = nil; self.isFavorite = false
-        self.sourceApplication = nil; self.sourceApplicationBundleID = nil; self.title = nil
+        self.sourceApplication = nil; self.sourceApplicationBundleID = nil; self.uti = uti; self.utiData = utiData; self.allPasteboardData = allPasteboardData; self.title = nil
     }
     
 

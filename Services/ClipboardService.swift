@@ -41,19 +41,60 @@ final class ClipboardService {
     }
 
     private func makeItem() -> Clip? {
+        // 获取剪贴板上所有可用类型（排除安全标记）
+        let availableTypes = (pasteboard.types ?? []).filter { $0.rawValue != "org.nspasteboard.ConcealedType" }
+        
+        // 先收集所有 UTI 及其数据，供所有 kind 使用
+        var allData: [UTIEntry] = []
+        for t in availableTypes {
+            if let data = pasteboard.data(forType: t), !data.isEmpty {
+                allData.append(UTIEntry(uti: t.rawValue, data: data))
+            }
+        }
+        let allPasteboardData = allData.isEmpty ? nil : allData
+        
+        // 选取首选 UTI（按优先级）
+        let primaryUTI = preferredUTI(from: availableTypes)
+        let primaryUTIData = primaryUTI.flatMap { pasteboard.data(forType: NSPasteboard.PasteboardType($0)) }
+        
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], !urls.isEmpty {
-            return Clip(kind: .file, fileURLs: urls)
+            return Clip(kind: .file, fileURLs: urls, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
         }
         if let url = pasteboard.readObjects(forClasses: [NSURL.self], options: nil)?.first as? URL, url.scheme != "file" {
-            return Clip(kind: .link, url: url)
+            return Clip(kind: .link, url: url, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
         }
         if let image = NSImage(pasteboard: pasteboard), let data = image.tiffRepresentation, data.count < 12_000_000 {
-            return Clip(kind: .image, imageData: data)
+            return Clip(kind: .image, imageData: data, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
         }
         if let text = pasteboard.string(forType: .string), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return Clip(kind: text.hasPrefix("http://") || text.hasPrefix("https://") ? .link : .text, text: text, url: URL(string: text))
+            let kind: ClipKind = text.hasPrefix("http://") || text.hasPrefix("https://") ? .link : .text
+            return Clip(kind: kind, text: text, url: URL(string: text), uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
         }
         return nil
+    }
+
+    // MARK: - UTI 优先级选择
+
+    /// 从 pasteboard.types 中挑选最有意义的 UTI。
+    /// 优先级：RTF > HTML > utf8-plain-text > plain-text > image > file > url > 第一个可用类型。
+    private func preferredUTI(from types: [NSPasteboard.PasteboardType]) -> String? {
+        guard !types.isEmpty else { return nil }
+        let filtered = types.map(\.rawValue).filter { $0 != "org.nspasteboard.ConcealedType" }
+        for preferred in [
+            "public.rtf",
+            "com.apple.flat-rtfd",
+            "public.html",
+            "public.utf8-plain-text",
+            "public.plain-text",
+            "public.png",
+            "public.tiff",
+            "public.jpeg",
+            "NSFilenamesPboardType",
+            "public.url"
+        ] {
+            if filtered.contains(preferred) { return preferred }
+        }
+        return filtered.first
     }
 
     func copy(_ item: Clip, plainText: Bool = false) {
@@ -69,13 +110,41 @@ final class ClipboardService {
             case .color: pasteboard.setString(item.text ?? "", forType: .string)
             }
         } else {
-            switch item.kind {
-            case .text: pasteboard.setString(item.text ?? "", forType: .string)
-            case .link: pasteboard.setString(item.url?.absoluteString ?? item.text ?? "", forType: .string)
-            case .image:
-                if let data = item.imageData, let image = NSImage(data: data) { pasteboard.writeObjects([image]) }
-            case .file: pasteboard.writeObjects((item.fileURLs ?? []).map { $0 as NSURL })
-            case .color: pasteboard.setString(item.text ?? "", forType: .string)
+            // 优先使用保存的所有 UTI 数据写回，完整还原来源格式
+            if let allPasteboardData = item.allPasteboardData, !allPasteboardData.isEmpty {
+                // 按优先级排序写入：RTF > HTML > utf8-plain-text > plain-text > 其他
+                let orderedKeys = [
+                    "public.rtf", "com.apple.flat-rtfd", "public.html",
+                    "public.utf8-plain-text", "public.plain-text",
+                    "public.png", "public.tiff", "public.jpeg",
+                    "NSFilenamesPboardType", "public.url"
+                ]
+                var orderedEntries = [UTIEntry]()
+                for key in orderedKeys {
+                    if let entry = allPasteboardData.first(where: { $0.uti == key }) {
+                        orderedEntries.append(entry)
+                    }
+                }
+                // 追加其他不在 orderedKeys 中的类型
+                for entry in allPasteboardData where !orderedEntries.contains(where: { $0.uti == entry.uti }) {
+                    orderedEntries.append(entry)
+                }
+                for entry in orderedEntries {
+                    pasteboard.setData(entry.data, forType: NSPasteboard.PasteboardType(entry.uti))
+                }
+            } else if let uti = item.uti, let utiData = item.utiData {
+                pasteboard.setData(utiData, forType: NSPasteboard.PasteboardType(uti))
+            }
+            // 兜底 fallback（无 allPasteboardData/uti 的旧数据）
+            if item.allPasteboardData == nil && item.uti == nil {
+                switch item.kind {
+                case .text: pasteboard.setString(item.text ?? "", forType: .string)
+                case .link: pasteboard.setString(item.url?.absoluteString ?? item.text ?? "", forType: .string)
+                case .image:
+                    if let data = item.imageData, let image = NSImage(data: data) { pasteboard.writeObjects([image]) }
+                case .file: pasteboard.writeObjects((item.fileURLs ?? []).map { $0 as NSURL })
+                case .color: pasteboard.setString(item.text ?? "", forType: .string)
+                }
             }
         }
         lastChangeCount = pasteboard.changeCount
