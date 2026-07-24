@@ -344,12 +344,15 @@ struct PanelView: View {
 
     @ViewBuilder private func previewContent(_ item: Clip) -> some View {
         switch item.kind {
-        case .text:
-            ScrollView { Text(item.text ?? "").font(.system(size: 13)).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled) }
-        case .link:
-            VStack(spacing: 10) {
-                Text(item.url?.absoluteString ?? "").font(.system(size: 13)).textSelection(.enabled)
-                Button("在浏览器中打开") { if let url = item.url { NSWorkspace.shared.open(url) } }
+        case .text, .link:
+            if let attr = item.attributedText {
+                ScrollView {
+                    AttributedTextView(attributedString: attr, maxLines: 0)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
+                }
+            } else {
+                ScrollView { Text(item.text ?? "").font(.system(size: 13)).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled) }
             }
         case .image:
             if let image = ImageSizeCache.shared.image(for: item) {
@@ -499,10 +502,23 @@ private struct ClipCardView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity).clipShape(.rect(cornerRadius: 6))
             }
         case .link:
-            // 链接：body 展示网页预览（host + 缩略摘要）
-            VStack(alignment: .leading, spacing: 3) {
-                Text(item.url?.host ?? "").font(.system(size: 11, weight: .bold)).foregroundStyle(headerColor)
-                Text(item.url?.absoluteString ?? "").font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(3)
+            // 链接：优先展示原始富文本格式，无则 fallback 到 URL 摘要或纯文本预览
+            if let attr = item.attributedText {
+                AttributedTextView(attributedString: attr, maxLines: 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else if let url = item.url {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(url.host ?? "").font(.system(size: 11, weight: .bold)).foregroundStyle(headerColor)
+                    if let preview = item.previewPlainText, preview != url.absoluteString {
+                        Text(preview).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(2)
+                    } else {
+                        Text(url.absoluteString).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(3)
+                    }
+                }
+            } else if let preview = item.previewPlainText {
+                Text(preview).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(4).multilineTextAlignment(.leading)
+            } else {
+                Text("无法预览").font(.system(size: 9)).foregroundStyle(.tertiary)
             }
         case .file:
             VStack(alignment: .leading, spacing: 4) {
@@ -510,7 +526,15 @@ private struct ClipCardView: View {
                 Text(item.detail).font(.system(size: 9)).foregroundStyle(.secondary)
             }
         case .text:
-            Text(item.detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(4).multilineTextAlignment(.leading)
+            // 优先展示原始富文本格式，无则 fallback 到纯文本预览
+            if let attr = item.attributedText {
+                AttributedTextView(attributedString: attr, maxLines: 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else if let preview = item.previewPlainText {
+                Text(preview).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(4).multilineTextAlignment(.leading)
+            } else {
+                Text("无法预览").font(.system(size: 9)).foregroundStyle(.tertiary)
+            }
         }
     }
 
@@ -605,5 +629,40 @@ private struct ClipCardView: View {
             }
         }
         return provider
+    }
+}
+
+// MARK: - Attributed text view (NSTextView wrapper)
+
+// MARK: - Attributed text view (NSTextView wrapper)
+
+private struct AttributedTextView: NSViewRepresentable {
+    let attributedString: NSAttributedString
+    /// 卡片 body 最多显示行数（超出截断），预览浮层不限制。
+    let maxLines: Int
+    
+    init(attributedString: NSAttributedString, maxLines: Int = 4) {
+        self.attributedString = attributedString
+        self.maxLines = maxLines
+    }
+    
+    func makeNSView(context: Context) -> NSTextView {
+        let textView = NSTextView()
+        textView.drawsBackground = false
+        textView.isEditable = false
+        textView.isRichText = false
+        textView.font = .systemFont(ofSize: 10)
+        textView.textColor = .secondaryLabelColor
+        textView.textContainer?.lineFragmentPadding = 0
+        textView.textContainer?.lineBreakMode = .byTruncatingTail
+        if maxLines > 0 {
+            textView.textContainer?.maximumNumberOfLines = maxLines
+        }
+        textView.textStorage?.setAttributedString(attributedString)
+        return textView
+    }
+    
+    func updateNSView(_ nsView: NSTextView, context: Context) {
+        nsView.textStorage?.setAttributedString(attributedString)
     }
 }

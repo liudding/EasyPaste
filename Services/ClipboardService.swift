@@ -70,6 +70,48 @@ final class ClipboardService {
             let kind: ClipKind = text.hasPrefix("http://") || text.hasPrefix("https://") ? .link : .text
             return Clip(kind: kind, text: text, url: URL(string: text), uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
         }
+        
+        // 兜底：如果前面所有分支都没匹配到（例如某些 app 只写了自定义 UTI），
+        // 但只要 allPasteboardData 有数据，就根据类型创建合适的 Clip
+        if let allPasteboardData = allPasteboardData, !allPasteboardData.isEmpty {
+            // 检查是否有图片类型（PNG/TIFF/SVG/WebP 等）
+            let imageUTIKeys = ["public.png", "public.tiff", "com.microsoft.bmp", "public.jpeg",
+                                "public.svg-image", "public.webp", "org.ink.image"]
+            let hasImageData = allPasteboardData.contains { entry in
+                imageUTIKeys.contains(entry.uti) || entry.data.count > 100
+            }
+            
+            // 检查是否有 URL
+            var extractedURL: URL?
+            for entry in allPasteboardData {
+                if let text = String(data: entry.data, encoding: .utf8), let url = URL(string: text) {
+                    extractedURL = url
+                    break
+                }
+            }
+            
+            // 检查是否有纯文本
+            let extractedText = pasteboard.string(forType: .string)
+            
+            if hasImageData {
+                // 优先用 TIFF 数据（通用图片格式）
+                var imageData: Data?
+                if let tiffEntry = allPasteboardData.first(where: { $0.uti == "public.tiff" }) {
+                    imageData = tiffEntry.data
+                } else if let pngEntry = allPasteboardData.first(where: { $0.uti == "public.png" }) {
+                    imageData = pngEntry.data
+                }
+                return Clip(kind: .image, imageData: imageData, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
+            } else if let url = extractedURL {
+                return Clip(kind: .link, url: url, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
+            } else if let text = extractedText, !text.isEmpty {
+                return Clip(kind: .text, text: text, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
+            } else {
+                // 最后兜底：创建一个 link 类型，保存所有原始数据
+                return Clip(kind: .link, text: extractedText, url: extractedURL, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
+            }
+        }
+        
         return nil
     }
 

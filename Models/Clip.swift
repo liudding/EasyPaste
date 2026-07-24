@@ -80,8 +80,8 @@ struct Clip: Codable, Identifiable, Hashable {
     var displayTitle: String {
         if let title, !title.isEmpty { return title }
         switch kind {
-            case .text: return text?.split(separator: "\n").first.map(String.init) ?? "文本"
-            case .link: return url?.host ?? url?.absoluteString ?? "链接"
+            case .text: return text?.split(separator: "\n").first.map(String.init) ?? previewPlainText ?? "文本"
+            case .link: return url?.host ?? url?.absoluteString ?? previewPlainText ?? "链接"
             case .image: return "图片"
             case .file: return fileURLs?.first?.lastPathComponent ?? "文件"
             case .color: return text ?? "颜色"
@@ -89,8 +89,8 @@ struct Clip: Codable, Identifiable, Hashable {
     }
     var detail: String {
         switch kind {
-        case .text: return text ?? ""
-        case .link: return url?.absoluteString ?? ""
+        case .text: return text ?? previewPlainText ?? ""
+        case .link: return url?.absoluteString ?? previewPlainText ?? ""
         case .image: return ImageSizeCache.shared.sizeDescription(for: self) ?? "图片"
         case .file: return "\(fileURLs?.count ?? 0) 个文件"
         case .color: return text ?? ""
@@ -138,6 +138,76 @@ struct Clip: Codable, Identifiable, Hashable {
     /// 链接的网页 title（优先 url host）和 URL 文本（用于 footer 显示）。
     var linkFooterTitle: String { url?.host ?? displayTitle }
     var linkFooterURL: String { url?.absoluteString ?? text ?? "" }
+
+    // MARK: - 原始格式渲染
+
+    /// 从 allPasteboardData 中按优先级提取 RTF / HTML 数据，解析为 NSAttributedString。
+    /// 用于卡片 body 和预览浮层中展示原始富文本格式。
+    var attributedText: NSAttributedString? {
+        guard kind == .text || kind == .link else { return nil }
+        guard let entries = allPasteboardData, !entries.isEmpty else { return nil }
+        
+        // 优先尝试 RTF → RTFD → HTML → plain-text
+        let rtfKeys = ["public.rtf", "com.apple.flat-rtfd", "public.html"]
+        for key in rtfKeys {
+            if let entry = entries.first(where: { $0.uti == key }) {
+                let data = entry.data
+                if let attr = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtf], documentAttributes: nil) {
+                    return attr
+                }
+                // HTML 用 html 文档类型
+                if let attr = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html], documentAttributes: nil) {
+                    return attr
+                }
+            }
+        }
+        // fallback: 纯文本
+        if let text = text, !text.isEmpty {
+            return NSAttributedString(string: text)
+        }
+        return nil
+    }
+
+    /// 从 allPasteboardData 中提取一个纯文本摘要用于卡片预览。
+    /// 优先级：plain-text > RTF 纯文本 > HTML 中的可见文本 > 第一个非空数据字符串化。
+    var previewPlainText: String? {
+        guard let entries = allPasteboardData, !entries.isEmpty else { return text }
+        
+        // 1. 优先用已有的 text 字段
+        if let text = text, !text.isEmpty { return text }
+        
+        // 2. 尝试 public.plain-text / public.utf8-plain-text / NSStringPboardType
+        let stringKeys = ["public.plain-text", "public.utf8-plain-text", "NSStringPboardType"]
+        for key in stringKeys {
+            if let entry = entries.first(where: { $0.uti == key }),
+               let s = String(data: entry.data, encoding: .utf8), !s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return s.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+        
+        // 3. 尝试从 HTML 中提取纯文本（去掉标签）
+        if let htmlEntry = entries.first(where: { $0.uti == "public.html" || $0.uti == "Apple HTML pasteboard type" }),
+           let html = String(data: htmlEntry.data, encoding: .utf8) {
+            // 使用 NSAttributedString 解析 HTML 获取纯文本
+            if let attr = try? NSAttributedString(data: htmlEntry.data, options: [.documentType: NSAttributedString.DocumentType.html], documentAttributes: nil) {
+                let text = attr.string
+                if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    return text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200).description
+                }
+            }
+            // fallback: 正则去除 < > 标签
+            let cleaned = html.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+            let trimmed = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return trimmed.prefix(200).description }
+        }
+        
+        // 4. 最后一个兜底：取第一个有数据的 entry 的字符串化
+        if let first = entries.first, let s = String(data: first.data, encoding: .utf8), !s.isEmpty {
+            return s.prefix(200).description
+        }
+        
+        return nil
+    }
 }
 
 // MARK: - App icon & dominant color extraction (cached via AppIconCache)
