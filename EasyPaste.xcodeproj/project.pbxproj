@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3561E5DD301393CA007951AD /* ClipFramesPreference.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3561E5DB301393CA007951AD /* ClipFramesPreference.swift */; };
+		3561E5DE301393CA007951AD /* AttributedTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3561E5D9301393CA007951AD /* AttributedTextView.swift */; };
+		3561E5DF301393CA007951AD /* ClipCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3561E5DA301393CA007951AD /* ClipCardView.swift */; };
+		3561E5E0301393CA007951AD /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3561E5DC301393CA007951AD /* OnboardingView.swift */; };
 		44924C42BA2D1420CF2DAD56 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04E44FD7971E1ED305EBADF2 /* OnboardingView.swift */; };
 		461741E9907F811F09D08867 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 6B944661976A565B89F25974 /* AppIcon.icns */; };
 		597546999391AA43210334BA /* OnboardingWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BEF44BAA5F0AEF38FED003D /* OnboardingWindowController.swift */; };
@@ -44,6 +48,10 @@
 /* Begin PBXFileReference section */
 		04E44FD7971E1ED305EBADF2 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingView.swift; path = Views/OnboardingView.swift; sourceTree = SOURCE_ROOT; };
 		2BEF44BAA5F0AEF38FED003D /* OnboardingWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingWindowController.swift; path = Services/OnboardingWindowController.swift; sourceTree = SOURCE_ROOT; };
+		3561E5D9301393CA007951AD /* AttributedTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttributedTextView.swift; sourceTree = "<group>"; };
+		3561E5DA301393CA007951AD /* ClipCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipCardView.swift; sourceTree = "<group>"; };
+		3561E5DB301393CA007951AD /* ClipFramesPreference.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipFramesPreference.swift; sourceTree = "<group>"; };
+		3561E5DC301393CA007951AD /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		6B944661976A565B89F25974 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = SOURCE_ROOT; };
 		A0000101 /* EasyPasteApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EasyPasteApp.swift; sourceTree = "<group>"; };
 		A0000102 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -83,6 +91,17 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3561E5E13013940A007951AD /* ClipboardPanel */ = {
+			isa = PBXGroup;
+			children = (
+				A0000113 /* PanelView.swift */,
+				3561E5D9301393CA007951AD /* AttributedTextView.swift */,
+				3561E5DA301393CA007951AD /* ClipCardView.swift */,
+				3561E5DB301393CA007951AD /* ClipFramesPreference.swift */,
+			);
+			path = ClipboardPanel;
+			sourceTree = "<group>";
+		};
 		A0000400 = {
 			isa = PBXGroup;
 			children = (
@@ -166,8 +185,9 @@
 		A0000414 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				3561E5E13013940A007951AD /* ClipboardPanel */,
+				3561E5DC301393CA007951AD /* OnboardingView.swift */,
 				A0000112 /* MenuBarView.swift */,
-				A0000113 /* PanelView.swift */,
 				A0000114 /* SettingsView.swift */,
 				A0000115 /* ShortcutRecorderView.swift */,
 			);
@@ -296,6 +316,10 @@
 				A0000012 /* MenuBarView.swift in Sources */,
 				A0000013 /* PanelView.swift in Sources */,
 				A0000014 /* SettingsView.swift in Sources */,
+				3561E5DD301393CA007951AD /* ClipFramesPreference.swift in Sources */,
+				3561E5DE301393CA007951AD /* AttributedTextView.swift in Sources */,
+				3561E5DF301393CA007951AD /* ClipCardView.swift in Sources */,
+				3561E5E0301393CA007951AD /* OnboardingView.swift in Sources */,
 				A0000015 /* ShortcutRecorderView.swift in Sources */,
 				597546999391AA43210334BA /* OnboardingWindowController.swift in Sources */,
 				44924C42BA2D1420CF2DAD56 /* OnboardingView.swift in Sources */,
