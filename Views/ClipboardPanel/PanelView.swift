@@ -121,6 +121,7 @@ struct PanelView: View {
             }
             .padding(.horizontal, 2)
         }
+        .scrollClipDisabled()
         .scrollIndicators(.hidden)
     }
 
