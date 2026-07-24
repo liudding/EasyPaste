@@ -2,17 +2,15 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// 卡片在滚动视口坐标系中的位置快照。附带采集时的滚动偏移：
-/// Lazy 布局下卡片滚出视口后视图被销毁，其 frame 会永久停留在失效值，
-/// 只有上报偏移与当前偏移一致（容差内）的快照才可信。
-private struct ClipFrameInfo: Equatable {
-    var frame: CGRect
-    var offset: CGFloat
+/// 卡片视口位置的非观察存储：滚动中 preference 逐帧写入此处，但不会触发视图重渲染。
+/// Lazy 布局下卡片销毁后，其条目会自动从 preference 聚合结果中消失，无需额外失效校验。
+private final class ClipFrameStore {
+    var frames: [UUID: CGRect] = [:]
 }
 
 private struct ClipFramesKey: PreferenceKey {
-    static let defaultValue: [UUID: ClipFrameInfo] = [:]
-    static func reduce(value: inout [UUID: ClipFrameInfo], nextValue: () -> [UUID: ClipFrameInfo]) {
+    static let defaultValue: [UUID: CGRect] = [:]
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
         value.merge(nextValue()) { _, new in new }
     }
 }
@@ -27,10 +25,8 @@ struct PanelView: View {
     @FocusState private var searchFocused: Bool
     @FocusState private var boardFieldFocused: Bool
 
-    /// 滚动视口内各卡片的实时位置（key 为 clip id）。
-    @State private var clipFrames: [UUID: ClipFrameInfo] = [:]
-    /// 当前滚动偏移（横向取 x，纵向取 y）。
-    @State private var scrollOffset: CGFloat = 0
+    /// 滚动视口内各卡片的实时位置（非观察存储：滚动中逐帧更新，但不触发重渲染）。
+    @State private var frameStore = ClipFrameStore()
     /// 视口在滚动轴向上的尺寸。
     @State private var viewportExtent: CGFloat = 0
     /// 卡片滚入视口后额外露出的相邻卡片宽度（pt）。
@@ -58,6 +54,8 @@ struct PanelView: View {
         .preferredColorScheme(.dark)
         .onAppear {
             panelState.focusSearch = { searchFocused = true }
+            // 后台预热来源 app 图标/主色调，避免首张卡片渲染时主线程解码
+            AppIconCache.shared.warm(bundleIDs: store.filteredItems.compactMap(\.sourceApplicationBundleID))
         }
         .onChange(of: searchFocused) { _, value in panelState.searchFocused = value }
         .onChange(of: panelState.searchExpanded) { _, value in if !value { searchFocused = false } }
@@ -225,15 +223,13 @@ struct PanelView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if isVertical {
                         ScrollView(.vertical) { LazyVStack(spacing: 10) { cards }.padding(.vertical, 2) }
-                            .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { _, y in scrollOffset = y }
                     } else {
                         ScrollView(.horizontal) { LazyHStack(spacing: 10) { cards }.padding(.horizontal, 14) }
-                            .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.x }) { _, x in scrollOffset = x }
                     }
                 }
                 .scrollIndicators(.hidden)
                 .coordinateSpace(name: "clipStrip")
-                .onPreferenceChange(ClipFramesKey.self) { clipFrames = $0 }
+                .onPreferenceChange(ClipFramesKey.self) { frameStore.frames = $0 }
                 .onAppear { viewportExtent = axisExtent(of: geo.size) }
                 .onChange(of: geo.size) { _, size in viewportExtent = axisExtent(of: size) }
                 .onChange(of: panelState.selectedID) { _, _ in scrollSelectedClipIntoView(proxy: proxy) }
@@ -246,20 +242,19 @@ struct PanelView: View {
     /// 选中变化时按需滚动：
     /// - 卡片已完全可见 → 不滚动；
     /// - 卡片一侧被裁 → 滚动到刚好完全可见，并额外露出相邻卡片的一部分（neighborPeek）；
-    /// - 位置未知（懒加载未布局或快照已失效）→ 最小滚动使其可见。
+    /// - 位置未知（懒加载未布局）→ 最小滚动使其可见。
     private func scrollSelectedClipIntoView(proxy: ScrollViewProxy) {
         guard let id = panelState.selectedID else { return }
         func animated(_ action: @escaping () -> Void) {
             withAnimation(.easeInOut(duration: 0.2), action)
         }
         guard viewportExtent > 0,
-              let info = clipFrames[id],
-              abs(info.offset - scrollOffset) < 1.5 else {
+              let frame = frameStore.frames[id] else {
             animated { proxy.scrollTo(id) } // anchor 为 nil：最小滚动至可见
             return
         }
-        let cardStart = isVertical ? info.frame.minY : info.frame.minX
-        let cardEnd = isVertical ? info.frame.maxY : info.frame.maxX
+        let cardStart = isVertical ? frame.minY : frame.minX
+        let cardEnd = isVertical ? frame.maxY : frame.maxX
         let slack = viewportExtent - (cardEnd - cardStart)
         guard slack > 1 else { animated { proxy.scrollTo(id) }; return } // 卡片比视口还大，最小滚动兜底
 
@@ -311,7 +306,7 @@ struct PanelView: View {
             GeometryReader { geo in
                 Color.clear.preference(
                     key: ClipFramesKey.self,
-                    value: [item.id: ClipFrameInfo(frame: geo.frame(in: .named("clipStrip")), offset: scrollOffset)]
+                    value: [item.id: geo.frame(in: .named("clipStrip"))]
                 )
             }
         )
@@ -357,7 +352,7 @@ struct PanelView: View {
                 Button("在浏览器中打开") { if let url = item.url { NSWorkspace.shared.open(url) } }
             }
         case .image:
-            if let data = item.imageData, let image = NSImage(data: data) {
+            if let image = ImageSizeCache.shared.image(for: item) {
                 Image(nsImage: image).resizable().scaledToFit()
             }
         case .file:
@@ -499,7 +494,7 @@ private struct ClipCardView: View {
             Text(item.text ?? "").font(.system(size: 14, weight: .bold))
                 .foregroundStyle(isLightColor(item.resolvedColorValue ?? item.kind.defaultColor) ? .black : .white)
         case .image:
-            if let image = ImageSizeCache.shared.image(for: item) {
+            if let image = ImageSizeCache.shared.thumbnail(for: item) {
                 Image(nsImage: image).resizable().scaledToFill()
                     .frame(maxWidth: .infinity, maxHeight: .infinity).clipShape(.rect(cornerRadius: 6))
             }

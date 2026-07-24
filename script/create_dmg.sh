@@ -10,7 +10,12 @@ APP_PATH="$PROJECT_DIR/dist/EasyPaste.app"
 # Use a volume name without spaces to avoid mount path parsing issues
 DMG_VOLNAME="EasyPaste"
 DMG_PATH="$PROJECT_DIR/dist/EasyPasteInstaller.dmg"
-STAGING="$PROJECT_DIR/dist/dmg_staging"
+# Staging must live OUTSIDE the package directory: the Applications symlink inside
+# staging would otherwise be followed by SwiftPM's package directory scan, making
+# llbuild index all of /Applications (~500k files) and bloating .build/build.db
+# to gigabytes (swift test/build effectively hang).
+STAGING="$(mktemp -d "${TMPDIR:-/tmp}/easypaste-dmg.XXXXXX")"
+trap 'rm -rf "$STAGING"' EXIT
 BG_SRC="$PROJECT_DIR/dist/dmg_background.png"
 PYTHON="/Users/ding/.workbuddy/binaries/python/envs/default/bin/python3"
 
@@ -22,8 +27,6 @@ $PYTHON "$PROJECT_DIR/script/generate_dmg_background.py"
 
 # ── 2. Prepare staging directory ──
 echo "[2/6] Preparing staging directory..."
-rm -rf "$STAGING"
-mkdir -p "$STAGING"
 cp -R "$APP_PATH" "$STAGING/EasyPaste.app"
 ln -s /Applications "$STAGING/Applications"
 
@@ -62,9 +65,9 @@ rm -f "$DMG_PATH"
 mv "${TEMP_DMG}.dmg" "$DMG_PATH"
 
 # ── 6. Cleanup ──
-echo "[6/6] Cleaning up staging..."
-rm -rf "$STAGING"
+echo "[6/6] Cleaning up..."
 rm -f "$BG_SRC"
+# staging 目录由 trap EXIT 统一清理（含失败/中断场景）
 
 FINAL_SIZE=$(du -h "$DMG_PATH" | cut -f1)
 echo "=== Done! ==="

@@ -55,6 +55,19 @@ final class AppIconCache: @unchecked Sendable {
         return entry(forBundleID: bundleID).dominantColor
     }
 
+    /// 后台预热一批 bundleID 的 icon 与主色调（含显示尺寸缩放），
+    /// 避免卡片首次渲染时在主线程做 NSWorkspace 查询 + TIFF 解码 + 像素采样。
+    func warm(bundleIDs: [String], displaySize: CGFloat = 22) {
+        let ids = Set(bundleIDs)
+        guard !ids.isEmpty else { return }
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self else { return }
+            for id in ids {
+                _ = self.icon(forBundleID: id, displaySize: displaySize)
+            }
+        }
+    }
+
     private func entry(forBundleID bundleID: String) -> Entry {
         lock.lock()
         if let cached = cache[bundleID] {
@@ -108,14 +121,20 @@ final class AppIconCache: @unchecked Sendable {
     }
 }
 
-/// 缓存图片类型剪贴项的尺寸描述和 NSImage，避免每次访问
-/// 都从 imageData 创建 NSImage。
+/// 缓存图片类型剪贴项的尺寸描述、全尺寸图与卡片缩略图。
+/// - 尺寸描述只读 CGImageSource 元数据，不解码像素；
+/// - 卡片缩略图未命中时在后台按 340px 降采样，完成后经 @Observable 触发卡片刷新，
+///   避免滚动新卡片进入视口时在主线程解码全尺寸大图。
+@Observable
 final class ImageSizeCache: @unchecked Sendable {
     static let shared = ImageSizeCache()
-    private let lock = NSLock()
-    private var sizeCache: [UUID: String] = [:]
-    private var imageCache: [UUID: NSImage] = [:]
+    @ObservationIgnored private let lock = NSLock()
+    @ObservationIgnored private var sizeCache: [UUID: String] = [:]
+    @ObservationIgnored private var imageCache: [UUID: NSImage] = [:]
+    private var thumbCache: [UUID: NSImage] = [:]
+    @ObservationIgnored private var pendingThumbs: Set<UUID> = []
 
+    /// 图片尺寸描述（仅读元数据，不做像素解码）。
     func sizeDescription(for item: ClipboardItem) -> String? {
         guard let data = item.imageData else { return nil }
         lock.lock()
@@ -125,18 +144,47 @@ final class ImageSizeCache: @unchecked Sendable {
         }
         lock.unlock()
 
-        guard let img = NSImage(data: data) else { return nil }
-        let s = img.size
-        let desc = "\(Int(s.width))\u{00d7}\(Int(s.height))"
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
+              let w = props[kCGImagePropertyPixelWidth] as? Int,
+              let h = props[kCGImagePropertyPixelHeight] as? Int else { return nil }
+        let desc = "\(w)\u{00d7}\(h)"
 
         lock.lock()
         sizeCache[item.id] = desc
-        imageCache[item.id] = img
         lock.unlock()
         return desc
     }
 
-    /// 获取图片类型的 NSImage（从缓存读取，避免重复解码）。
+    /// 卡片缩略图：命中缓存立即返回；未命中则后台降采样（完成前返回已缓存的全尺寸图或 nil）。
+    func thumbnail(for item: ClipboardItem, maxPixel: Int = 340) -> NSImage? {
+        guard item.kind == .image, let data = item.imageData else { return nil }
+        lock.lock()
+        if let thumb = thumbCache[item.id] {
+            lock.unlock()
+            return thumb
+        }
+        let full = imageCache[item.id]
+        let started = pendingThumbs.insert(item.id).inserted
+        lock.unlock()
+
+        if started {
+            let id = item.id
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                let thumb = Self.downsample(data: data, maxPixel: maxPixel)
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    self.lock.lock()
+                    if let thumb { self.thumbCache[id] = thumb }
+                    self.pendingThumbs.remove(id)
+                    self.lock.unlock()
+                }
+            }
+        }
+        return full
+    }
+
+    /// 全尺寸图（预览浮层用；首次访问解码一次并缓存）。
     func image(for item: ClipboardItem) -> NSImage? {
         guard item.kind == .image, let data = item.imageData else { return nil }
         lock.lock()
@@ -151,5 +199,17 @@ final class ImageSizeCache: @unchecked Sendable {
         imageCache[item.id] = img
         lock.unlock()
         return img
+    }
+
+    /// 用 ImageIO 按最长边降采样，不解码全尺寸位图，速度快且内存占用小。
+    private static func downsample(data: Data, maxPixel: Int) -> NSImage? {
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+        ]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, options as CFDictionary) else { return nil }
+        return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
     }
 }
