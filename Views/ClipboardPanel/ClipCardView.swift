@@ -92,7 +92,7 @@ struct ClipCardView: View {
         .contentShape(.rect)
         .onTapGesture { onSelect() }
         .simultaneousGesture(TapGesture(count: 2).onEnded { onPaste(item) })
-        .itemProvider { makeProvider() }
+        .onDrag { makeProvider() }
         .contextMenu { contextMenu }
     }
 
@@ -277,6 +277,18 @@ struct ClipCardView: View {
     private func makeProvider() -> NSItemProvider {
         let provider = NSItemProvider()
         provider.suggestedName = item.displayTitle
+        
+        // 1. 保真还原：注册所有原始剪贴板数据
+        if let allData = item.allPasteboardData {
+            for entry in allData {
+                provider.registerDataRepresentation(forTypeIdentifier: entry.uti, visibility: .all) { completion in
+                    completion(entry.data, nil)
+                    return nil
+                }
+            }
+        }
+        
+        // 2. 标准类型兼容：注册系统类型对象，补充可能遗漏的基础格式，并处理无原始数据的情况
         switch item.kind {
         case .text:
             provider.registerObject(NSString(string: item.text ?? ""), visibility: .all)
@@ -290,6 +302,8 @@ struct ClipCardView: View {
         case .color:
             provider.registerObject(NSString(string: item.text ?? ""), visibility: .all)
         }
+        
+        // 3. 内部拖拽：提供专属 Payload 给 board chip 解析
         if let payload = try? JSONEncoder().encode(ClipDragPayload(id: item.id)) {
             provider.registerDataRepresentation(forTypeIdentifier: UTType.easypasteClip.identifier, visibility: .all) { completion in
                 completion(payload, nil)
