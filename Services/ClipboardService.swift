@@ -93,17 +93,12 @@ final class ClipboardService {
 
     private func ensureAccessibilityPermission() -> Bool {
         if AXIsProcessTrusted() { return true }
+        
+        // 弹出系统原生辅助功能授权对话框，用户确认后会自动将 App 加入 Accessibility 列表
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         AXIsProcessTrustedWithOptions(options)
-        let alert = NSAlert()
-        alert.messageText = "需要辅助功能权限"
-        alert.informativeText = "EasyPaste 需要辅助功能权限才能把内容粘贴到其他应用。请在系统设置中启用 EasyPaste，然后再次粘贴。内容已写入剪贴板，也可手动按 ⌘V。"
-        alert.addButton(withTitle: "打开设置")
-        alert.addButton(withTitle: "稍后")
-        if alert.runModal() == .alertFirstButtonReturn {
-            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
-        }
-        return false
+        
+        return AXIsProcessTrusted()
     }
 
     private func performPaste(into target: NSRunningApplication?) {

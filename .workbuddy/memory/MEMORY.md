@@ -5,8 +5,10 @@
 - 打包：`script/build_and_run.sh`（build → dist/EasyPaste.app → ad-hoc codesign → open）。
 - **WorkBuddy 沙箱内必须加 `--disable-sandbox`**（swift build/test/show-bin-path），否则 SwiftPM 嵌套 sandbox-exec 会 posix_spawn "Operation not permitted"。脚本本身未加，必要时手动分步执行。
 - ad-hoc 签名（`codesign --sign -`）每次重打包 cdhash 变化 → macOS 辅助功能(TCC)授权身份失效，需提醒用户重新授权。
+- **构建莫名卡死/被 SIGKILL（exit 137、十几分钟无输出）先查 `.build/build.db` 大小**——2026-07 曾膨胀到 5.5GB 导致 llbuild 卡死，`rm -rf .build` 后干净构建 ~11s 完成。
 
 ## 架构要点
+- **clip list 按需滚动**（PanelView `scrollSelectedClipIntoView`）：Preference 采集卡片 frame（附滚动偏移防 Lazy 布局失效快照）+ `onScrollGeometryChange` 跟踪偏移；完全可见不动，单侧被裁则用 UnitPoint 对齐语义反解 anchor 滚到"刚好可见 + 露出相邻卡 36pt"，位置未知退化为 `scrollTo(id)`（anchor nil = 最小滚动）。
 - 跨应用粘贴在 `ClipboardService.paste`：目标解析（前台非本 app 优先，否则 `AppDelegate.invokingApplication`）→ hide + activate → 轮询前台 → hidSystemState + cghidEventTap 发 ⌘V。不要用 `postToPid`（不可靠）。
 - 全局快捷键：Carbon RegisterEventHotKey（⌘⇧V）在 `GlobalShortcutService`。
 - 权限：辅助功能未授权时绝不静默失败——系统提示 + NSAlert 引导去设置。

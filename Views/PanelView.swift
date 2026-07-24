@@ -2,6 +2,21 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// 卡片在滚动视口坐标系中的位置快照。附带采集时的滚动偏移：
+/// Lazy 布局下卡片滚出视口后视图被销毁，其 frame 会永久停留在失效值，
+/// 只有上报偏移与当前偏移一致（容差内）的快照才可信。
+private struct ClipFrameInfo: Equatable {
+    var frame: CGRect
+    var offset: CGFloat
+}
+
+private struct ClipFramesKey: PreferenceKey {
+    static let defaultValue: [UUID: ClipFrameInfo] = [:]
+    static func reduce(value: inout [UUID: ClipFrameInfo], nextValue: () -> [UUID: ClipFrameInfo]) {
+        value.merge(nextValue()) { _, new in new }
+    }
+}
+
 /// 从屏幕边缘弹出的剪贴板面板内容：头部（搜索/标题/Pinboard/添加/更多）+ 横向滚动卡片 + 预览浮层。
 struct PanelView: View {
     @Bindable var store: ClipboardStore
@@ -11,6 +26,15 @@ struct PanelView: View {
     let onOpenSettings: () -> Void
     @FocusState private var searchFocused: Bool
     @FocusState private var boardFieldFocused: Bool
+
+    /// 滚动视口内各卡片的实时位置（key 为 clip id）。
+    @State private var clipFrames: [UUID: ClipFrameInfo] = [:]
+    /// 当前滚动偏移（横向取 x，纵向取 y）。
+    @State private var scrollOffset: CGFloat = 0
+    /// 视口在滚动轴向上的尺寸。
+    @State private var viewportExtent: CGFloat = 0
+    /// 卡片滚入视口后额外露出的相邻卡片宽度（pt）。
+    private let neighborPeek: CGFloat = 36
 
     private var isVertical: Bool { settings.panelPosition.isVertical }
 
@@ -191,24 +215,72 @@ struct PanelView: View {
 
     @ViewBuilder private var clipStrip: some View {
         ScrollViewReader { proxy in
-            Group {
-                if store.filteredItems.isEmpty {
-                    VStack(spacing: 8) {
-                        Image(systemName: "rectangle.on.rectangle").font(.system(size: 26)).foregroundStyle(.tertiary)
-                        Text("暂无剪贴内容").font(.system(size: 13)).foregroundStyle(.secondary)
+            GeometryReader { geo in
+                Group {
+                    if store.filteredItems.isEmpty {
+                        VStack(spacing: 8) {
+                            Image(systemName: "rectangle.on.rectangle").font(.system(size: 26)).foregroundStyle(.tertiary)
+                            Text("暂无剪贴内容").font(.system(size: 13)).foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if isVertical {
+                        ScrollView(.vertical) { LazyVStack(spacing: 10) { cards }.padding(.vertical, 2) }
+                            .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { _, y in scrollOffset = y }
+                    } else {
+                        ScrollView(.horizontal) { LazyHStack(spacing: 10) { cards }.padding(.horizontal, 14) }
+                            .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.x }) { _, x in scrollOffset = x }
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if isVertical {
-                    ScrollView(.vertical) { LazyVStack(spacing: 10) { cards }.padding(.vertical, 2) }
-                } else {
-                    ScrollView(.horizontal) { LazyHStack(spacing: 10) { cards }.padding(.horizontal, 14) }
                 }
-            }
-            .scrollIndicators(.hidden)
-            .onChange(of: panelState.selectedID) { _, id in
-                if let id { withAnimation { proxy.scrollTo(id, anchor: .center) } }
+                .scrollIndicators(.hidden)
+                .coordinateSpace(name: "clipStrip")
+                .onPreferenceChange(ClipFramesKey.self) { clipFrames = $0 }
+                .onAppear { viewportExtent = axisExtent(of: geo.size) }
+                .onChange(of: geo.size) { _, size in viewportExtent = axisExtent(of: size) }
+                .onChange(of: panelState.selectedID) { _, _ in scrollSelectedClipIntoView(proxy: proxy) }
             }
         }
+    }
+
+    private func axisExtent(of size: CGSize) -> CGFloat { isVertical ? size.height : size.width }
+
+    /// 选中变化时按需滚动：
+    /// - 卡片已完全可见 → 不滚动；
+    /// - 卡片一侧被裁 → 滚动到刚好完全可见，并额外露出相邻卡片的一部分（neighborPeek）；
+    /// - 位置未知（懒加载未布局或快照已失效）→ 最小滚动使其可见。
+    private func scrollSelectedClipIntoView(proxy: ScrollViewProxy) {
+        guard let id = panelState.selectedID else { return }
+        func animated(_ action: @escaping () -> Void) {
+            withAnimation(.easeInOut(duration: 0.2), action)
+        }
+        guard viewportExtent > 0,
+              let info = clipFrames[id],
+              abs(info.offset - scrollOffset) < 1.5 else {
+            animated { proxy.scrollTo(id) } // anchor 为 nil：最小滚动至可见
+            return
+        }
+        let cardStart = isVertical ? info.frame.minY : info.frame.minX
+        let cardEnd = isVertical ? info.frame.maxY : info.frame.maxX
+        let slack = viewportExtent - (cardEnd - cardStart)
+        guard slack > 1 else { animated { proxy.scrollTo(id) }; return } // 卡片比视口还大，最小滚动兜底
+
+        // scrollTo 的 anchor 语义：卡片自身 u 分位点与视口 u 分位点对齐。
+        // 卡片头边视口坐标 = u * (viewportExtent - cardExtent)。
+        let anchor: UnitPoint
+        if cardEnd > viewportExtent + 0.5 {
+            // 右/下侧被裁：尾边停在距视口尾边 peek 处 → 露出下一个卡片一部分
+            let u = (viewportExtent - neighborPeek - (cardEnd - cardStart)) / slack
+            anchor = axisPoint(min(max(u, 0), 1))
+        } else if cardStart < -0.5 {
+            // 左/上侧被裁：头边停在距视口头边 peek 处 → 露出前一个卡片一部分
+            anchor = axisPoint(min(max(neighborPeek / slack, 0), 1))
+        } else {
+            return // 完全可见，不滚动
+        }
+        animated { proxy.scrollTo(id, anchor: anchor) }
+    }
+
+    private func axisPoint(_ u: CGFloat) -> UnitPoint {
+        isVertical ? UnitPoint(x: 0.5, y: u) : UnitPoint(x: u, y: 0.5)
     }
 
     @ViewBuilder private var cards: some View {
@@ -234,6 +306,14 @@ struct PanelView: View {
             onDelete: { store.delete([$0.id]) },
             onPin: { store.move($0.id, to: $1) },
             onPreview: { item in withAnimation { panelState.previewItem = item } }
+        )
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: ClipFramesKey.self,
+                    value: [item.id: ClipFrameInfo(frame: geo.frame(in: .named("clipStrip")), offset: scrollOffset)]
+                )
+            }
         )
     }
 
