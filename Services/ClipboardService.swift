@@ -2,6 +2,7 @@ import AppKit
 @preconcurrency import ApplicationServices
 import Carbon.HIToolbox
 import Foundation
+import UniformTypeIdentifiers
 
 @MainActor
 final class ClipboardService {
@@ -70,8 +71,14 @@ final class ClipboardService {
         if let url = pasteboard.readObjects(forClasses: [NSURL.self], options: nil)?.first as? URL, url.scheme != "file" {
             return Clip(kind: .link, url: url, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
         }
-        if let image = NSImage(pasteboard: pasteboard), let data = image.tiffRepresentation, data.count < 12_000_000 {
-            return Clip(kind: .image, imageData: data, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
+        if let image = NSImage(pasteboard: pasteboard), let tiff = image.tiffRepresentation, tiff.count < 12_000_000 {
+            // 优先采用 allPasteboardData 中的**原始图片格式**数据（png/jpeg/heic/webp…），
+            // 仅当缺失时才回退 TIFF，避免统一转 TIFF 丢失原始格式信息并增大体积。
+            let originalImageData = allPasteboardData?
+                .first { $0.uti != "public.tiff" && (UTType($0.uti)?.conforms(to: .image) ?? false) }?
+                .data
+                ?? tiff
+            return Clip(kind: .image, imageData: originalImageData, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
         }
         if let text = pasteboard.string(forType: .string), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let kind: ClipKind = text.hasPrefix("http://") || text.hasPrefix("https://") ? .link : .text
@@ -101,13 +108,9 @@ final class ClipboardService {
             let extractedText = pasteboard.string(forType: .string)
             
             if hasImageData {
-                // 优先用 TIFF 数据（通用图片格式）
-                var imageData: Data?
-                if let tiffEntry = allPasteboardData.first(where: { $0.uti == "public.tiff" }) {
-                    imageData = tiffEntry.data
-                } else if let pngEntry = allPasteboardData.first(where: { $0.uti == "public.png" }) {
-                    imageData = pngEntry.data
-                }
+                // 优先用原始图片格式（非 TIFF），回退 TIFF
+                let imageData = allPasteboardData.first { $0.uti != "public.tiff" && (UTType($0.uti)?.conforms(to: .image) ?? false) }?.data
+                    ?? allPasteboardData.first(where: { $0.uti == "public.tiff" })?.data
                 return Clip(kind: .image, imageData: imageData, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
             } else if let url = extractedURL {
                 return Clip(kind: .link, url: url, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
@@ -125,25 +128,26 @@ final class ClipboardService {
     // MARK: - UTI 优先级选择
 
     /// 从 pasteboard.types 中挑选最有意义的 UTI。
-    /// 优先级：RTF > HTML > utf8-plain-text > plain-text > image > file > url > 第一个可用类型。
+    ///
+    /// 采用 **UTI 一致性判断（`conforms(to:)`）** 而非字符串精确匹配，
+    /// 因此能正确识别 `public.heic` / `public.webp` / `dyn.*` 等未列入硬编码列表的类型。
+    /// 类别优先级（从最「富」到最「贫」）：
+    /// RTF > HTML > 纯文本 > 图片 > 文件 > URL > 第一个可用类型。
     private func preferredUTI(from types: [NSPasteboard.PasteboardType]) -> String? {
-        guard !types.isEmpty else { return nil }
-        let filtered = ClipboardService.filteredTypes(types).map(\.rawValue)
-        for preferred in [
-            "public.rtf",
-            "com.apple.flat-rtfd",
-            "public.html",
-            "public.utf8-plain-text",
-            "public.plain-text",
-            "public.png",
-            "public.tiff",
-            "public.jpeg",
-            "NSFilenamesPboardType",
-            "public.url"
-        ] {
-            if filtered.contains(preferred) { return preferred }
+        let candidates = ClipboardService.filteredTypes(types)
+        guard !candidates.isEmpty else { return nil }
+
+        // 解析为 UTType；无法解析的（如遗留 NSStringPboardType）交给兜底处理。
+        let utTypes = candidates.compactMap { UTType($0.rawValue) }
+
+        // 每个类别内取粘贴板声明顺序中的第一个命中项，保证「最具体优先」。
+        let categoryPriority: [UTType] = [.rtf, .html, .plainText, .image, .fileURL, .url]
+        for category in categoryPriority {
+            if let match = utTypes.first(where: { $0.conforms(to: category) }) {
+                return match.identifier
+            }
         }
-        return filtered.first
+        return candidates.first?.rawValue
     }
 
     func copy(_ item: Clip, plainText: Bool = false) {
@@ -166,7 +170,7 @@ final class ClipboardService {
                     "public.rtf", "com.apple.flat-rtfd", "public.html",
                     "public.utf8-plain-text", "public.plain-text",
                     "public.png", "public.tiff", "public.jpeg",
-                    "NSFilenamesPboardType", "public.url"
+                    "public.file-url", "public.url"
                 ]
                 var orderedEntries = [UTIEntry]()
                 for key in orderedKeys {
