@@ -29,6 +29,10 @@ final class ClipboardService {
         guard var item = makeItem() else { return }
         item.sourceApplication = frontmost?.localizedName
         item.sourceApplicationBundleID = frontmost?.bundleIdentifier
+        // 创建时即计算并持久化来源 app 主色调，避免渲染时重复计算
+        if let bundleID = frontmost?.bundleIdentifier {
+            item.sourceAppColor = AppIconCache.shared.codableDominantColor(forBundleID: bundleID)
+        }
         // 自动检测色值文本 → 重分类为 .colorValue
         if item.kind == .text && item.isColorValue {
             item.kind = .colorValue
