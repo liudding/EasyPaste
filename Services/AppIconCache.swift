@@ -10,7 +10,7 @@ final class AppIconCache: @unchecked Sendable {
 
     private struct Entry {
         let icon: NSImage?
-        let dominantColor: Color?
+        let dominantColor: CodableColor?
     }
 
     private let lock = NSLock()
@@ -49,8 +49,14 @@ final class AppIconCache: @unchecked Sendable {
         return rawIcon(forBundleID: bundleID)
     }
 
-    /// 获取指定 bundleID 的 app icon 主色调。
+    /// 获取指定 bundleID 的 app icon 主色调（Color 形式，供渲染使用）。
     func dominantColor(forBundleID bundleID: String?) -> Color? {
+        guard let bundleID else { return nil }
+        return entry(forBundleID: bundleID).dominantColor?.color
+    }
+
+    /// 获取指定 bundleID 的 app icon 主色调（可编码形式，供持久化到 ClipboardItem）。
+    func codableDominantColor(forBundleID bundleID: String?) -> CodableColor? {
         guard let bundleID else { return nil }
         return entry(forBundleID: bundleID).dominantColor
     }
@@ -97,8 +103,8 @@ final class AppIconCache: @unchecked Sendable {
         entry(forBundleID: bundleID).icon
     }
 
-    /// 从 app icon 中提取主色调（取中心区域平均颜色）。
-    private func extractDominantColor(from icon: NSImage) -> Color? {
+    /// 从 app icon 中提取主色调（取中心区域平均颜色），返回可编码的 sRGB 分量。
+    private func extractDominantColor(from icon: NSImage) -> CodableColor? {
         guard let tiffData = icon.tiffRepresentation,
               let rep = NSBitmapImageRep(data: tiffData) else { return nil }
         var rSum = 0, gSum = 0, bSum = 0, count = 0
@@ -115,9 +121,11 @@ final class AppIconCache: @unchecked Sendable {
             }
         }
         guard count > 0 else { return nil }
-        return Color(red: Double(rSum) / Double(count) / 255,
-                     green: Double(gSum) / Double(count) / 255,
-                     blue: Double(bSum) / Double(count) / 255)
+        return CodableColor(
+            red: Double(rSum) / Double(count) / 255,
+            green: Double(gSum) / Double(count) / 255,
+            blue: Double(bSum) / Double(count) / 255
+        )
     }
 }
 

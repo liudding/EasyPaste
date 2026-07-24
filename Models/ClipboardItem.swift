@@ -3,6 +3,22 @@ import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// 可编码的 sRGB 颜色分量，用于把来源 app icon 主色调随剪贴项一起持久化，
+/// 避免每次渲染都重新从 AppIconCache 计算。
+struct CodableColor: Codable, Hashable {
+    let red: Double
+    let green: Double
+    let blue: Double
+
+    var color: Color {
+        Color(red: red, green: green, blue: blue)
+    }
+
+    init(red: Double, green: Double, blue: Double) {
+        self.red = red; self.green = green; self.blue = blue
+    }
+}
+
 enum ClipboardKind: String, Codable, CaseIterable, Identifiable {
     case text, link, image, file, colorValue
     var id: String { rawValue }
@@ -25,9 +41,9 @@ enum ClipboardKind: String, Codable, CaseIterable, Identifiable {
 }
 
 struct ClipboardItem: Codable, Identifiable, Hashable {
-    let id: UUID
+    var id: UUID
     var kind: ClipboardKind
-    let createdAt: Date
+    var createdAt: Date
     var text: String?
     var url: URL?
     var fileURLs: [URL]?
@@ -36,6 +52,9 @@ struct ClipboardItem: Codable, Identifiable, Hashable {
     var isFavorite: Bool
     var sourceApplication: String?
     var sourceApplicationBundleID: String?
+    /// 创建时计算并持久化的来源 app icon 主色调（已编码为 sRGB 分量）。
+    /// 旧数据无此字段时回退到 AppIconCache 计算。
+    var sourceAppColor: CodableColor? = nil
     var customTitle: String?
 
     init(kind: ClipboardKind, text: String? = nil, url: URL? = nil, fileURLs: [URL]? = nil, imageData: Data? = nil) {
@@ -133,14 +152,16 @@ extension ClipboardItem {
         AppIconCache.shared.icon(forBundleID: sourceApplicationBundleID)
     }
 
-    /// 从 app icon 中提取主色调（从缓存读取）。
+    /// 来源 app icon 主色调：优先返回创建时已持久化的颜色，
+    /// 旧数据（未存字段）回退到 AppIconCache 计算。
     var sourceAppDominantColor: Color? {
-        AppIconCache.shared.dominantColor(forBundleID: sourceApplicationBundleID)
+        if let c = sourceAppColor { return c.color }
+        return AppIconCache.shared.dominantColor(forBundleID: sourceApplicationBundleID)
     }
 }
 
 struct AutomationRule: Codable, Identifiable, Hashable {
-    let id: UUID
+    var id: UUID
     var name: String
     var keyword: String
     var sourceApplication: String
@@ -162,7 +183,7 @@ struct AutomationRule: Codable, Identifiable, Hashable {
 }
 
 struct Pasteboard: Codable, Identifiable, Hashable {
-    let id: UUID
+    var id: UUID
     var name: String
     var color: String
     init(name: String, color: String) { id = UUID(); self.name = name; self.color = color }
