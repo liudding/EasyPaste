@@ -1,0 +1,281 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 860" font-family="-apple-system, 'SF Pro', 'Helvetica Neue', Arial, sans-serif">
+  <!-- ============ Background ============ -->
+  <rect x="0" y="0" width="1200" height="860" fill="#0c0e12"/>
+  <rect x="0" y="0" width="1200" height="860" fill="url(#bgGlow)"/>
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="0%" r="80%">
+      <stop offset="0%" stop-color="#1a2a44" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#0c0e12" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="titleBar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2c5da8"/>
+      <stop offset="100%" stop-color="#244b86"/>
+    </linearGradient>
+    <linearGradient id="titleBarOrange" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c87f3a"/>
+      <stop offset="100%" stop-color="#a8632a"/>
+    </linearGradient>
+    <linearGradient id="titleBarPurple" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7a4fb0"/>
+      <stop offset="100%" stop-color="#5e3a8c"/>
+    </linearGradient>
+    <linearGradient id="titleBarGreen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3fae7a"/>
+      <stop offset="100%" stop-color="#2f8d62"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8aa0c8"/>
+    </marker>
+    <marker id="arrowData" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5ad0a0"/>
+    </marker>
+    <marker id="arrowCfg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#d8a85a"/>
+    </marker>
+  </defs>
+
+  <!-- ============ Title ============ -->
+  <text x="40" y="42" fill="#f2f5fa" font-size="26" font-weight="700">EasyPaste · 系统架构图</text>
+  <text x="40" y="64" fill="#7e8aa3" font-size="13">剪贴板管理器 — macOS (SwiftPM 可执行 target, Swift 6.2, AppKit + SwiftUI)</text>
+
+  <!-- ============ Layer labels ============ -->
+  <text x="40" y="92" fill="#5e6b85" font-size="11" font-weight="700" letter-spacing="2">EXTERNAL / SYSTEM</text>
+  <text x="320" y="92" fill="#5e6b85" font-size="11" font-weight="700" letter-spacing="2">APPLICATION CORE</text>
+  <text x="830" y="92" fill="#5e6b85" font-size="11" font-weight="700" letter-spacing="2">USER INTERFACE</text>
+
+  <!-- ============ External / System (left) ============ -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="100" width="210" height="74" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="40" y="100" width="210" height="22" rx="12" fill="url(#titleBarOrange)"/>
+    <rect x="40" y="110" width="210" height="12" fill="url(#titleBarOrange)"/>
+    <text x="52" y="116" fill="#fff" font-size="12" font-weight="700">NSPasteboard</text>
+    <text x="52" y="142" fill="#aeb9cc" font-size="11">系统通用粘贴板</text>
+    <text x="52" y="158" fill="#7e8aa3" font-size="10">changeCount 轮询 0.45s</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="40" y="190" width="210" height="60" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="40" y="190" width="210" height="22" rx="12" fill="url(#titleBarOrange)"/>
+    <rect x="40" y="200" width="210" height="12" fill="url(#titleBarOrange)"/>
+    <text x="52" y="206" fill="#fff" font-size="12" font-weight="700">Frontmost Application</text>
+    <text x="52" y="232" fill="#aeb9cc" font-size="11">来源 App (bundleID / icon)</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="40" y="266" width="210" height="58" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="40" y="266" width="210" height="22" rx="12" fill="url(#titleBarOrange)"/>
+    <rect x="40" y="276" width="210" height="12" fill="url(#titleBarOrange)"/>
+    <text x="52" y="282" fill="#fff" font-size="12" font-weight="700">Accessibility (AX)</text>
+    <text x="52" y="306" fill="#aeb9cc" font-size="11">⌘V 注入权限</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="40" y="340" width="210" height="58" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="40" y="340" width="210" height="22" rx="12" fill="url(#titleBarOrange)"/>
+    <rect x="40" y="350" width="210" height="12" fill="url(#titleBarOrange)"/>
+    <text x="52" y="356" fill="#fff" font-size="12" font-weight="700">iCloud Drive</text>
+    <text x="52" y="380" fill="#aeb9cc" font-size="11">ubiquity 容器备份</text>
+  </g>
+
+  <!-- ============ Core (center) ============ -->
+  <!-- AppServices composition root -->
+  <g filter="url(#shadow)">
+    <rect x="300" y="100" width="380" height="80" rx="12" fill="#11161f" stroke="#3a5e9e"/>
+    <rect x="300" y="100" width="380" height="24" rx="12" fill="url(#titleBar)"/>
+    <rect x="300" y="112" width="380" height="12" fill="url(#titleBar)"/>
+    <text x="314" y="118" fill="#fff" font-size="13" font-weight="700">AppServices  ·  组合根 (Composition Root)</text>
+    <text x="314" y="142" fill="#aeb9cc" font-size="11">持有并接线 store / clipboard / settings / shortcut / panel / caches</text>
+    <text x="314" y="161" fill="#7e8aa3" font-size="10">@Observable @MainActor · boot() 启动时装配 + AppDelegate 回调</text>
+  </g>
+
+  <!-- ClipboardStore -->
+  <g filter="url(#shadow)">
+    <rect x="300" y="200" width="225" height="96" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="300" y="200" width="225" height="22" rx="12" fill="url(#titleBar)"/>
+    <rect x="300" y="210" width="225" height="12" fill="url(#titleBar)"/>
+    <text x="312" y="216" fill="#fff" font-size="12" font-weight="700">ClipboardStore</text>
+    <text x="312" y="238" fill="#aeb9cc" font-size="10.5">内存 items / boards / rules</text>
+    <text x="312" y="254" fill="#aeb9cc" font-size="10.5">filteredItems (每次重读)</text>
+    <text x="312" y="270" fill="#7e8aa3" font-size="10">去重 · 规则分类 · prune 策略</text>
+    <text x="312" y="285" fill="#7e8aa3" font-size="10">写穿 (write-through) 持久层</text>
+  </g>
+
+  <!-- GRDB Database -->
+  <g filter="url(#shadow)">
+    <rect x="545" y="200" width="225" height="96" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="545" y="200" width="225" height="22" rx="12" fill="url(#titleBarGreen)"/>
+    <rect x="545" y="210" width="225" height="12" fill="url(#titleBarGreen)"/>
+    <text x="557" y="216" fill="#fff" font-size="12" font-weight="700">DatabaseManager (GRDB)</text>
+    <text x="557" y="236" fill="#aeb9cc" font-size="10">clips · clip_blobs</text>
+    <text x="557" y="251" fill="#aeb9cc" font-size="10">pasteboards · automation_rules</text>
+    <text x="557" y="267" fill="#7e8aa3" font-size="9.5">无外键 · 主线程 DatabaseQueue</text>
+    <text x="557" y="281" fill="#7e8aa3" font-size="9.5">二进制分离存储</text>
+  </g>
+
+  <!-- ClipboardService -->
+  <g filter="url(#shadow)">
+    <rect x="300" y="314" width="225" height="92" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="300" y="314" width="225" height="22" rx="12" fill="url(#titleBarPurple)"/>
+    <rect x="300" y="324" width="225" height="12" fill="url(#titleBarPurple)"/>
+    <text x="312" y="330" fill="#fff" font-size="12" font-weight="700">ClipboardService</text>
+    <text x="312" y="352" fill="#aeb9cc" font-size="10">捕获 makeItem() 全格式保真</text>
+    <text x="312" y="368" fill="#aeb9cc" font-size="10">安全标记过滤 / 忽略 App</text>
+    <text x="312" y="384" fill="#7e8aa3" font-size="10">paste → HID ⌘V 注入</text>
+  </g>
+
+  <!-- BackupService -->
+  <g filter="url(#shadow)">
+    <rect x="545" y="314" width="225" height="92" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="545" y="314" width="225" height="22" rx="12" fill="url(#titleBarGreen)"/>
+    <rect x="545" y="324" width="225" height="12" fill="url(#titleBarGreen)"/>
+    <text x="557" y="330" fill="#fff" font-size="12" font-weight="700">BackupService</text>
+    <text x="557" y="352" fill="#aeb9cc" font-size="10">一致性快照 (GRDB backup)</text>
+    <text x="557" y="368" fill="#aeb9cc" font-size="10">定时 5min / 空闲 debounce</text>
+    <text x="557" y="384" fill="#7e8aa3" font-size="10">原子替换 ubiquity</text>
+  </g>
+
+  <!-- Caches -->
+  <g filter="url(#shadow)">
+    <rect x="545" y="424" width="225" height="92" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="545" y="424" width="225" height="22" rx="12" fill="url(#titleBarPurple)"/>
+    <rect x="545" y="434" width="225" height="12" fill="url(#titleBarPurple)"/>
+    <text x="557" y="440" fill="#fff" font-size="12" font-weight="700">AppIconCache · ImageSizeCache</text>
+    <text x="557" y="462" fill="#aeb9cc" font-size="10">来源 App icon + 主色调</text>
+    <text x="557" y="478" fill="#aeb9cc" font-size="10">图片尺寸 / 340px 缩略图</text>
+    <text x="557" y="494" fill="#7e8aa3" font-size="10">NSLock 线程安全, 后台预热</text>
+  </g>
+
+  <!-- GlobalShortcutService -->
+  <g filter="url(#shadow)">
+    <rect x="300" y="424" width="225" height="74" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="300" y="424" width="225" height="22" rx="12" fill="url(#titleBarPurple)"/>
+    <rect x="300" y="434" width="225" height="12" fill="url(#titleBarPurple)"/>
+    <text x="312" y="440" fill="#fff" font-size="12" font-weight="700">GlobalShortcutService</text>
+    <text x="312" y="462" fill="#aeb9cc" font-size="10">Carbon RegisterEventHotKey</text>
+    <text x="312" y="478" fill="#7e8aa3" font-size="10">⌘⇧V 唤起 / ⌘] 切换看板</text>
+  </g>
+
+  <!-- PanelController -->
+  <g filter="url(#shadow)">
+    <rect x="300" y="514" width="225" height="92" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="300" y="514" width="225" height="22" rx="12" fill="url(#titleBar)"/>
+    <rect x="300" y="524" width="225" height="12" fill="url(#titleBar)"/>
+    <text x="312" y="530" fill="#fff" font-size="12" font-weight="700">PanelController</text>
+    <text x="312" y="552" fill="#aeb9cc" font-size="10">非激活 NSPanel 生命周期</text>
+    <text x="312" y="568" fill="#aeb9cc" font-size="10">滑入/滑出 · 键盘 · 自动隐藏</text>
+    <text x="312" y="584" fill="#7e8aa3" font-size="10">屏幕边缘定位</text>
+  </g>
+
+  <!-- ============ UI (right) ============ -->
+  <g filter="url(#shadow)">
+    <rect x="830" y="100" width="330" height="100" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="830" y="100" width="330" height="22" rx="12" fill="url(#titleBar)"/>
+    <rect x="830" y="110" width="330" height="12" fill="url(#titleBar)"/>
+    <text x="842" y="116" fill="#fff" font-size="12" font-weight="700">PanelView + ClipCardView</text>
+    <text x="842" y="138" fill="#aeb9cc" font-size="10.5">屏幕边缘卡片流 (横向/竖向)</text>
+    <text x="842" y="154" fill="#aeb9cc" font-size="10.5">搜索 · 看板筛选 · 预览浮层</text>
+    <text x="842" y="170" fill="#7e8aa3" font-size="10">拖拽重排 · 上下文菜单 · 滚动</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="830" y="216" width="330" height="64" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="830" y="216" width="330" height="22" rx="12" fill="url(#titleBarOrange)"/>
+    <rect x="830" y="226" width="330" height="12" fill="url(#titleBarOrange)"/>
+    <text x="842" y="232" fill="#fff" font-size="12" font-weight="700">MenuBarExtra · MenuBarView</text>
+    <text x="842" y="256" fill="#aeb9cc" font-size="10.5">菜单栏最近项 · 设置 · 更新</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="830" y="296" width="330" height="64" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="830" y="296" width="330" height="22" rx="12" fill="url(#titleBarOrange)"/>
+    <rect x="830" y="306" width="330" height="12" fill="url(#titleBarOrange)"/>
+    <text x="842" y="312" fill="#fff" font-size="12" font-weight="700">SettingsView (AppKit NSWindow)</text>
+    <text x="842" y="336" fill="#aeb9cc" font-size="10.5">通用/隐私/快捷键/更新 · AppSettings</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="830" y="376" width="330" height="58" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="830" y="376" width="330" height="22" rx="12" fill="url(#titleBarPurple)"/>
+    <rect x="830" y="386" width="330" height="12" fill="url(#titleBarPurple)"/>
+    <text x="842" y="392" fill="#fff" font-size="12" font-weight="700">OnboardingView</text>
+    <text x="842" y="414" fill="#aeb9cc" font-size="10.5">首次启动 6 页引导</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="830" y="450" width="330" height="58" rx="12" fill="#151a22" stroke="#2b3340"/>
+    <rect x="830" y="450" width="330" height="22" rx="12" fill="url(#titleBarGreen)"/>
+    <rect x="830" y="460" width="330" height="12" fill="url(#titleBarGreen)"/>
+    <text x="842" y="466" fill="#fff" font-size="12" font-weight="700">SparkleBridge</text>
+    <text x="842" y="488" fill="#aeb9cc" font-size="10.5">自动更新 (SPUStandardUpdater)</text>
+  </g>
+
+  <!-- ============ Data-flow arrows ============ -->
+  <!-- NSPasteboard -> ClipboardService (capture) -->
+  <path d="M250,137 C275,137 280,360 300,360" fill="none" stroke="#5ad0a0" stroke-width="2" marker-end="url(#arrowData)"/>
+  <text x="252" y="260" fill="#5ad0a0" font-size="9.5" transform="rotate(90 252 260)">捕获剪贴项</text>
+
+  <!-- Frontmost App -> ClipboardService (source) -->
+  <path d="M250,220 C270,220 280,338 300,338" fill="none" stroke="#5ad0a0" stroke-width="1.6" marker-end="url(#arrowData)"/>
+
+  <!-- ClipboardService -> ClipboardStore (onItem) -->
+  <path d="M525,360 L525,296" fill="none" stroke="#5ad0a0" stroke-width="2" marker-end="url(#arrowData)"/>
+
+  <!-- ClipboardStore <-> GRDB -->
+  <path d="M525,248 L545,248" fill="none" stroke="#5ad0a0" stroke-width="2" marker-end="url(#arrowData)"/>
+  <path d="M545,262 L525,262" fill="none" stroke="#8aa0c8" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+  <!-- store -> BackupService (schedule) -->
+  <path d="M525,300 L545,360" fill="none" stroke="#5ad0a0" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#arrowData)"/>
+
+  <!-- BackupService -> iCloud -->
+  <path d="M545,366 C430,366 290,369 250,369" fill="none" stroke="#5ad0a0" stroke-width="1.6" marker-end="url(#arrowData)"/>
+
+  <!-- ClipboardService -> PanelController (paste target) -->
+  <path d="M525,470 L525,560" fill="none" stroke="#8aa0c8" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+  <!-- GlobalShortcut -> AppServices (toggle) -->
+  <path d="M525,460 L525,180" fill="none" stroke="#d8a85a" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#arrowCfg)"/>
+
+  <!-- AppServices wires to everything (down arrows) -->
+  <path d="M490,180 L490,200" fill="none" stroke="#d8a85a" stroke-width="1.4" marker-end="url(#arrowCfg)"/>
+  <path d="M490,200 L490,314" fill="none" stroke="#d8a85a" stroke-width="1.4" marker-end="url(#arrowCfg)" opacity="0.7"/>
+  <path d="M490,338 L490,424" fill="none" stroke="#d8a85a" stroke-width="1.4" marker-end="url(#arrowCfg)" opacity="0.7"/>
+  <path d="M490,498 L490,514" fill="none" stroke="#d8a85a" stroke-width="1.4" marker-end="url(#arrowCfg)"/>
+
+  <!-- PanelController -> PanelView (host) -->
+  <path d="M525,560 C650,560 700,150 830,150" fill="none" stroke="#8aa0c8" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+  <!-- PanelView -> store (filteredItems) -->
+  <path d="M830,150 C700,150 640,250 525,250" fill="none" stroke="#5ad0a0" stroke-width="1.4" marker-end="url(#arrowData)" opacity="0.8"/>
+
+  <!-- PanelView -> ClipboardService (paste/copy) -->
+  <path d="M830,170 C700,180 660,360 525,360" fill="none" stroke="#5ad0a0" stroke-width="1.4" marker-end="url(#arrowData)" opacity="0.7"/>
+
+  <!-- PanelView -> Caches -->
+  <path d="M830,200 C700,210 660,470 545,470" fill="none" stroke="#8aa0c8" stroke-width="1.2" marker-end="url(#arrow)" opacity="0.6"/>
+
+  <!-- SettingsView -> AppSettings -> callbacks -> store/backup -->
+  <path d="M830,328 C700,340 660,340 545,360" fill="none" stroke="#d8a85a" stroke-width="1.4" marker-end="url(#arrowCfg)" opacity="0.7"/>
+
+  <!-- MenuBarView -> store/clipboard -->
+  <path d="M830,248 C720,260 660,260 545,310" fill="none" stroke="#5ad0a0" stroke-width="1.2" marker-end="url(#arrowData)" opacity="0.6"/>
+
+  <!-- AppServices -> UI (to settings/onboarding) -->
+  <path d="M680,180 C760,200 790,296 830,296" fill="none" stroke="#d8a85a" stroke-width="1.4" marker-end="url(#arrowCfg)" opacity="0.7"/>
+
+  <!-- Accessibility <-> paste -->
+  <path d="M250,295 C275,295 290,500 300,510" fill="none" stroke="#8aa0c8" stroke-width="1.2" marker-end="url(#arrow)" opacity="0.6"/>
+
+  <!-- ============ Legend ============ -->
+  <g transform="translate(40,640)">
+    <rect x="0" y="0" width="1120" height="170" rx="14" fill="#11151c" stroke="#232a35"/>
+    <text x="24" y="28" fill="#cdd6e6" font-size="13" font-weight="700">核心数据流 (Capture → Store → Persist → UI → Paste)</text>
+
+    <line x1="24" y1="60" x2="64" y2="60" stroke="#5ad0a0" stroke-width="2.5" marker-end="url(#arrowData)"/>
+    <text x="74" y="64" fill="#aeb9cc" font-size="11">剪贴项 / 数据 (运行时 + 持久化)</text>
+
+    <line x1="24" y1="84" x2="64" y2="84" stroke="#8aa0c8" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <text x="74" y="88" fill="#aeb9cc" font-size="11">控制 / 事件 (快捷键、面板生命周期、粘贴注入)</text>
+
+    <line x1="24" y1="108" x2="64" y2="108" stroke="#d8a85a" stroke-width="2.5" stroke-dasharray="4 3" marker-end="url(#arrowCfg)"/>
+    <text x="74" y="112" fill="#aeb9cc" font-size="11">配置 / 回写 (AppSettings → store/backup 回调、组合根接线)</text>
+
+    <text x="24" y="140" fill="#7e8aa3" font-size="10.5">所有 GRDB 访问在 @MainActor 上执行；ClipboardStore 为内存单一事实源，写穿 SQLite 做持久化；无外键以兼容未来 Harmony/CloudKit。</text>
+  </g>
+</svg>

@@ -99,19 +99,41 @@ final class ClipboardStore {
     // MARK: - 写入（更新内存 + 写穿 GRDB）
 
     func add(_ item: Clip) {
-        // 用 allPasteboardData 的哈希去重：相同原始数据的剪贴板只保留一条
-        if let data = item.allPasteboardData, !data.isEmpty {
-            let hash = clipHash(item)
-            if items.contains(where: { $0.id != item.id && $0.kind == item.kind && clipHash($0) == hash }) { return }
+        // 基于 contentHash 去重：重复时更新 createdAt 并置顶，而非跳过
+        if let hash = item.contentHash {
+            if let existingIndex = items.firstIndex(where: {
+                $0.kind == item.kind && $0.contentHash == hash
+            }) {
+                promoteClip(at: existingIndex)
+                return
+            }
         } else {
-            // 无 allPasteboardData 的旧数据仍按 displayTitle + detail 去重
-            guard !items.contains(where: { $0.kind == item.kind && $0.displayTitle == item.displayTitle && $0.detail == item.detail }) else { return }
+            // 无 contentHash 的旧数据回退到 displayTitle + detail 去重
+            let fallbackHash = ClipTypeDetector.computeFallbackHash(
+                kind: item.kind, title: item.displayTitle, detail: item.detail)
+            if let existingIndex = items.firstIndex(where: {
+                $0.kind == item.kind &&
+                ($0.contentHash ?? ClipTypeDetector.computeFallbackHash(
+                    kind: $0.kind, title: $0.displayTitle, detail: $0.detail)) == fallbackHash
+            }) {
+                promoteClip(at: existingIndex)
+                return
+            }
         }
         var classified = item
         if let match = rules.first(where: { $0.matches(item) }) { classified.boardID = match.targetBoardID }
         items.insert(classified, at: 0)
         writeClip(classified)
         pruneExpired()
+        backupService.scheduleBackupOnIdle()
+    }
+
+    /// 将已有条目更新 createdAt 并移至列表最前（重复内容置顶）。
+    private func promoteClip(at index: Int) {
+        items[index].createdAt = .now
+        let promoted = items.remove(at: index)
+        items.insert(promoted, at: 0)
+        writeClip(promoted)
         backupService.scheduleBackupOnIdle()
     }
 
@@ -316,19 +338,12 @@ final class ClipboardStore {
     }
 }
 
-/// 计算 Clip 的 allPasteboardData 哈希值，用于去重。
-/// 将 UTI 类型和数据长度组合成一个字符串后计算 SHA-256。
+/// 计算 Clip 的内容 hash，用于去重。
+/// 基于 allPasteboardData 实际内容计算 SHA-256，回退到 displayTitle + detail。
 private func clipHash(_ clip: Clip) -> String {
-    guard let entries = clip.allPasteboardData else { return "" }
-    var components = [String]()
-    for entry in entries.sorted(by: { $0.uti < $1.uti }) {
-        components.append("\(entry.uti):\(entry.data.count)")
-    }
-    let input = components.joined(separator: "|")
-    if let data = input.data(using: .utf8) {
-        return data.sha256Hex
-    }
-    return input
+    ClipTypeDetector.computeContentHash(clip.allPasteboardData)
+        ?? ClipTypeDetector.computeFallbackHash(
+            kind: clip.kind, title: clip.displayTitle, detail: clip.detail)
 }
 
 extension Data {

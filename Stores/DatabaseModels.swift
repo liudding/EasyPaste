@@ -27,6 +27,8 @@ struct ClipRow: FetchableRecord, PersistableRecord, Codable {
     let contentColorGreen: Double?
     let contentColorBlue: Double?
     let title: String?
+    let contentHash: String?
+    let subkind: String?
 
     init(_ clip: Clip) {
         id = clip.id.uuidString
@@ -50,6 +52,8 @@ struct ClipRow: FetchableRecord, PersistableRecord, Codable {
         contentColorGreen = clip.contentColor?.green
         contentColorBlue = clip.contentColor?.blue
         title = clip.title
+        contentHash = clip.contentHash
+        subkind = clip.subkind?.rawValue
     }
 
     /// 还原为内存 `Clip`。`blob` 来自 `clip_blobs` 表（同一事务写入）。
@@ -78,6 +82,8 @@ struct ClipRow: FetchableRecord, PersistableRecord, Codable {
         if let r = contentColorRed, let g = contentColorGreen, let b = contentColorBlue {
             clip.contentColor = CodableColor(red: r, green: g, blue: b)
         }
+        clip.contentHash = contentHash
+        clip.subkind = subkind.flatMap { ClipSubkind(rawValue: $0) }
         return clip
     }
 }

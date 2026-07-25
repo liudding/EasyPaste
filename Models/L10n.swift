@@ -204,6 +204,29 @@ enum L10n {
     /// 上下文菜单预览提示键。
     static var previewHint: String { tr("preview_hint") }
 
+    // MARK: - Clip Menu (type-specific)
+
+    static var menuExportTxt: String { tr("clip.menu.export_txt") }
+    static var menuExportRtf: String { tr("clip.menu.export_rtf") }
+    static var menuQRCode: String { tr("clip.menu.qr_code") }
+    static var menuSaveAs: String { tr("clip.menu.save_as") }
+    static var menuSendEmail: String { tr("clip.menu.send_email") }
+    static var menuPasteAs: String { tr("clip.menu.paste_as") }
+    static var menuHex: String { tr("clip.menu.hex") }
+    static var menuRGB: String { tr("clip.menu.rgb") }
+    static var menuHSL: String { tr("clip.menu.hsl") }
+    static var menuOpenLink: String { tr("clip.menu.open_link") }
+    static var menuJSONPreview: String { tr("clip.menu.json_preview") }
+
+    // MARK: - Settings (hide dock icon)
+
+    static var hideDockIconSetting: String { tr("settings.hide_dock_icon") }
+
+    // MARK: - Preview (errors/warnings)
+
+    static var jsonError: String { tr("clip.preview.json_error") }
+    static var qrTooLong: String { tr("clip.preview.qr_too_long") }
+
     // MARK: - Default Boards
 
     static var defaultBoardIdeas: String { tr("default_board.ideas") }

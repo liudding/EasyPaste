@@ -192,5 +192,20 @@
     "space_key": "Espace",
     "preview_hint": "Espace",
     "default_board.ideas": "Idées",
-    "default_board.work": "Travail"
+    "default_board.work": "Travail",
+
+    "clip.menu.export_txt": "Exporter en TXT",
+    "clip.menu.export_rtf": "Exporter en RTF",
+    "clip.menu.qr_code": "Code QR",
+    "clip.menu.save_as": "Enregistrer sous…",
+    "clip.menu.send_email": "Envoyer un e-mail",
+    "clip.menu.paste_as": "Coller en tant que",
+    "clip.menu.hex": "Hex",
+    "clip.menu.rgb": "RGB",
+    "clip.menu.hsl": "HSL",
+    "clip.menu.open_link": "Ouvrir le lien",
+    "clip.menu.json_preview": "Aperçu JSON",
+    "settings.hide_dock_icon": "Masquer l'icône du Dock",
+    "clip.preview.json_error": "Échec de l'analyse JSON, affichage du texte brut",
+    "clip.preview.qr_too_long": "Le contenu est trop long, le code QR peut être difficile à scanner"
 }

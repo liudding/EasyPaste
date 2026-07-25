@@ -82,8 +82,12 @@ struct PersistenceTests {
         let url = try makeTempDB()
         let store = ClipboardStore(databaseURL: url)
         let entry = UTIEntry(uti: "public.plain-text", data: Data("dup".utf8))
-        let c1 = Clip(kind: .text, text: "a", allPasteboardData: [entry])
-        let c2 = Clip(kind: .text, text: "b", allPasteboardData: [entry]) // 相同哈希 -> 去重
+        // 新版去重基于 contentHash（由 ClipboardService.makeItem() 在生产中设置）。
+        // 测试需显式设置 contentHash 以匹配生产行为。
+        var c1 = Clip(kind: .text, text: "a", allPasteboardData: [entry])
+        c1.contentHash = ClipTypeDetector.computeContentHash([entry])
+        var c2 = Clip(kind: .text, text: "b", allPasteboardData: [entry]) // 相同哈希 -> 去重
+        c2.contentHash = ClipTypeDetector.computeContentHash([entry])
         store.add(c1)
         store.add(c2)
         #expect(store.items.count == 1)

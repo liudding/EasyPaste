@@ -192,5 +192,20 @@
     "space_key": "Пробел",
     "preview_hint": "Пробел",
     "default_board.ideas": "Идеи",
-    "default_board.work": "Работа"
+    "default_board.work": "Работа",
+
+    "clip.menu.export_txt": "Экспортировать в TXT",
+    "clip.menu.export_rtf": "Экспортировать в RTF",
+    "clip.menu.qr_code": "QR-код",
+    "clip.menu.save_as": "Сохранить как…",
+    "clip.menu.send_email": "Отправить письмо",
+    "clip.menu.paste_as": "Вставить как",
+    "clip.menu.hex": "Hex",
+    "clip.menu.rgb": "RGB",
+    "clip.menu.hsl": "HSL",
+    "clip.menu.open_link": "Открыть ссылку",
+    "clip.menu.json_preview": "Просмотр JSON",
+    "settings.hide_dock_icon": "Скрыть значок Dock",
+    "clip.preview.json_error": "Не удалось разобрать JSON, показан исходный текст",
+    "clip.preview.qr_too_long": "Содержимое слишком длинное, QR-код может быть трудно отсканировать"
 }

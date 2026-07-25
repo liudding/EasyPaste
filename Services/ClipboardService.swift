@@ -7,12 +7,15 @@ import UniformTypeIdentifiers
 @MainActor
 final class ClipboardService {
     private let pasteboard = NSPasteboard.general
-    private var lastChangeCount = NSPasteboard.general.changeCount
+    var lastChangeCount = NSPasteboard.general.changeCount
     private var timer: Timer?
     var onItem: ((Clip) -> Void)?
     var settings: AppSettings?
 
     func start() {
+        // 修复首次启动读取：将 lastChangeCount 置为 -1，使首次 timer tick 的
+        // readIfChanged() 必然触发读取（-1 != 当前 changeCount）。
+        lastChangeCount = -1
         timer = Timer.scheduledTimer(withTimeInterval: 0.45, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.readIfChanged() }
         }
@@ -34,10 +37,18 @@ final class ClipboardService {
         if let bundleID = frontmost?.bundleIdentifier {
             item.sourceAppColor = AppIconCache.shared.codableDominantColor(forBundleID: bundleID)
         }
-        // 自动检测色值文本 → 重分类为 .colorValue
+        // 自动检测色值文本 → 重分类为 .color
         if item.kind == .text && item.isColorValue {
             item.kind = .color
         }
+        // 子类型检测（仅对 text 类型，在色值重分类之后）
+        if item.kind == .text {
+            item.subkind = ClipTypeDetector.detect(text: item.text, allPasteboardData: item.allPasteboardData)
+        }
+        // 计算基于实际内容的 contentHash，用于精确去重
+        item.contentHash = ClipTypeDetector.computeContentHash(item.allPasteboardData)
+            ?? ClipTypeDetector.computeFallbackHash(
+                kind: item.kind, title: item.displayTitle, detail: item.detail)
         onItem?(item)
     }
 
@@ -280,6 +291,20 @@ final class ClipboardService {
     }
     func paste(_ item: Clip, plainText: Bool = false) {
         copy(item, plainText: plainText)
+        pasteToTarget()
+    }
+
+    /// Paste a raw string value to the target app (write to clipboard + send ⌘V).
+    /// Used by "Paste as" actions that paste computed values (e.g. color hex/rgb/hsl).
+    func pasteString(_ string: String) {
+        pasteboard.clearContents()
+        pasteboard.setString(string, forType: .string)
+        lastChangeCount = pasteboard.changeCount
+        pasteToTarget()
+    }
+
+    /// Shared target-resolution + paste-keystroke logic extracted from `paste()`.
+    private func pasteToTarget() {
         guard ensureAccessibilityPermission() else { return }
         let ownPID = ProcessInfo.processInfo.processIdentifier
         let frontmost = NSWorkspace.shared.frontmostApplication

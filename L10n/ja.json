@@ -192,5 +192,20 @@
     "space_key": "スペース",
     "preview_hint": "スペース",
     "default_board.ideas": "アイデア",
-    "default_board.work": "仕事"
+    "default_board.work": "仕事",
+
+    "clip.menu.export_txt": "TXT として書き出す",
+    "clip.menu.export_rtf": "RTF として書き出す",
+    "clip.menu.qr_code": "QR コード",
+    "clip.menu.save_as": "名前を付けて保存…",
+    "clip.menu.send_email": "メールを送信",
+    "clip.menu.paste_as": "形式を選んで貼り付け",
+    "clip.menu.hex": "Hex",
+    "clip.menu.rgb": "RGB",
+    "clip.menu.hsl": "HSL",
+    "clip.menu.open_link": "リンクを開く",
+    "clip.menu.json_preview": "JSON プレビュー",
+    "settings.hide_dock_icon": "Dock アイコンを非表示",
+    "clip.preview.json_error": "JSON の解析に失敗しました。元のテキストを表示します",
+    "clip.preview.qr_too_long": "内容が長すぎます。QR コードがスキャンしにくい場合があります"
 }

@@ -172,5 +172,20 @@
     "space_key": "스페이스",
     "preview_hint": "스페이스",
     "default_board.ideas": "아이디어",
-    "default_board.work": "작업"
+    "default_board.work": "작업",
+
+    "clip.menu.export_txt": "TXT로 내보내기",
+    "clip.menu.export_rtf": "RTF로 내보내기",
+    "clip.menu.qr_code": "QR 코드",
+    "clip.menu.save_as": "다른 이름으로 저장…",
+    "clip.menu.send_email": "이메일 보내기",
+    "clip.menu.paste_as": "다른 형식으로 붙여넣기",
+    "clip.menu.hex": "Hex",
+    "clip.menu.rgb": "RGB",
+    "clip.menu.hsl": "HSL",
+    "clip.menu.open_link": "링크 열기",
+    "clip.menu.json_preview": "JSON 미리보기",
+    "settings.hide_dock_icon": "Dock 아이콘 숨기기",
+    "clip.preview.json_error": "JSON 파싱에 실패했습니다. 원본 텍스트를 표시합니다",
+    "clip.preview.qr_too_long": "내용이 너무 깁니다. QR 코드를 스캔하기 어려울 수 있습니다"
 }

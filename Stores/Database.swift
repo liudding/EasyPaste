@@ -96,6 +96,20 @@ enum DatabaseManager {
                 }
             }
         }
+        // v1.0.3：持久化内容 hash + 子类型，用于精确去重和 Context Menu 分化。
+        migrator.registerMigration("v1.0.3-contentHash-subkind") { db in
+            let columns = try db.columns(in: "clips")
+            if !columns.contains(where: { $0.name == "contentHash" }) {
+                try db.alter(table: "clips") { t in
+                    t.add(column: "contentHash", .text).indexed()
+                }
+            }
+            if !columns.contains(where: { $0.name == "subkind" }) {
+                try db.alter(table: "clips") { t in
+                    t.add(column: "subkind", .text)
+                }
+            }
+        }
         return migrator
     }
 }

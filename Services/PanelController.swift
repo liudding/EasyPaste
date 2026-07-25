@@ -15,6 +15,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     private let clipboard: ClipboardService
     private let settings: AppSettings
     private let panelState: PanelState
+    private let clipAction: ClipActionService
 
     private var panel: KeyPanel?
     private var localKeyMonitor: Any?
@@ -26,11 +27,12 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     var isVisible: Bool { panel?.isVisible ?? false }
 
-    init(store: ClipboardStore, clipboard: ClipboardService, settings: AppSettings, panelState: PanelState) {
+    init(store: ClipboardStore, clipboard: ClipboardService, settings: AppSettings, panelState: PanelState, clipAction: ClipActionService) {
         self.store = store
         self.clipboard = clipboard
         self.settings = settings
         self.panelState = panelState
+        self.clipAction = clipAction
         super.init()
         panelState.hidePanel = { [weak self] in self?.hide() }
     }
@@ -113,6 +115,8 @@ final class PanelController: NSObject, NSWindowDelegate {
             }
         }
         panelState.previewItem = nil
+        panelState.qrCodeContent = nil
+        panelState.jsonPreviewItem = nil
         panelState.renamingID = nil
         panelState.addingBoard = false
         store.query = ""
@@ -171,7 +175,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel.isReleasedWhenClosed = false
         panel.isMovableByWindowBackground = false
         panel.delegate = self
-        panel.contentView = NSHostingView(rootView: PanelView(store: store, clipboard: clipboard, settings: settings, panelState: panelState, onOpenSettings: { [weak self] in
+        panel.contentView = NSHostingView(rootView: PanelView(store: store, clipboard: clipboard, clipAction: clipAction, settings: settings, panelState: panelState, onOpenSettings: { [weak self] in
             self?.openSettingsFromPanel()
         }))
         self.panel = panel
@@ -211,6 +215,16 @@ final class PanelController: NSObject, NSWindowDelegate {
 
         if panelState.previewItem != nil {
             if keyCode == 49 || keyCode == 53 { withAnimation { panelState.previewItem = nil } }
+            return nil
+        }
+        // QR 码浮层：Esc/空格关闭
+        if panelState.qrCodeContent != nil {
+            if keyCode == 49 || keyCode == 53 { withAnimation { panelState.qrCodeContent = nil } }
+            return nil
+        }
+        // JSON 预览浮层：Esc/空格关闭
+        if panelState.jsonPreviewItem != nil {
+            if keyCode == 49 || keyCode == 53 { withAnimation { panelState.jsonPreviewItem = nil } }
             return nil
         }
         if panelState.renamingID != nil {
@@ -310,6 +324,8 @@ final class PanelController: NSObject, NSWindowDelegate {
         isAnimating = false
         panel?.orderOut(nil)
         panelState.previewItem = nil
+        panelState.qrCodeContent = nil
+        panelState.jsonPreviewItem = nil
         panelState.renamingID = nil
         panelState.addingBoard = false
         store.query = ""
@@ -317,7 +333,8 @@ final class PanelController: NSObject, NSWindowDelegate {
     }
 
     private func openSettingsFromPanel() {
-        NSApp.setActivationPolicy(.regular)
+        // 隐藏 Dock 时不强制恢复 .regular，保持 .accessory
+        if !settings.hideDockIcon { NSApp.setActivationPolicy(.regular) }
         // 在隐藏面板前先记录面板当前所在屏幕（此时面板仍可见，screen 可靠）。
         // 设置窗口应出现在“唤起它的面板”所在屏幕，而不是主屏——用面板屏幕最确定。
         let screen = self.panel?.screen
@@ -337,6 +354,8 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel?.orderOut(nil)
         stopMonitors()
         panelState.previewItem = nil
+        panelState.qrCodeContent = nil
+        panelState.jsonPreviewItem = nil
         panelState.renamingID = nil
         panelState.addingBoard = false
         store.query = ""

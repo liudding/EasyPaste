@@ -72,6 +72,11 @@ final class AppSettings {
     var boardSwitchShortcut: Shortcut = .boardSwitchDefault { didSet { save() } }
     var hasCompletedOnboarding = false { didSet { save() } }
 
+    /// 隐藏 Dock 图标。true = .accessory, false = .regular。
+    var hideDockIcon = false { didSet { save(); onDockIconVisibilityChanged?() } }
+
+    var onDockIconVisibilityChanged: (() -> Void)?
+
     var onStorageLocationChanged: (() -> Void)?
     var onHistoryLimitChanged: (() -> Void)?
     var onMaxItemsChanged: (() -> Void)?
@@ -114,13 +119,15 @@ final class AppSettings {
         var invokeShortcut: Shortcut
         var boardSwitchShortcut: Shortcut
         var hasCompletedOnboarding: Bool
+        var hideDockIcon: Bool
 
         init(panelPosition: PanelPosition, openAtLogin: Bool, iCloudSync: Bool,
              showInMenuBar: Bool, soundName: String, soundEnabled: Bool,
              alwaysPastePlainText: Bool, historyStepIndex: Int,
              maxItemsMode: MaxItemsMode, maxItemsCount: Int,
              ignoredApps: [IgnoredApp], invokeShortcut: Shortcut,
-             boardSwitchShortcut: Shortcut, hasCompletedOnboarding: Bool) {
+             boardSwitchShortcut: Shortcut, hasCompletedOnboarding: Bool,
+             hideDockIcon: Bool = false) {
             self.panelPosition = panelPosition
             self.openAtLogin = openAtLogin
             self.iCloudSync = iCloudSync
@@ -135,6 +142,7 @@ final class AppSettings {
             self.invokeShortcut = invokeShortcut
             self.boardSwitchShortcut = boardSwitchShortcut
             self.hasCompletedOnboarding = hasCompletedOnboarding
+            self.hideDockIcon = hideDockIcon
         }
 
         init(from decoder: Decoder) throws {
@@ -153,6 +161,7 @@ final class AppSettings {
             invokeShortcut = try c.decode(Shortcut.self, forKey: .invokeShortcut)
             boardSwitchShortcut = try c.decode(Shortcut.self, forKey: .boardSwitchShortcut)
             hasCompletedOnboarding = try c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
+            hideDockIcon = try c.decodeIfPresent(Bool.self, forKey: .hideDockIcon) ?? false
         }
     }
 
@@ -173,6 +182,7 @@ final class AppSettings {
         invokeShortcut = snapshot.invokeShortcut
         boardSwitchShortcut = snapshot.boardSwitchShortcut
         hasCompletedOnboarding = snapshot.hasCompletedOnboarding
+        hideDockIcon = snapshot.hideDockIcon
     }
 
     func save() {
@@ -182,7 +192,8 @@ final class AppSettings {
                                 maxItemsMode: maxItemsMode, maxItemsCount: maxItemsCount,
                                 ignoredApps: ignoredApps, invokeShortcut: invokeShortcut,
                                 boardSwitchShortcut: boardSwitchShortcut,
-                                hasCompletedOnboarding: hasCompletedOnboarding)
+                                hasCompletedOnboarding: hasCompletedOnboarding,
+                                hideDockIcon: hideDockIcon)
         UserDefaults.standard.set(try? JSONEncoder().encode(snapshot), forKey: defaultsKey)
     }
 

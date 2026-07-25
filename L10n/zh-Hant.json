@@ -192,5 +192,20 @@
     "space_key": "空白鍵",
     "preview_hint": "空白鍵",
     "default_board.ideas": "靈感",
-    "default_board.work": "工作"
+    "default_board.work": "工作",
+
+    "clip.menu.export_txt": "匯出為 TXT",
+    "clip.menu.export_rtf": "匯出為 RTF",
+    "clip.menu.qr_code": "QR 碼",
+    "clip.menu.save_as": "另存為…",
+    "clip.menu.send_email": "傳送郵件",
+    "clip.menu.paste_as": "貼上為",
+    "clip.menu.hex": "Hex",
+    "clip.menu.rgb": "RGB",
+    "clip.menu.hsl": "HSL",
+    "clip.menu.open_link": "開啟連結",
+    "clip.menu.json_preview": "JSON 預覽",
+    "settings.hide_dock_icon": "隱藏 Dock 圖示",
+    "clip.preview.json_error": "JSON 解析失敗，顯示原始文字",
+    "clip.preview.qr_too_long": "內容過長，QR 碼可能難以掃描"
 }

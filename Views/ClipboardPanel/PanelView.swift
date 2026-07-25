@@ -5,6 +5,7 @@ import SwiftUI
 struct PanelView: View {
     @Bindable var store: ClipboardStore
     let clipboard: ClipboardService
+    let clipAction: ClipActionService
     @Bindable var settings: AppSettings
     @Bindable var panelState: PanelState
     let onOpenSettings: () -> Void
@@ -48,6 +49,8 @@ struct PanelView: View {
             .shadow(color: .black.opacity(colorScheme == .dark ? 0.45 : 0.18), radius: 24, y: 10)
 
             if let item = panelState.previewItem { previewOverlay(item) }
+            if let qrContent = panelState.qrCodeContent { qrCodeOverlay(qrContent) }
+            if let jsonItem = panelState.jsonPreviewItem { jsonPreviewOverlay(jsonItem) }
         }
         .padding(8)
         .preferredColorScheme(themeStore.effectiveColorScheme)
@@ -161,7 +164,18 @@ struct PanelView: View {
             onRenameCommit: { id, title in store.rename(id, title: title); panelState.renamingID = nil },
             onDelete: { store.delete([$0.id]) },
             onPin: { store.move($0.id, to: $1) },
-            onPreview: { item in withAnimation { panelState.previewItem = item } }
+            onPreview: { item in withAnimation { panelState.previewItem = item } },
+            onShowQRCode: { content in withAnimation { panelState.qrCodeContent = content } },
+            onExportText: { clipAction.exportAsText($0) },
+            onExportRTF: { clipAction.exportAsRTF($0) },
+            onExportImage: { clipAction.exportAsImage($0) },
+            onSendEmail: { clipAction.sendEmail(to: $0) },
+            onPasteColorAs: { clip, format in
+                clipAction.pasteColorAs(clip, format: format)
+                panelState.hidePanel()
+            },
+            onOpenURL: { clipAction.openURL($0) },
+            onPreviewJSON: { clip in withAnimation { panelState.jsonPreviewItem = clip } }
         )
         .background(
             GeometryReader { geo in
@@ -231,5 +245,29 @@ struct PanelView: View {
                 Text(item.text ?? "").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
             }
         }
+    }
+
+    // MARK: QR code overlay
+
+    private func qrCodeOverlay(_ content: String) -> some View {
+        ZStack {
+            Color.black.opacity(0.55).clipShape(RoundedRectangle(cornerRadius: 16))
+                .onTapGesture { withAnimation { panelState.qrCodeContent = nil } }
+            QRCodeView(content: content, onClose: { withAnimation { panelState.qrCodeContent = nil } })
+                .onTapGesture {} // 阻止点击浮层内容时关闭
+        }
+        .transition(.opacity)
+    }
+
+    // MARK: JSON preview overlay
+
+    private func jsonPreviewOverlay(_ item: Clip) -> some View {
+        ZStack {
+            Color.black.opacity(0.55).clipShape(RoundedRectangle(cornerRadius: 16))
+                .onTapGesture { withAnimation { panelState.jsonPreviewItem = nil } }
+            JSONPreviewView(clip: item, onClose: { withAnimation { panelState.jsonPreviewItem = nil } })
+                .onTapGesture {} // 阻止点击浮层内容时关闭
+        }
+        .transition(.opacity)
     }
 }

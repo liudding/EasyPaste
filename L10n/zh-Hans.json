@@ -192,5 +192,20 @@
     "space_key": "空格",
     "preview_hint": "空格",
     "default_board.ideas": "灵感",
-    "default_board.work": "工作"
+    "default_board.work": "工作",
+
+    "clip.menu.export_txt": "导出为 TXT",
+    "clip.menu.export_rtf": "导出为 RTF",
+    "clip.menu.qr_code": "二维码",
+    "clip.menu.save_as": "另存为…",
+    "clip.menu.send_email": "发送邮件",
+    "clip.menu.paste_as": "粘贴为",
+    "clip.menu.hex": "Hex",
+    "clip.menu.rgb": "RGB",
+    "clip.menu.hsl": "HSL",
+    "clip.menu.open_link": "打开链接",
+    "clip.menu.json_preview": "JSON 预览",
+    "settings.hide_dock_icon": "隐藏 Dock 图标",
+    "clip.preview.json_error": "JSON 解析失败，显示原始文本",
+    "clip.preview.qr_too_long": "内容过长，二维码可能难以扫描"
 }

@@ -54,6 +54,7 @@ struct PanelHeaderView: View {
                 TextField(L10n.searchPlaceholder, text: $store.query)
                     .textFieldStyle(.plain).font(.system(size: 13))
                     .focused($searchFocused).frame(width: 170)
+                    .focusEffectDisabled()
                 if !store.query.isEmpty {
                     Button { store.query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }.buttonStyle(.plain)
                 }
@@ -70,6 +71,7 @@ struct PanelHeaderView: View {
                     .frame(width: 28, height: 28).contentShape(.rect)
             }
             .buttonStyle(.plain).foregroundStyle(.secondary)
+            .focusEffectDisabled()
         }
     }
 

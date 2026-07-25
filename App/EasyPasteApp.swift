@@ -37,6 +37,7 @@ final class AppServices {
     let clipboard = ClipboardService()
     let shortcut = GlobalShortcutService()
     let panelState = PanelState()
+    let clipAction: ClipActionService
     private let onboarding = OnboardingWindowController()
     private(set) var panel: PanelController?
     /// 设置窗口控制器：直接用 AppKit 托管 SettingsView。
@@ -47,10 +48,12 @@ final class AppServices {
 
     init() {
         store = ClipboardStore()
+        clipAction = ClipActionService(clipboard: clipboard, panelState: panelState)
     }
 
     func boot() {
-        NSApp.setActivationPolicy(.regular)
+        // 根据 hideDockIcon 设置初始 Dock 策略
+        NSApp.setActivationPolicy(settings.hideDockIcon ? .accessory : .regular)
         clipboard.settings = settings
         clipboard.onItem = { [weak self] item in self?.store.add(item) }
         clipboard.start()
@@ -70,7 +73,7 @@ final class AppServices {
         let bundleIDs = store.items.compactMap { $0.sourceApplicationBundleID }
         AppIconCache.shared.warm(bundleIDs: bundleIDs)
 
-        panel = PanelController(store: store, clipboard: clipboard, settings: settings, panelState: panelState)
+        panel = PanelController(store: store, clipboard: clipboard, settings: settings, panelState: panelState, clipAction: clipAction)
         panel?.openSettingsHandler = { [weak self] screen in self?.openSettingsWindow(on: screen) }
 
         // 性能：预建面板与其 SwiftUI 视图树（离屏、不显示）并触发一次布局，
@@ -90,6 +93,11 @@ final class AppServices {
             guard let self else { return }
             self.store.maxItems = self.settings.maxItems
             self.store.pruneExpired()
+        }
+        // Dock 图标可见性变化回调
+        settings.onDockIconVisibilityChanged = { [weak self] in
+            guard let self else { return }
+            NSApp.setActivationPolicy(self.settings.hideDockIcon ? .accessory : .regular)
         }
 
         registerShortcut()
@@ -115,7 +123,8 @@ final class AppServices {
     /// 不依赖 SwiftUI Settings 场景 / openSettings 环境动作（只对已打开过场景的用户有效），
     /// 也不依赖 macOS 14+ 已移除的 showSettingsWindow: 选择器。
     func openSettingsWindow(on screen: NSScreen? = nil) {
-        NSApp.setActivationPolicy(.regular)
+        // 隐藏 Dock 时不强制恢复 .regular，保持 .accessory
+        if !settings.hideDockIcon { NSApp.setActivationPolicy(.regular) }
         NSApp.activate(ignoringOtherApps: true)
 
         let window: NSWindow

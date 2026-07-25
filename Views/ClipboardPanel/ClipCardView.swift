@@ -25,6 +25,15 @@ struct ClipCardView: View {
     let onDelete: (Clip) -> Void
     let onPin: (Clip, UUID?) -> Void
     let onPreview: (Clip) -> Void
+    // 类型专属操作回调
+    let onShowQRCode: (String) -> Void
+    let onExportText: (Clip) -> Void
+    let onExportRTF: (Clip) -> Void
+    let onExportImage: (Clip) -> Void
+    let onSendEmail: (String) -> Void
+    let onPasteColorAs: (Clip, ColorPasteFormat) -> Void
+    let onOpenURL: (URL) -> Void
+    let onPreviewJSON: (Clip) -> Void
 
     @State private var draftTitle = ""
     @FocusState private var renameFocused: Bool
@@ -289,9 +298,13 @@ struct ClipCardView: View {
         return luminance > 0.5
     }
 
-    // MARK: Context menu & drag provider (unchanged)
+    // MARK: Context menu & drag provider
 
     @ViewBuilder private var contextMenu: some View {
+        // ── Leading type-specific items (email, JSON, open link, color Paste as) ──
+        leadingTypeSpecificMenu
+        if hasLeadingTypeSpecificMenu { Divider() }
+        // ── Universal items ──
         Button { onPaste(item) } label: { menuRow(String(format: L10n.pasteToApp, targetName ?? ""), hint: "↩") }
         Button { onPastePlain(item) } label: { menuRow(L10n.pastePlainText, hint: "⇧↩") }
         Button { onCopy(item) } label: { menuRow(L10n.copyAction, hint: "⌘C") }
@@ -308,8 +321,112 @@ struct ClipCardView: View {
         }
         Divider()
         Button { onPreview(item) } label: { menuRow(L10n.preview, hint: L10n.previewHint) }
+        // ── Trailing type-specific items (QR, export, save as) ──
+        if hasTrailingTypeSpecificMenu { Divider() }
+        trailingTypeSpecificMenu
         Divider()
         Button(L10n.delete, role: .destructive) { onDelete(item) }
+    }
+
+    /// Whether the leading type-specific menu has items (used to decide divider visibility).
+    private var hasLeadingTypeSpecificMenu: Bool {
+        switch item.kind {
+        case .text:
+            switch item.subkind {
+            case .email: return true
+            case .json: return true
+            default: return false
+            }
+        case .color: return true
+        case .link: return true  // Open Link is leading
+        default: return false
+        }
+    }
+
+    /// Whether the trailing type-specific menu has items (used to decide divider visibility).
+    private var hasTrailingTypeSpecificMenu: Bool {
+        switch item.kind {
+        case .text:
+            let hasContent = !(item.text?.isEmpty ?? true)
+            switch item.subkind {
+            case .richText: return hasContent
+            case nil: return hasContent
+            default: return false
+            }
+        case .image: return item.imageData != nil
+        case .link: return !(item.url?.absoluteString.isEmpty ?? true)  // QR Code is trailing
+        default: return false
+        }
+    }
+
+    /// Leading type-specific items: stay at the TOP of the menu (before universal items).
+    /// - text/email: Send Email
+    /// - text/json: JSON Preview
+    /// - link: Open Link
+    /// - color: "Paste as" submenu (hex / rgb / hsl)
+    @ViewBuilder private var leadingTypeSpecificMenu: some View {
+        switch item.kind {
+        case .text:
+            switch item.subkind {
+            case .email:
+                Button(L10n.menuSendEmail) { onSendEmail(item.text ?? "") }
+            case .json:
+                if !(item.text?.isEmpty ?? true) {
+                    Button(L10n.menuJSONPreview) { onPreviewJSON(item) }
+                }
+            default:
+                EmptyView()
+            }
+        case .color:
+            Menu(L10n.menuPasteAs) {
+                Button(L10n.menuHex) { onPasteColorAs(item, .hex) }
+                Button(L10n.menuRGB) { onPasteColorAs(item, .rgb) }
+                Button(L10n.menuHSL) { onPasteColorAs(item, .hsl) }
+            }
+        case .link:
+            if let url = item.url {
+                Button(L10n.menuOpenLink) { onOpenURL(url) }
+            }
+        default:
+            EmptyView()
+        }
+    }
+
+    /// Trailing type-specific items: move to the BOTTOM (after Preview, before Delete).
+    /// - text/richText: Export TXT, Export RTF, QR Code
+    /// - text/nil: Export TXT, QR Code
+    /// - image: Save As…
+    /// - link: QR Code
+    @ViewBuilder private var trailingTypeSpecificMenu: some View {
+        switch item.kind {
+        case .text:
+            let hasContent = !(item.text?.isEmpty ?? true)
+            switch item.subkind {
+            case .richText:
+                if hasContent {
+                    Button(L10n.menuExportTxt) { onExportText(item) }
+                    Button(L10n.menuExportRtf) { onExportRTF(item) }
+                    Button(L10n.menuQRCode) { onShowQRCode(item.text ?? "") }
+                }
+            case nil:
+                if hasContent {
+                    Button(L10n.menuExportTxt) { onExportText(item) }
+                    Button(L10n.menuQRCode) { onShowQRCode(item.text ?? "") }
+                }
+            default:
+                EmptyView()
+            }
+        case .image:
+            if item.imageData != nil {
+                Button(L10n.menuSaveAs) { onExportImage(item) }
+            }
+        case .link:
+            if !(item.url?.absoluteString.isEmpty ?? true) {
+                Button(L10n.menuQRCode) { onShowQRCode(item.url?.absoluteString ?? item.text ?? "") }
+            }
+        default:
+            EmptyView()
+        }
     }
 
     private func menuRow(_ title: String, hint: String) -> some View {

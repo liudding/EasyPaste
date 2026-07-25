@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:easypaste}",
+            "name": "Debug EasyPaste",
+            "target": "EasyPaste",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug EasyPaste"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:easypaste}",
+            "name": "Release EasyPaste",
+            "target": "EasyPaste",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release EasyPaste"
+        }
+    ]
+}

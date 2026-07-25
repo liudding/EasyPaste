@@ -99,6 +99,7 @@ struct SettingsView: View {
                 Toggle(L10n.openAtLogin, isOn: $settings.openAtLogin)
                 Toggle(L10n.icloudSync, isOn: $settings.iCloudSync)
                 Toggle(L10n.showInMenuBar, isOn: $settings.showInMenuBar)
+                Toggle(L10n.hideDockIconSetting, isOn: $settings.hideDockIcon)
                 Picker(L10n.pasteSound, selection: $settings.soundName) {
                     Text(L10n.soundNone).tag("")
                     ForEach(AppSettings.soundNames, id: \.self) { Text($0).tag($0) }

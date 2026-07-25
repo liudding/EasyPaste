@@ -50,6 +50,14 @@ enum ClipKind: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// text 类型的子类型，用于 Context Menu 分化。
+/// nil 表示普通纯文本。
+enum ClipSubkind: String, Codable {
+    case richText     // 富文本（含 RTF/RTFD/HTML 原始格式数据）
+    case email        // 邮箱地址
+    case json         // JSON 格式文本
+}
+
 struct Clip: Codable, Identifiable, Hashable {
     var id: UUID
     var kind: ClipKind
@@ -58,9 +66,9 @@ struct Clip: Codable, Identifiable, Hashable {
     var title: String?
 
     var createdAt: Date
-    
+
     var text: String?
-    
+
     var url: URL?
     /// 从 link 所对应的网页中提取的 title / description，用于卡片 body 显示。
     var linkTitle: String?
@@ -68,7 +76,7 @@ struct Clip: Codable, Identifiable, Hashable {
 
     var fileURLs: [URL]?
     var imageData: Data?
-    
+
     var isFavorite: Bool
     var sourceApplication: String?
     var sourceApplicationBundleID: String?
@@ -87,6 +95,14 @@ struct Clip: Codable, Identifiable, Hashable {
     var utiData: Data?
     /// 剪贴板上所有可用 UTI 类型及其原始数据，粘贴时全部写回以保真还原来源格式。
     var allPasteboardData: [UTIEntry]?
+
+    /// text 类型的子类型（richText / email / json），nil = 普通纯文本。
+    /// 在 makeItem() 中由 ClipTypeDetector 检测并持久化。
+    var subkind: ClipSubkind? = nil
+
+    /// 基于实际内容的 SHA-256 hash，用于去重。
+    /// 由 ClipTypeDetector.computeContentHash() 在创建时计算。
+    var contentHash: String? = nil
 
     init(kind: ClipKind, text: String? = nil, url: URL? = nil, fileURLs: [URL]? = nil, imageData: Data? = nil, uti: String? = nil, utiData: Data? = nil, allPasteboardData: [UTIEntry]? = nil, contentColor: CodableColor? = nil) {
         self.id = UUID(); self.kind = kind; self.createdAt = .now
