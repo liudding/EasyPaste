@@ -7,6 +7,7 @@ struct OnboardingView: View {
     let onComplete: () -> Void
     @State private var currentPage = 0
     @State private var direction: Int = 1  // 1 = forward, -1 = backward
+    @State private var l10nStore = L10nStore.shared
 
     private let pages: [OnboardingPage] = [
         .welcome,
@@ -18,6 +19,7 @@ struct OnboardingView: View {
     ]
 
     var body: some View {
+        let _ = l10nStore.version
         ZStack {
             // 背景
             backgroundGradient

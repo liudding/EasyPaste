@@ -25,12 +25,14 @@ struct PanelHeaderView: View {
     @State private var chipFrames: [UUID: CGRect] = [:]
     /// 芯片间距（与下方 HStack spacing 同源，供重排布局推导）。
     private let chipSpacing: CGFloat = 8
+    @State private var l10nStore = L10nStore.shared
 
     private var headerTitle: String {
         store.selectedBoardID.flatMap { id in store.boards.first { $0.id == id }?.name } ?? L10n.clipboardTitle
     }
 
     var body: some View {
+        let _ = l10nStore.version
         HStack(spacing: 10) {
             searchControl
             Text(headerTitle).font(.system(size: 15, weight: .bold)).lineLimit(1).fixedSize()

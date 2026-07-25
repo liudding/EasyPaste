@@ -24,8 +24,21 @@
 	<string>1</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>zh-Hans</string>
+		<string>zh-Hant</string>
+		<string>ja</string>
+		<string>ko</string>
+		<string>fr</string>
+		<string>es</string>
+		<string>pt</string>
+		<string>ru</string>
+		<string>de</string>
+	</array>
 	<key>NSAccessibilityUsageDescription</key>
-	<string>EasyPaste 需要辅助功能权限来模拟键盘粘贴操作，将剪贴板内容粘贴到目标应用。</string>
+	<string>EasyPaste needs accessibility permission to simulate keyboard paste, allowing clipboard content to be pasted into the target application.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2025 EasyPaste. All rights reserved.</string>
 	<key>NSPrincipalClass</key>

@@ -30,6 +30,7 @@ struct ClipCardView: View {
 
     @State private var draftTitle = ""
     @FocusState private var renameFocused: Bool
+    @State private var l10nStore = L10nStore.shared
 
     /// 卡片头部区背景色：优先 pin board 色 → app icon 提取色 → 类型默认色。
     /// 色值类型 header 不使用解析色值本身，依然走 app icon 色 → 默认色逻辑。
@@ -81,6 +82,7 @@ struct ClipCardView: View {
     }
 
     var body: some View {
+        let _ = l10nStore.version
         VStack(alignment: .leading, spacing: 0) {
             // ── 头部区：flat color 背景 + 类型 icon + 标题 + time ago + app icon ──
             cardHeader
@@ -266,7 +268,7 @@ struct ClipCardView: View {
             Button(L10n.unpin) { onPin(item, nil) }
         }
         Divider()
-        Button { onPreview(item) } label: { menuRow(L10n.preview, hint: "空格") }
+        Button { onPreview(item) } label: { menuRow(L10n.preview, hint: L10n.previewHint) }
         Divider()
         Button(L10n.delete, role: .destructive) { onDelete(item) }
     }

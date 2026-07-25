@@ -6,12 +6,14 @@ struct ShortcutRecorderView: View {
     @Binding var shortcut: Shortcut
     @State private var recording = false
     @State private var monitor: Any?
+    @State private var l10nStore = L10nStore.shared
 
     var body: some View {
+        let _ = l10nStore.version
         Button {
             recording ? stop() : start()
         } label: {
-            Text(recording ? "按下快捷键…" : shortcut.displayString)
+            Text(recording ? L10n.shortcutRecording : shortcut.displayString)
                 .frame(minWidth: 110)
                 .padding(.horizontal, 10).padding(.vertical, 4)
                 .background(recording ? .orange.opacity(0.3) : .white.opacity(0.08), in: .rect(cornerRadius: 6))

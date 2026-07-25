@@ -6,7 +6,7 @@ import SwiftUI
 @Observable @MainActor
 final class ClipboardStore {
     private(set) var items: [Clip] = []
-    private(set) var boards: [Pasteboard] = [Pasteboard(name: "灵感", color: "orange"), Pasteboard(name: "工作", color: "blue")]
+    private(set) var boards: [Pasteboard] = [Pasteboard(name: L10n.defaultBoardIdeas, color: "orange"), Pasteboard(name: L10n.defaultBoardWork, color: "blue")]
     private(set) var rules: [AutomationRule] = []
     var selectedBoardID: UUID?
     var selectedKind: ClipKind?
@@ -69,7 +69,7 @@ final class ClipboardStore {
             boards = []
         }
         if boards.isEmpty {
-            let defaults = [Pasteboard(name: "灵感", color: "orange"), Pasteboard(name: "工作", color: "blue")]
+            let defaults = [Pasteboard(name: L10n.defaultBoardIdeas, color: "orange"), Pasteboard(name: L10n.defaultBoardWork, color: "blue")]
             boards = defaults
             _ = try? dbQueue.write { db in
                 for b in defaults { try PasteboardRow(b).insert(db) }

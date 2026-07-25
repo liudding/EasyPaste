@@ -7,9 +7,11 @@ struct SettingsView: View {
     let store: ClipboardStore
     let onInvokeShortcutChanged: (Shortcut) -> Void
     @State private var showClearConfirm = false
-    @State private var selectedLocale: L10n.Locale = L10n.current
+    @State private var selectedLocale: L10n.Locale = L10nStore.shared.locale
+    @State private var l10nStore = L10nStore.shared
 
     var body: some View {
+        let _ = l10nStore.version
         TabView {
             general.tabItem { Label(L10n.tabGeneral, systemImage: "gear") }
             privacy.tabItem { Label(L10n.tabPrivacy, systemImage: "hand.raised") }
@@ -18,7 +20,7 @@ struct SettingsView: View {
         }
         .padding(20)
         .frame(width: 480, height: 440)
-        .onAppear { selectedLocale = L10n.current }
+        .onAppear { selectedLocale = L10nStore.shared.locale }
     }
 
     // MARK: General
@@ -35,9 +37,9 @@ struct SettingsView: View {
                         Text(locale.name).tag(locale)
                     }
                 }
-                .pickerStyle(.radioGroup)
+                .pickerStyle(.menu)
                 .onChange(of: selectedLocale) { _, newValue in
-                    L10n.current = newValue
+                    L10nStore.shared.locale = newValue
                 }
             } header: {
                 Text(L10n.sectionPanel)

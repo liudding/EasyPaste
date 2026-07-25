@@ -17,10 +17,12 @@ struct PanelView: View {
     @State private var viewportExtent: CGFloat = 0
     /// 卡片滚入视口后额外露出的相邻卡片宽度（pt）。
     private let neighborPeek: CGFloat = 36
+    @State private var l10nStore = L10nStore.shared
 
     private var isVertical: Bool { settings.panelPosition.isVertical }
 
     var body: some View {
+        let _ = l10nStore.version
         ZStack {
             VStack(spacing: 0) {
                 PanelHeaderView(store: store, settings: settings, panelState: panelState, onOpenSettings: onOpenSettings, searchFocused: $searchFocused, boardFieldFocused: $boardFieldFocused)

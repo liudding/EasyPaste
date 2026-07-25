@@ -38,7 +38,7 @@ struct Shortcut: Codable, Equatable {
 
     static func keyName(for keyCode: UInt16) -> String {
         let specials: [UInt16: String] = [
-            36: "↩", 76: "↩", 48: "⇥", 49: "空格", 51: "⌫", 53: "⎋",
+            36: "↩", 76: "↩", 48: "⇥", 49: L10n.spaceKey, 51: "⌫", 53: "⎋",
             117: "⌦", 115: "↖", 119: "↘", 116: "⇞", 121: "⇟",
             123: "←", 124: "→", 125: "↓", 126: "↑"
         ]

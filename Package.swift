@@ -27,7 +27,8 @@ let package = Package(
             ],
             path: ".",
             exclude: ["Tests", "script", ".codex", ".git", "dist"],
-            sources: ["App", "Models", "Stores", "Services", "Support", "Views"]
+            sources: ["App", "Models", "Stores", "Services", "Support", "Views"],
+            resources: [.copy("L10n")]
         ),
         .testTarget(
             name: "EasyPasteTests",
