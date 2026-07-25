@@ -34,6 +34,7 @@ struct ClipCardView: View {
     let onPasteColorAs: (Clip, ColorPasteFormat) -> Void
     let onOpenURL: (URL) -> Void
     let onPreviewJSON: (Clip) -> Void
+    let settings: AppSettings
 
     @State private var draftTitle = ""
     @FocusState private var renameFocused: Bool
@@ -305,10 +306,10 @@ struct ClipCardView: View {
         leadingTypeSpecificMenu
         if hasLeadingTypeSpecificMenu { Divider() }
         // ── Universal items ──
-        Button { onPaste(item) } label: { menuRow(String(format: L10n.pasteToApp, targetName ?? ""), hint: "↩") }
-        Button { onPastePlain(item) } label: { menuRow(L10n.pastePlainText, hint: "⇧↩") }
-        Button { onCopy(item) } label: { menuRow(L10n.copyAction, hint: "⌘C") }
-        Button(L10n.rename) { onRename(item) }
+        Button { onPaste(item) } label: { menuRow(String(format: L10n.pasteToApp, targetName ?? ""), hint: shortcutHint(for: "paste")) }
+        Button { onPastePlain(item) } label: { menuRow(L10n.pastePlainText, hint: shortcutHint(for: "paste_plain")) }
+        Button { onCopy(item) } label: { menuRow(L10n.copyAction, hint: shortcutHint(for: "copy")) }
+        Button(L10n.rename) { onRename(item) }.keyboardShortcut(.return, modifiers: .command)
         Divider()
         Menu(L10n.pinTo) {
             ForEach(boards) { board in
@@ -320,12 +321,12 @@ struct ClipCardView: View {
             Button(L10n.unpin) { onPin(item, nil) }
         }
         Divider()
-        Button { onPreview(item) } label: { menuRow(L10n.preview, hint: L10n.previewHint) }
+        Button { onPreview(item) } label: { menuRow(L10n.preview, hint: shortcutHint(for: "preview")) }
         // ── Trailing type-specific items (QR, export, save as) ──
         if hasTrailingTypeSpecificMenu { Divider() }
         trailingTypeSpecificMenu
         Divider()
-        Button(L10n.delete, role: .destructive) { onDelete(item) }
+        Button(L10n.delete, role: .destructive) { onDelete(item) }.keyboardShortcut(.delete, modifiers: [])
     }
 
     /// Whether the leading type-specific menu has items (used to decide divider visibility).
@@ -369,7 +370,7 @@ struct ClipCardView: View {
         case .text:
             switch item.subkind {
             case .email:
-                Button(L10n.menuSendEmail) { onSendEmail(item.text ?? "") }
+                Button(L10n.menuSendEmail) { onSendEmail(item.text ?? "") }.keyboardShortcut(.return, modifiers: .command)
             case .json:
                 if !(item.text?.isEmpty ?? true) {
                     Button(L10n.menuJSONPreview) { onPreviewJSON(item) }
@@ -404,33 +405,43 @@ struct ClipCardView: View {
             switch item.subkind {
             case .richText:
                 if hasContent {
-                    Button(L10n.menuExportTxt) { onExportText(item) }
-                    Button(L10n.menuExportRtf) { onExportRTF(item) }
-                    Button(L10n.menuQRCode) { onShowQRCode(item.text ?? "") }
+                    Button(L10n.menuExportTxt) { onExportText(item) }.keyboardShortcut("e", modifiers: .command)
+                    Button(L10n.menuExportRtf) { onExportRTF(item) }.keyboardShortcut("e", modifiers: [.command, .shift])
+                    Button(L10n.menuQRCode) { onShowQRCode(item.text ?? "") }.keyboardShortcut("q", modifiers: .command)
                 }
             case nil:
                 if hasContent {
-                    Button(L10n.menuExportTxt) { onExportText(item) }
-                    Button(L10n.menuQRCode) { onShowQRCode(item.text ?? "") }
+                    Button(L10n.menuExportTxt) { onExportText(item) }.keyboardShortcut("e", modifiers: .command)
+                    Button(L10n.menuQRCode) { onShowQRCode(item.text ?? "") }.keyboardShortcut("q", modifiers: .command)
                 }
             default:
                 EmptyView()
             }
         case .image:
             if item.imageData != nil {
-                Button(L10n.menuSaveAs) { onExportImage(item) }
+                Button(L10n.menuSaveAs) { onExportImage(item) }.keyboardShortcut("s", modifiers: .command)
             }
         case .link:
             if !(item.url?.absoluteString.isEmpty ?? true) {
-                Button(L10n.menuQRCode) { onShowQRCode(item.url?.absoluteString ?? item.text ?? "") }
+                Button(L10n.menuQRCode) { onShowQRCode(item.url?.absoluteString ?? item.text ?? "") }.keyboardShortcut("q", modifiers: .command)
             }
         default:
             EmptyView()
         }
     }
 
+    /// 获取指定动作的快捷键提示字符串。
+    private func shortcutHint(for actionID: String) -> String {
+        guard let config = settings.contextMenuShortcuts[actionID],
+              config.enabled,
+              let shortcut = config.shortcut else {
+            return ""
+        }
+        return shortcut.displayString
+    }
+    
     private func menuRow(_ title: String, hint: String) -> some View {
-        HStack { Text(title); Spacer(); Text(hint).foregroundStyle(.secondary) }
+        HStack { Text(title); Spacer(); if !hint.isEmpty { Text(hint).foregroundStyle(.secondary) } }
     }
 
     private func makeProvider() -> NSItemProvider {

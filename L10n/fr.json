@@ -10,32 +10,26 @@
     "language.portuguese": "Português",
     "language.russian": "Русский",
     "language.german": "Deutsch",
-
     "menu.show_panel": "Afficher le panneau",
     "menu.check_updates": "Rechercher les mises à jour…",
     "menu.settings": "Préférences…",
     "menu.about": "À propos d'EasyPaste",
     "menu.exit": "Quitter EasyPaste",
-
     "about.title": "EasyPaste",
     "about.description": "Version 1.0\n\n⌘⇧V pour ouvrir le panneau, double-clic ou Entrée pour coller dans l'application précédente.",
     "about.button": "OK",
-
     "settings.tab_general": "Général",
     "settings.tab_privacy": "Confidentialité",
     "settings.tab_shortcuts": "Raccourcis",
     "settings.tab_updates": "Mises à jour",
-
     "settings.language_section": "Langue",
     "settings.language_description": "Les modifications prennent effet immédiatement.",
-
     "theme.section": "Thème",
     "theme.appearance": "Apparence",
     "theme.auto": "Auto",
     "theme.light": "Clair",
     "theme.dark": "Sombre",
     "theme.description": "Les modifications prennent effet immédiatement.",
-
     "settings.section_panel": "Panneau",
     "settings.panel_position": "Position du panneau",
     "settings.section_general": "Général",
@@ -55,19 +49,16 @@
     "settings.clear_confirm_action": "Effacer",
     "settings.clear_confirm_cancel": "Annuler",
     "settings.clear_confirm_message": "Cette action est irréversible.",
-
     "settings.ignored_apps_header": "Ignorer le contenu de ces applications",
     "settings.no_ignored_apps": "Aucune application ignorée",
     "settings.add_app": "Ajouter une application…",
     "settings.ignored_apps_footer": "Le contenu copié dans ces applications ne sera pas enregistré dans l'historique.",
     "settings.select_app_dialog_title": "Sélectionner l'application à ignorer",
-
     "settings.invoke_panel_label": "Afficher le panneau",
     "settings.switch_board_shortcut_label": "Changer de tableau (dans le panneau)",
     "settings.tab_switch_board_label": "Tab pour changer de tableau",
     "settings.tab_switch_board_help": "Utilisez Tab / Shift+Tab pour parcourir les tableaux en avant / arrière.",
     "settings.shortcuts_footer": "Cliquez sur le bouton puis appuyez sur le nouveau raccourci. Échap pour annuler. Effet immédiat.",
-
     "settings.check_updates_button": "Rechercher les mises à jour…",
     "settings.current_version": "Version actuelle",
     "settings.unknown_version": "Inconnu",
@@ -79,7 +70,6 @@
     "settings.update_config_text": "Après avoir déployé appcast.xml, décommentez SUFeedURL et SUPublicEDKey dans Info.plist pour activer les mises à jour.",
     "settings.auto_update": "Mise à jour automatique",
     "settings.update_engine": "Moteur de mise à jour",
-
     "panel.clipboard_title": "Presse-papiers",
     "panel.all_boards": "Tout",
     "panel.search_placeholder": "Rechercher dans le presse-papiers",
@@ -89,7 +79,6 @@
     "panel.sound_off": "Son désactivé",
     "panel.empty_state": "Aucun contenu dans le presse-papiers",
     "panel.preview_close_hint": "Espace / Échap pour fermer",
-
     "clip.paste_to_app": "Coller dans %@",
     "clip.paste_plain_text": "Coller en texte brut",
     "clip.copy": "Copier",
@@ -100,7 +89,6 @@
     "clip.delete": "Supprimer",
     "clip.cannot_preview": "Aperçu indisponible",
     "clip.count_suffix": " car.",
-
     "clip.kind.text": "Texte",
     "clip.kind.link": "Lien",
     "clip.kind.image": "Image",
@@ -112,7 +100,6 @@
     "clip.default_file": "Fichier",
     "clip.default_color": "Couleur",
     "clip.files_count": "%d fichiers",
-
     "time.just_now": "à l'instant",
     "time.minutes_ago": " min",
     "time.hours_ago": " h",
@@ -120,7 +107,6 @@
     "time.weeks_ago": " semaine(s)",
     "time.months_ago": " mois",
     "time.years_ago": " an(s)",
-
     "history.1d": "1 jour",
     "history.2d": "2 jours",
     "history.3d": "3 jours",
@@ -143,18 +129,14 @@
     "history.11mo": "11 mois",
     "history.1y": "1 an",
     "history.unlimited": "Illimité",
-
     "settings.position_bottom": "Bas",
     "settings.position_top": "Haut",
     "settings.position_left": "Gauche",
     "settings.position_right": "Droite",
-
     "settings.max_items_limited": "Limité",
     "settings.max_items_unlimited": "Illimité",
-
     "privacy.keychain_access": "Accès au trousseau",
     "privacy.passwords": "Mots de passe",
-
     "onboarding.welcome_title": "Bienvenue sur EasyPaste",
     "onboarding.welcome_desc": "Votre assistant presse-papiers intelligent.\nSauvegarde automatique, collage rapide, organisation intelligente —\nchaque copie reste bien rangée.",
     "onboarding.auto_capture_title": "Capture automatique",
@@ -170,7 +152,6 @@
     "onboarding.start_using": "Commencer",
     "onboarding.next": "Suivant",
     "onboarding.previous": "Précédent",
-
     "onboarding.feature_auto_save": "Sauvegarde automatique de l'historique",
     "onboarding.feature_cross_app": "Collage rapide entre applications",
     "onboarding.feature_smart_org": "Catégorisation et recherche intelligentes",
@@ -189,13 +170,11 @@
     "onboarding.hint_invoke_panel": "Ouvrir le panneau",
     "onboarding.hint_preview": "Aperçu",
     "onboarding.hint_type_search": "Rechercher",
-
     "shortcut.recording": "Appuyez sur des touches…",
     "space_key": "Espace",
     "preview_hint": "Espace",
     "default_board.ideas": "Idées",
     "default_board.work": "Travail",
-
     "clip.menu.export_txt": "Exporter en TXT",
     "clip.menu.export_rtf": "Exporter en RTF",
     "clip.menu.qr_code": "Code QR",
@@ -209,5 +188,7 @@
     "clip.menu.json_preview": "Aperçu JSON",
     "settings.hide_dock_icon": "Masquer l'icône du Dock",
     "clip.preview.json_error": "Échec de l'analyse JSON, affichage du texte brut",
-    "clip.preview.qr_too_long": "Le contenu est trop long, le code QR peut être difficile à scanner"
+    "clip.preview.qr_too_long": "Le contenu est trop long, le code QR peut être difficile à scanner",
+    "settings.menu_bar_help": "Lorsqu'activé, EasyPaste affiche une icône dans la barre de menus pour un accès rapide.",
+    "settings.hide_dock_icon_help": "Masque l'icône de l'application dans le Dock. L'application n'est accessible que via l'icône de la barre de menus et les raccourcis clavier. Nécessite \"Afficher dans la barre de menus\" activé."
 }

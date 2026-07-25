@@ -41,7 +41,11 @@ struct PanelHeaderView: View {
                 HStack(spacing: 8) {
                     searchControlVertical
                     quickSettingsInline
+                        .fixedSize(horizontal: true, vertical: false)
+                        .layoutPriority(1)
                     moreMenu
+                        .fixedSize()
+                        .layoutPriority(1)
                 }
                 .frame(height: 30)
                 boardChips

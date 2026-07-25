@@ -10,32 +10,26 @@
     "language.portuguese": "Português",
     "language.russian": "Русский",
     "language.german": "Deutsch",
-
     "menu.show_panel": "Показать панель",
     "menu.check_updates": "Проверить обновления…",
     "menu.settings": "Настройки…",
     "menu.about": "О EasyPaste",
     "menu.exit": "Выйти из EasyPaste",
-
     "about.title": "EasyPaste",
     "about.description": "Версия 1.0\n\n⌘⇧V чтобы открыть панель, двойной клик или Enter для вставки в предыдущее приложение.",
     "about.button": "OK",
-
     "settings.tab_general": "Общие",
     "settings.tab_privacy": "Конфиденциальность",
     "settings.tab_shortcuts": "Сочетания клавиш",
     "settings.tab_updates": "Обновления",
-
     "settings.language_section": "Язык",
     "settings.language_description": "Изменения вступают в силу немедленно.",
-
     "theme.section": "Тема",
     "theme.appearance": "Оформление",
     "theme.auto": "Авто",
     "theme.light": "Светлая",
     "theme.dark": "Тёмная",
     "theme.description": "Изменения вступают в силу немедленно.",
-
     "settings.section_panel": "Панель",
     "settings.panel_position": "Положение панели",
     "settings.section_general": "Общие",
@@ -55,19 +49,16 @@
     "settings.clear_confirm_action": "Очистить",
     "settings.clear_confirm_cancel": "Отмена",
     "settings.clear_confirm_message": "Это действие нельзя отменить.",
-
     "settings.ignored_apps_header": "Игнорировать содержимое из этих приложений",
     "settings.no_ignored_apps": "Нет игнорируемых приложений",
     "settings.add_app": "Добавить приложение…",
     "settings.ignored_apps_footer": "Содержимое, скопированное в этих приложениях, не будет сохранено в истории.",
     "settings.select_app_dialog_title": "Выберите приложение для игнорирования",
-
     "settings.invoke_panel_label": "Показать панель",
     "settings.switch_board_shortcut_label": "Переключить доску (в панели)",
     "settings.tab_switch_board_label": "Tab для переключения доски",
     "settings.tab_switch_board_help": "Используйте Tab / Shift+Tab для перелистывания досок вперёд / назад.",
     "settings.shortcuts_footer": "Нажмите кнопку и введите новое сочетание. Esc для отмены. Изменения сразу вступают в силу.",
-
     "settings.check_updates_button": "Проверить обновления…",
     "settings.current_version": "Текущая версия",
     "settings.unknown_version": "Неизвестно",
@@ -79,7 +70,6 @@
     "settings.update_config_text": "После развертывания appcast.xml раскомментируйте SUFeedURL и SUPublicEDKey в Info.plist для включения автообновлений.",
     "settings.auto_update": "Автообновление",
     "settings.update_engine": "Движок обновлений",
-
     "panel.clipboard_title": "Буфер обмена",
     "panel.all_boards": "Все",
     "panel.search_placeholder": "Поиск в буфере обмена",
@@ -89,7 +79,6 @@
     "panel.sound_off": "Звук выключен",
     "panel.empty_state": "Буфер обмена пуст",
     "panel.preview_close_hint": "Пробел / Esc для закрытия",
-
     "clip.paste_to_app": "Вставить в %@",
     "clip.paste_plain_text": "Вставить как обычный текст",
     "clip.copy": "Копировать",
@@ -100,7 +89,6 @@
     "clip.delete": "Удалить",
     "clip.cannot_preview": "Предпросмотр недоступен",
     "clip.count_suffix": " симв.",
-
     "clip.kind.text": "Текст",
     "clip.kind.link": "Ссылка",
     "clip.kind.image": "Изображение",
@@ -112,7 +100,6 @@
     "clip.default_file": "Файл",
     "clip.default_color": "Цвет",
     "clip.files_count": "%d файлов",
-
     "time.just_now": "только что",
     "time.minutes_ago": " мин. назад",
     "time.hours_ago": " ч. назад",
@@ -120,7 +107,6 @@
     "time.weeks_ago": " нед. назад",
     "time.months_ago": " мес. назад",
     "time.years_ago": " г. назад",
-
     "history.1d": "1 день",
     "history.2d": "2 дня",
     "history.3d": "3 дня",
@@ -143,18 +129,14 @@
     "history.11mo": "11 месяцев",
     "history.1y": "1 год",
     "history.unlimited": "Без ограничений",
-
     "settings.position_bottom": "Снизу",
     "settings.position_top": "Сверху",
     "settings.position_left": "Слева",
     "settings.position_right": "Справа",
-
     "settings.max_items_limited": "Ограничено",
     "settings.max_items_unlimited": "Без ограничений",
-
     "privacy.keychain_access": "Связка ключей",
     "privacy.passwords": "Пароли",
-
     "onboarding.welcome_title": "Добро пожаловать в EasyPaste",
     "onboarding.welcome_desc": "Ваш умный помощник буфера обмена.\nАвтосохранение, быстрая вставка, умная организация —\nкаждая копия остаётся в порядке.",
     "onboarding.auto_capture_title": "Автозахват",
@@ -170,7 +152,6 @@
     "onboarding.start_using": "Начать",
     "onboarding.next": "Далее",
     "onboarding.previous": "Назад",
-
     "onboarding.feature_auto_save": "Автосохранение истории буфера обмена",
     "onboarding.feature_cross_app": "Быстрая вставка между приложениями",
     "onboarding.feature_smart_org": "Умная категоризация и поиск",
@@ -189,13 +170,11 @@
     "onboarding.hint_invoke_panel": "Открыть панель",
     "onboarding.hint_preview": "Просмотр",
     "onboarding.hint_type_search": "Поиск",
-
     "shortcut.recording": "Нажмите клавиши…",
     "space_key": "Пробел",
     "preview_hint": "Пробел",
     "default_board.ideas": "Идеи",
     "default_board.work": "Работа",
-
     "clip.menu.export_txt": "Экспортировать в TXT",
     "clip.menu.export_rtf": "Экспортировать в RTF",
     "clip.menu.qr_code": "QR-код",
@@ -209,5 +188,7 @@
     "clip.menu.json_preview": "Просмотр JSON",
     "settings.hide_dock_icon": "Скрыть значок Dock",
     "clip.preview.json_error": "Не удалось разобрать JSON, показан исходный текст",
-    "clip.preview.qr_too_long": "Содержимое слишком длинное, QR-код может быть трудно отсканировать"
+    "clip.preview.qr_too_long": "Содержимое слишком длинное, QR-код может быть трудно отсканировать",
+    "settings.menu_bar_help": "При включении EasyPaste показывает значок в строке меню для быстрого доступа.",
+    "settings.hide_dock_icon_help": "Скрывает значок приложения из Dock. Приложение будет доступно только через значок в строке меню и горячие клавиши. Требуется включение \"Показывать в строке меню\"."
 }

@@ -10,32 +10,26 @@
     "language.portuguese": "Português",
     "language.russian": "Русский",
     "language.german": "Deutsch",
-
     "menu.show_panel": "パネルを表示",
     "menu.check_updates": "アップデートを確認…",
     "menu.settings": "設定…",
     "menu.about": "EasyPaste について",
     "menu.exit": "EasyPaste を終了",
-
     "about.title": "EasyPaste",
     "about.description": "バージョン 1.0\n\n⌘⇧V でクリップボードパネルを開き、ダブルクリックまたは Enter で前のアプリに貼り付け。",
     "about.button": "OK",
-
     "settings.tab_general": "一般",
     "settings.tab_privacy": "プライバシー",
     "settings.tab_shortcuts": "ショートカット",
     "settings.tab_updates": "アップデート",
-
     "settings.language_section": "言語",
     "settings.language_description": "変更はすぐに反映されます。",
-
     "theme.section": "テーマ",
     "theme.appearance": "外観",
     "theme.auto": "自動",
     "theme.light": "ライト",
     "theme.dark": "ダーク",
     "theme.description": "変更はすぐに反映されます。",
-
     "settings.section_panel": "パネル",
     "settings.panel_position": "パネル位置",
     "settings.section_general": "一般",
@@ -55,19 +49,16 @@
     "settings.clear_confirm_action": "削除",
     "settings.clear_confirm_cancel": "キャンセル",
     "settings.clear_confirm_message": "この操作は元に戻せません。",
-
     "settings.ignored_apps_header": "以下のアプリからのクリップボードを無視",
     "settings.no_ignored_apps": "無視するアプリはありません",
     "settings.add_app": "アプリを追加…",
     "settings.ignored_apps_footer": "これらのアプリでコピーした内容は履歴に保存されません。",
     "settings.select_app_dialog_title": "無視するアプリを選択",
-
     "settings.invoke_panel_label": "パネルを表示",
     "settings.switch_board_shortcut_label": "ボード切替（パネル内）",
     "settings.tab_switch_board_label": "Tabでボード切替",
     "settings.tab_switch_board_help": "Tab / Shift+Tab でボードを順方向 / 逆方向に切り替えます。",
     "settings.shortcuts_footer": "ボタンをクリックして新しいショートカットを入力。Esc でキャンセル。変更はすぐに反映されます。",
-
     "settings.check_updates_button": "アップデートを確認…",
     "settings.current_version": "現在のバージョン",
     "settings.unknown_version": "不明",
@@ -79,7 +70,6 @@
     "settings.update_config_text": "appcast.xml をデプロイ後、Info.plist の SUFeedURL と SUPublicEDKey のコメントを解除すると自動更新が有効になります。",
     "settings.auto_update": "自動更新",
     "settings.update_engine": "更新エンジン",
-
     "panel.clipboard_title": "クリップボード",
     "panel.all_boards": "すべて",
     "panel.search_placeholder": "クリップボードを検索",
@@ -89,7 +79,6 @@
     "panel.sound_off": "サウンド：オフ",
     "panel.empty_state": "クリップボードの内容はありません",
     "panel.preview_close_hint": "スペース / Esc で閉じる",
-
     "clip.paste_to_app": "%@ に貼り付け",
     "clip.paste_plain_text": "プレーンテキストで貼り付け",
     "clip.copy": "コピー",
@@ -100,7 +89,6 @@
     "clip.delete": "削除",
     "clip.cannot_preview": "プレビュー不可",
     "clip.count_suffix": " 文字",
-
     "clip.kind.text": "テキスト",
     "clip.kind.link": "リンク",
     "clip.kind.image": "画像",
@@ -112,7 +100,6 @@
     "clip.default_file": "ファイル",
     "clip.default_color": "カラー",
     "clip.files_count": "%d ファイル",
-
     "time.just_now": "たった今",
     "time.minutes_ago": " 分前",
     "time.hours_ago": " 時間前",
@@ -120,7 +107,6 @@
     "time.weeks_ago": " 週間前",
     "time.months_ago": " ヶ月前",
     "time.years_ago": " 年前",
-
     "history.1d": "1 日",
     "history.2d": "2 日",
     "history.3d": "3 日",
@@ -143,18 +129,14 @@
     "history.11mo": "11 ヶ月",
     "history.1y": "1 年",
     "history.unlimited": "無制限",
-
     "settings.position_bottom": "下",
     "settings.position_top": "上",
     "settings.position_left": "左",
     "settings.position_right": "右",
-
     "settings.max_items_limited": "制限あり",
     "settings.max_items_unlimited": "無制限",
-
     "privacy.keychain_access": "キーチェーンアクセス",
     "privacy.passwords": "パスワード",
-
     "onboarding.welcome_title": "EasyPaste へようこそ",
     "onboarding.welcome_desc": "スマートクリップボードアシスタント。\n自動保存、高速貼り付け、スマート整理——\nすべてのコピーを整理整頓。",
     "onboarding.auto_capture_title": "自動キャプチャ",
@@ -170,7 +152,6 @@
     "onboarding.start_using": "はじめる",
     "onboarding.next": "次へ",
     "onboarding.previous": "前へ",
-
     "onboarding.feature_auto_save": "クリップボード履歴を自動保存",
     "onboarding.feature_cross_app": "アプリ間で高速貼り付け",
     "onboarding.feature_smart_org": "スマート分類と検索",
@@ -189,13 +170,11 @@
     "onboarding.hint_invoke_panel": "パネルを開く",
     "onboarding.hint_preview": "プレビュー",
     "onboarding.hint_type_search": "入力して検索",
-
     "shortcut.recording": "キーを入力…",
     "space_key": "スペース",
     "preview_hint": "スペース",
     "default_board.ideas": "アイデア",
     "default_board.work": "仕事",
-
     "clip.menu.export_txt": "TXT として書き出す",
     "clip.menu.export_rtf": "RTF として書き出す",
     "clip.menu.qr_code": "QR コード",
@@ -209,5 +188,7 @@
     "clip.menu.json_preview": "JSON プレビュー",
     "settings.hide_dock_icon": "Dock アイコンを非表示",
     "clip.preview.json_error": "JSON の解析に失敗しました。元のテキストを表示します",
-    "clip.preview.qr_too_long": "内容が長すぎます。QR コードがスキャンしにくい場合があります"
+    "clip.preview.qr_too_long": "内容が長すぎます。QR コードがスキャンしにくい場合があります",
+    "settings.menu_bar_help": "有効にすると、クイックアクセスのためにメニューバーにアイコンが表示されます。",
+    "settings.hide_dock_icon_help": "Dockからアプリアイコンを非表示にします。メニューバーのアイコンとショートカットキーのみでアクセス可能になります。「メニューバーに表示」が有効である必要があります。"
 }

@@ -113,6 +113,7 @@ enum L10n {
     static var openAtLogin: String { tr("settings.open_at_login") }
     static var icloudSync: String { tr("settings.icloud_sync") }
     static var showInMenuBar: String { tr("settings.show_in_menu_bar") }
+    static var menuBarHelp: String { tr("settings.menu_bar_help") }
     static var pasteSound: String { tr("settings.paste_sound") }
     static var soundNone: String { tr("settings.sound_none") }
     static var alwaysPastePlainText: String { tr("settings.always_paste_plain_text") }
@@ -142,6 +143,23 @@ enum L10n {
     static var tabSwitchBoardLabel: String { tr("settings.tab_switch_board_label") }
     static var tabSwitchBoardHelp: String { tr("settings.tab_switch_board_help") }
     static var shortcutsFooter: String { tr("settings.shortcuts_footer") }
+    static var contextMenuShortcutsSection: String { tr("settings.context_menu_shortcuts_section") }
+    static var contextMenuShortcutsUniversal: String { tr("settings.context_menu_shortcuts_universal") }
+    static var contextMenuShortcutsTypeSpecific: String { tr("settings.context_menu_shortcuts_type_specific") }
+    static var shortcutPasteToApp: String { tr("clip.menu.shortcut.paste_to_app") }
+    static var shortcutPastePlainText: String { tr("clip.menu.shortcut.paste_plain_text") }
+    static var shortcutCopy: String { tr("clip.menu.shortcut.copy") }
+    static var shortcutRename: String { tr("clip.menu.shortcut.rename") }
+    static var shortcutPreview: String { tr("clip.menu.shortcut.preview") }
+    static var shortcutDelete: String { tr("clip.menu.shortcut.delete") }
+    static var shortcutExportTxt: String { tr("clip.menu.shortcut.export_txt") }
+    static var shortcutExportRtf: String { tr("clip.menu.shortcut.export_rtf") }
+    static var shortcutSaveAs: String { tr("clip.menu.shortcut.save_as") }
+    static var shortcutQrCode: String { tr("clip.menu.shortcut.qr_code") }
+    static var shortcutSendEmail: String { tr("clip.menu.shortcut.send_email") }
+    static var shortcutJsonPreview: String { tr("clip.menu.shortcut.json_preview") }
+    static var shortcutOpenLink: String { tr("clip.menu.shortcut.open_link") }
+    static var shortcutConflictWarning: String { tr("settings.shortcut_conflict_warning") }
 
     // MARK: - Settings Updates
 
@@ -223,6 +241,7 @@ enum L10n {
     // MARK: - Settings (hide dock icon)
 
     static var hideDockIconSetting: String { tr("settings.hide_dock_icon") }
+    static var hideDockIconHelp: String { tr("settings.hide_dock_icon_help") }
 
     // MARK: - Preview (errors/warnings)
 

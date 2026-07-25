@@ -10,32 +10,26 @@
     "language.portuguese": "Português",
     "language.russian": "Русский",
     "language.german": "Deutsch",
-
     "menu.show_panel": "Mostrar panel",
     "menu.check_updates": "Buscar actualizaciones…",
     "menu.settings": "Ajustes…",
     "menu.about": "Acerca de EasyPaste",
     "menu.exit": "Salir de EasyPaste",
-
     "about.title": "EasyPaste",
     "about.description": "Versión 1.0\n\n⌘⇧V para abrir el panel, doble clic o Enter para pegar en la app anterior.",
     "about.button": "OK",
-
     "settings.tab_general": "General",
     "settings.tab_privacy": "Privacidad",
     "settings.tab_shortcuts": "Atajos",
     "settings.tab_updates": "Actualizaciones",
-
     "settings.language_section": "Idioma",
     "settings.language_description": "Los cambios surten efecto inmediatamente.",
-
     "theme.section": "Tema",
     "theme.appearance": "Apariencia",
     "theme.auto": "Auto",
     "theme.light": "Claro",
     "theme.dark": "Oscuro",
     "theme.description": "Los cambios surten efecto inmediatamente.",
-
     "settings.section_panel": "Panel",
     "settings.panel_position": "Posición del panel",
     "settings.section_general": "General",
@@ -55,19 +49,16 @@
     "settings.clear_confirm_action": "Borrar",
     "settings.clear_confirm_cancel": "Cancelar",
     "settings.clear_confirm_message": "Esta acción no se puede deshacer.",
-
     "settings.ignored_apps_header": "Ignorar contenido de estas aplicaciones",
     "settings.no_ignored_apps": "Sin aplicaciones ignoradas",
     "settings.add_app": "Añadir aplicación…",
     "settings.ignored_apps_footer": "El contenido copiado en estas aplicaciones no se guardará en el historial.",
     "settings.select_app_dialog_title": "Seleccionar aplicación a ignorar",
-
     "settings.invoke_panel_label": "Mostrar panel",
     "settings.switch_board_shortcut_label": "Cambiar tablero (en el panel)",
     "settings.tab_switch_board_label": "Tab para cambiar tablero",
     "settings.tab_switch_board_help": "Usa Tab / Shift+Tab para recorrer los tableros hacia adelante / atrás.",
     "settings.shortcuts_footer": "Haz clic en el botón y pulsa el nuevo atajo. Esc para cancelar. Efecto inmediato.",
-
     "settings.check_updates_button": "Buscar actualizaciones…",
     "settings.current_version": "Versión actual",
     "settings.unknown_version": "Desconocida",
@@ -79,7 +70,6 @@
     "settings.update_config_text": "Después de desplegar appcast.xml, descomenta SUFeedURL y SUPublicEDKey en Info.plist para habilitar actualizaciones.",
     "settings.auto_update": "Actualización automática",
     "settings.update_engine": "Motor de actualización",
-
     "panel.clipboard_title": "Portapapeles",
     "panel.all_boards": "Todo",
     "panel.search_placeholder": "Buscar en el portapapeles",
@@ -89,7 +79,6 @@
     "panel.sound_off": "Sonido desactivado",
     "panel.empty_state": "Sin contenido en el portapapeles",
     "panel.preview_close_hint": "Espacio / Esc para cerrar",
-
     "clip.paste_to_app": "Pegar en %@",
     "clip.paste_plain_text": "Pegar como texto plano",
     "clip.copy": "Copiar",
@@ -100,7 +89,6 @@
     "clip.delete": "Eliminar",
     "clip.cannot_preview": "Vista previa no disponible",
     "clip.count_suffix": " car.",
-
     "clip.kind.text": "Texto",
     "clip.kind.link": "Enlace",
     "clip.kind.image": "Imagen",
@@ -112,7 +100,6 @@
     "clip.default_file": "Archivo",
     "clip.default_color": "Color",
     "clip.files_count": "%d archivos",
-
     "time.just_now": "ahora mismo",
     "time.minutes_ago": " min",
     "time.hours_ago": " h",
@@ -120,7 +107,6 @@
     "time.weeks_ago": " sem.",
     "time.months_ago": " mes(es)",
     "time.years_ago": " año(s)",
-
     "history.1d": "1 día",
     "history.2d": "2 días",
     "history.3d": "3 días",
@@ -143,18 +129,14 @@
     "history.11mo": "11 meses",
     "history.1y": "1 año",
     "history.unlimited": "Ilimitado",
-
     "settings.position_bottom": "Abajo",
     "settings.position_top": "Arriba",
     "settings.position_left": "Izquierda",
     "settings.position_right": "Derecha",
-
     "settings.max_items_limited": "Limitado",
     "settings.max_items_unlimited": "Ilimitado",
-
     "privacy.keychain_access": "Acceso a llaveros",
     "privacy.passwords": "Contraseñas",
-
     "onboarding.welcome_title": "Bienvenido a EasyPaste",
     "onboarding.welcome_desc": "Tu asistente inteligente de portapapeles.\nGuardado automático, pegado rápido, organización —\ncada copia se mantiene ordenada.",
     "onboarding.auto_capture_title": "Captura automática",
@@ -170,7 +152,6 @@
     "onboarding.start_using": "Comenzar",
     "onboarding.next": "Siguiente",
     "onboarding.previous": "Anterior",
-
     "onboarding.feature_auto_save": "Guarda automáticamente el historial",
     "onboarding.feature_cross_app": "Pegado rápido entre aplicaciones",
     "onboarding.feature_smart_org": "Categorización y búsqueda inteligentes",
@@ -189,13 +170,11 @@
     "onboarding.hint_invoke_panel": "Abrir panel",
     "onboarding.hint_preview": "Vista previa",
     "onboarding.hint_type_search": "Buscar",
-
     "shortcut.recording": "Pulsa teclas…",
     "space_key": "Espacio",
     "preview_hint": "Espacio",
     "default_board.ideas": "Ideas",
     "default_board.work": "Trabajo",
-
     "clip.menu.export_txt": "Exportar como TXT",
     "clip.menu.export_rtf": "Exportar como RTF",
     "clip.menu.qr_code": "Código QR",
@@ -209,5 +188,7 @@
     "clip.menu.json_preview": "Vista previa JSON",
     "settings.hide_dock_icon": "Ocultar icono del Dock",
     "clip.preview.json_error": "Error al analizar JSON, mostrando texto sin formato",
-    "clip.preview.qr_too_long": "El contenido es demasiado largo, el código QR puede ser difícil de escanear"
+    "clip.preview.qr_too_long": "El contenido es demasiado largo, el código QR puede ser difícil de escanear",
+    "settings.menu_bar_help": "Al habilitarlo, EasyPaste mostrará un icono en la barra de menú para un acceso rápido.",
+    "settings.hide_dock_icon_help": "Oculta el icono de la app del Dock. La app solo será accesible mediante el icono de la barra de menú y los atajos de teclado. Requiere que \"Mostrar en la barra de menú\" esté habilitado."
 }

@@ -10,32 +10,26 @@
     "language.portuguese": "Português",
     "language.russian": "Русский",
     "language.german": "Deutsch",
-
     "menu.show_panel": "Panel anzeigen",
     "menu.check_updates": "Nach Updates suchen…",
     "menu.settings": "Einstellungen…",
     "menu.about": "Über EasyPaste",
     "menu.exit": "EasyPaste beenden",
-
     "about.title": "EasyPaste",
     "about.description": "Version 1.0\n\n⌘⇧V zum Öffnen des Panels, Doppelklick oder Enter zum Einfügen in die vorherige App.",
     "about.button": "OK",
-
     "settings.tab_general": "Allgemein",
     "settings.tab_privacy": "Privatsphäre",
     "settings.tab_shortcuts": "Tastenkürzel",
     "settings.tab_updates": "Updates",
-
     "settings.language_section": "Sprache",
     "settings.language_description": "Änderungen werden sofort wirksam.",
-
     "theme.section": "Design",
     "theme.appearance": "Erscheinungsbild",
     "theme.auto": "Automatisch",
     "theme.light": "Hell",
     "theme.dark": "Dunkel",
     "theme.description": "Änderungen werden sofort wirksam.",
-
     "settings.section_panel": "Panel",
     "settings.panel_position": "Panel-Position",
     "settings.section_general": "Allgemein",
@@ -55,19 +49,16 @@
     "settings.clear_confirm_action": "Löschen",
     "settings.clear_confirm_cancel": "Abbrechen",
     "settings.clear_confirm_message": "Diese Aktion kann nicht rückgängig gemacht werden.",
-
     "settings.ignored_apps_header": "Inhalte dieser Apps ignorieren",
     "settings.no_ignored_apps": "Keine ignorierten Apps",
     "settings.add_app": "App hinzufügen…",
     "settings.ignored_apps_footer": "In diesen Apps kopierte Inhalte werden nicht im Verlauf gespeichert.",
     "settings.select_app_dialog_title": "Zu ignorierende App auswählen",
-
     "settings.invoke_panel_label": "Panel aufrufen",
     "settings.switch_board_shortcut_label": "Board wechseln (im Panel)",
     "settings.tab_switch_board_label": "Tab zum Wechseln des Boards",
     "settings.tab_switch_board_help": "Verwenden Sie Tab / Shift+Tab, um vorwärts / rückwärts durch Boards zu wechseln.",
     "settings.shortcuts_footer": "Klicken Sie auf die Schaltfläche und drücken Sie das neue Kürzel. Esc zum Abbrechen. Sofort wirksam.",
-
     "settings.check_updates_button": "Nach Updates suchen…",
     "settings.current_version": "Aktuelle Version",
     "settings.unknown_version": "Unbekannt",
@@ -79,7 +70,6 @@
     "settings.update_config_text": "Nach dem Bereitstellen von appcast.xml entfernen Sie die Kommentare für SUFeedURL und SUPublicEDKey in Info.plist, um Auto-Updates zu aktivieren.",
     "settings.auto_update": "Automatisches Update",
     "settings.update_engine": "Update-Engine",
-
     "panel.clipboard_title": "Zwischenablage",
     "panel.all_boards": "Alle",
     "panel.search_placeholder": "Zwischenablage durchsuchen",
@@ -89,7 +79,6 @@
     "panel.sound_off": "Sound deaktiviert",
     "panel.empty_state": "Kein Inhalt in der Zwischenablage",
     "panel.preview_close_hint": "Leertaste / Esc zum Schließen",
-
     "clip.paste_to_app": "In %@ einfügen",
     "clip.paste_plain_text": "Als reinen Text einfügen",
     "clip.copy": "Kopieren",
@@ -100,7 +89,6 @@
     "clip.delete": "Löschen",
     "clip.cannot_preview": "Vorschau nicht verfügbar",
     "clip.count_suffix": " Zeichen",
-
     "clip.kind.text": "Text",
     "clip.kind.link": "Link",
     "clip.kind.image": "Bild",
@@ -112,7 +100,6 @@
     "clip.default_file": "Datei",
     "clip.default_color": "Farbe",
     "clip.files_count": "%d Dateien",
-
     "time.just_now": "gerade eben",
     "time.minutes_ago": " Min. her",
     "time.hours_ago": " Std. her",
@@ -120,7 +107,6 @@
     "time.weeks_ago": " Woche(n) her",
     "time.months_ago": " Monat(e) her",
     "time.years_ago": " Jahr(e) her",
-
     "history.1d": "1 Tag",
     "history.2d": "2 Tage",
     "history.3d": "3 Tage",
@@ -143,18 +129,14 @@
     "history.11mo": "11 Monate",
     "history.1y": "1 Jahr",
     "history.unlimited": "Unbegrenzt",
-
     "settings.position_bottom": "Unten",
     "settings.position_top": "Oben",
     "settings.position_left": "Links",
     "settings.position_right": "Rechts",
-
     "settings.max_items_limited": "Begrenzt",
     "settings.max_items_unlimited": "Unbegrenzt",
-
     "privacy.keychain_access": "Schlüsselbundverwaltung",
     "privacy.passwords": "Passwörter",
-
     "onboarding.welcome_title": "Willkommen bei EasyPaste",
     "onboarding.welcome_desc": "Ihr intelligenter Zwischenablage-Assistent.\nAutomatisches Speichern, schnelles Einfügen, intelligente Organisation —\njede Kopie bleibt ordentlich.",
     "onboarding.auto_capture_title": "Automatische Erfassung",
@@ -170,7 +152,6 @@
     "onboarding.start_using": "Loslegen",
     "onboarding.next": "Weiter",
     "onboarding.previous": "Zurück",
-
     "onboarding.feature_auto_save": "Speichert automatisch den Verlauf",
     "onboarding.feature_cross_app": "Schnelles Einfügen zwischen Apps",
     "onboarding.feature_smart_org": "Intelligente Kategorisierung & Suche",
@@ -189,13 +170,11 @@
     "onboarding.hint_invoke_panel": "Panel öffnen",
     "onboarding.hint_preview": "Vorschau",
     "onboarding.hint_type_search": "Suchen",
-
     "shortcut.recording": "Tasten drücken…",
     "space_key": "Leertaste",
     "preview_hint": "Leertaste",
     "default_board.ideas": "Ideen",
     "default_board.work": "Arbeit",
-
     "clip.menu.export_txt": "Als TXT exportieren",
     "clip.menu.export_rtf": "Als RTF exportieren",
     "clip.menu.qr_code": "QR-Code",
@@ -209,5 +188,7 @@
     "clip.menu.json_preview": "JSON-Vorschau",
     "settings.hide_dock_icon": "Dock-Symbol ausblenden",
     "clip.preview.json_error": "JSON-Analyse fehlgeschlagen, Rohtext wird angezeigt",
-    "clip.preview.qr_too_long": "Inhalt ist zu lang, QR-Code ist möglicherweise schwer zu scannen"
+    "clip.preview.qr_too_long": "Inhalt ist zu lang, QR-Code ist möglicherweise schwer zu scannen",
+    "settings.menu_bar_help": "Wenn aktiviert, zeigt EasyPaste ein Symbol in der Menüleiste für den schnellen Zugriff.",
+    "settings.hide_dock_icon_help": "Blendet das App-Symbol aus dem Dock. Die App ist nur über das Menüleisten-Symbol und Tastenkürzel erreichbar. Erfordert \"In Menüleiste anzeigen\" aktiviert."
 }

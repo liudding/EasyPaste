@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import Foundation
 import Observation
 import ServiceManagement
@@ -53,7 +54,7 @@ final class AppSettings {
 
     static let soundNames = ["Pop", "Ping", "Tink", "Glass", "Hero", "Submarine", "Blow", "Bottle", "Frog", "Funk", "Morse", "Purr", "Sosumi"]
 
-    var panelPosition: PanelPosition = .bottom { didSet { save() } }
+    var panelPosition: PanelPosition = .bottom { didSet { save(); onPanelPositionChanged?() } }
     var openAtLogin = false { didSet { applyLoginItem(); save() } }
     var iCloudSync = false { didSet { save(); onStorageLocationChanged?() } }
     var showInMenuBar = true { didSet { save() } }
@@ -73,11 +74,48 @@ final class AppSettings {
     /// 面板内 Tab / Shift+Tab 切换看板（正向/反向）。
     var tabSwitchBoardEnabled = true { didSet { save() } }
     var hasCompletedOnboarding = false { didSet { save() } }
+    
+    /// 上下文菜单项的快捷键配置。key 为 action ID，value 为对应的 Shortcut 和启用状态。
+    var contextMenuShortcuts: [String: ContextMenuItemShortcut] = [:] { didSet { save() } }
 
     /// 隐藏 Dock 图标。true = .accessory, false = .regular。
     var hideDockIcon = false { didSet { save(); onDockIconVisibilityChanged?() } }
 
+    /// 上下文菜单项的快捷键配置。
+    struct ContextMenuItemShortcut: Codable, Equatable {
+        var shortcut: Shortcut?
+        var enabled: Bool = true
+    }
+    
+    /// 上下文菜单项默认快捷键映射。
+    static let contextMenuShortcutDefaults: [String: ContextMenuItemShortcut] = [
+        "paste": .init(shortcut: .init(keyCode: UInt16(kVK_ANSI_V), modifierFlags: NSEvent.ModifierFlags.command.rawValue)),
+        "paste_plain": .init(shortcut: .init(keyCode: UInt16(kVK_ANSI_V), modifierFlags: NSEvent.ModifierFlags([.command, .shift]).rawValue)),
+        "copy": .init(shortcut: .init(keyCode: UInt16(kVK_ANSI_C), modifierFlags: NSEvent.ModifierFlags.command.rawValue)),
+        "rename": .init(shortcut: .init(keyCode: UInt16(kVK_ANSI_R), modifierFlags: NSEvent.ModifierFlags.command.rawValue)),
+        "preview": .init(shortcut: .init(keyCode: UInt16(kVK_Space), modifierFlags: 0)),
+        "delete": .init(shortcut: .init(keyCode: UInt16(kVK_Delete), modifierFlags: 0)),
+        "export_txt": .init(shortcut: .init(keyCode: UInt16(kVK_ANSI_E), modifierFlags: NSEvent.ModifierFlags.command.rawValue)),
+        "export_rtf": .init(shortcut: .init(keyCode: UInt16(kVK_ANSI_E), modifierFlags: NSEvent.ModifierFlags([.command, .shift]).rawValue)),
+        "save_as": .init(shortcut: .init(keyCode: UInt16(kVK_ANSI_S), modifierFlags: NSEvent.ModifierFlags.command.rawValue)),
+        "send_email": .init(shortcut: .init(keyCode: UInt16(kVK_ANSI_M), modifierFlags: NSEvent.ModifierFlags.command.rawValue)),
+        "json_preview": .init(shortcut: .init(keyCode: UInt16(kVK_ANSI_J), modifierFlags: NSEvent.ModifierFlags.command.rawValue)),
+        "open_link": .init(shortcut: .init(keyCode: UInt16(kVK_ANSI_L), modifierFlags: NSEvent.ModifierFlags.command.rawValue)),
+        "qr_code": .init(shortcut: .init(keyCode: UInt16(kVK_ANSI_Q), modifierFlags: NSEvent.ModifierFlags.command.rawValue)),
+        "paste_color_hex": .init(shortcut: .init(keyCode: UInt16(kVK_ANSI_H), modifierFlags: NSEvent.ModifierFlags.command.rawValue)),
+        "paste_color_rgb": .init(shortcut: .init(keyCode: UInt16(kVK_ANSI_G), modifierFlags: NSEvent.ModifierFlags.command.rawValue)),
+        "paste_color_hsl": .init(shortcut: .init(keyCode: UInt16(kVK_ANSI_F), modifierFlags: NSEvent.ModifierFlags.command.rawValue)),
+    ]
+    
+    /// 获取默认的上下文菜单快捷键配置。
+    static func getDefaultContextMenuShortcuts() -> [String: ContextMenuItemShortcut] {
+        contextMenuShortcutDefaults
+    }
+    
     var onDockIconVisibilityChanged: (() -> Void)?
+
+    /// 面板 edge 变更回调：面板可见时需实时重定位窗口 frame，否则只在下次 show() 生效。
+    var onPanelPositionChanged: (() -> Void)?
 
     var onStorageLocationChanged: (() -> Void)?
     var onHistoryLimitChanged: (() -> Void)?
@@ -123,6 +161,7 @@ final class AppSettings {
         var tabSwitchBoardEnabled: Bool
         var hasCompletedOnboarding: Bool
         var hideDockIcon: Bool
+        var contextMenuShortcuts: [String: ContextMenuItemShortcut]
 
         init(panelPosition: PanelPosition, openAtLogin: Bool, iCloudSync: Bool,
              showInMenuBar: Bool, soundName: String, soundEnabled: Bool,
@@ -131,7 +170,8 @@ final class AppSettings {
              ignoredApps: [IgnoredApp], invokeShortcut: Shortcut,
              boardSwitchShortcut: Shortcut, tabSwitchBoardEnabled: Bool,
              hasCompletedOnboarding: Bool,
-             hideDockIcon: Bool = false) {
+             hideDockIcon: Bool = false,
+             contextMenuShortcuts: [String: ContextMenuItemShortcut] = [:]) {
             self.panelPosition = panelPosition
             self.openAtLogin = openAtLogin
             self.iCloudSync = iCloudSync
@@ -148,6 +188,7 @@ final class AppSettings {
             self.tabSwitchBoardEnabled = tabSwitchBoardEnabled
             self.hasCompletedOnboarding = hasCompletedOnboarding
             self.hideDockIcon = hideDockIcon
+            self.contextMenuShortcuts = contextMenuShortcuts
         }
 
         init(from decoder: Decoder) throws {
@@ -168,6 +209,7 @@ final class AppSettings {
             tabSwitchBoardEnabled = try c.decodeIfPresent(Bool.self, forKey: .tabSwitchBoardEnabled) ?? true
             hasCompletedOnboarding = try c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
             hideDockIcon = try c.decodeIfPresent(Bool.self, forKey: .hideDockIcon) ?? false
+            contextMenuShortcuts = try c.decodeIfPresent([String: ContextMenuItemShortcut].self, forKey: .contextMenuShortcuts) ?? [:]
         }
     }
 
@@ -190,6 +232,7 @@ final class AppSettings {
         tabSwitchBoardEnabled = snapshot.tabSwitchBoardEnabled
         hasCompletedOnboarding = snapshot.hasCompletedOnboarding
         hideDockIcon = snapshot.hideDockIcon
+        contextMenuShortcuts = snapshot.contextMenuShortcuts.isEmpty ? Self.contextMenuShortcutDefaults : snapshot.contextMenuShortcuts
     }
 
     func save() {
@@ -201,7 +244,8 @@ final class AppSettings {
                                 boardSwitchShortcut: boardSwitchShortcut,
                                 tabSwitchBoardEnabled: tabSwitchBoardEnabled,
                                 hasCompletedOnboarding: hasCompletedOnboarding,
-                                hideDockIcon: hideDockIcon)
+                                hideDockIcon: hideDockIcon,
+                                contextMenuShortcuts: contextMenuShortcuts)
         UserDefaults.standard.set(try? JSONEncoder().encode(snapshot), forKey: defaultsKey)
     }
 

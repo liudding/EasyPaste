@@ -125,6 +125,29 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     // MARK: - Layout
 
+    /// 面板 edge 位置变更时实时重定位窗口。
+    /// - 面板可见且无进行中动画：带短动画过渡到新 edge 的 final frame；
+    /// - 面板不可见（含已预建但未显示）：静默对齐到新 frame，下次 show() 自然落到正确位置。
+    /// 不处理滑入/滑出（offscreenFrame）——只在已显示时做 final frame 的就地迁移，
+    /// 避免与 show()/hide() 的滑入滑出动画冲突。
+    func reposition() {
+        guard let panel else { return }
+        let finalFrame = frameForPanel(on: currentScreen())
+        if panel.isVisible && !isAnimating {
+            isAnimating = true
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                panel.animator().setFrame(finalFrame, display: true)
+            } completionHandler: { [weak self] in
+                Task { @MainActor in self?.isAnimating = false }
+            }
+        } else if !panel.isVisible {
+            panel.setFrame(finalFrame, display: false)
+        }
+        // 正在动画中（show/hide 滑入滑出）：跳过，show()/hide() 会以新 position 的 frame 结束/开始。
+    }
+
     private func currentScreen() -> NSScreen {
         let mouse = NSEvent.mouseLocation
         if let screen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) }) { return screen }
@@ -175,9 +198,13 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel.isReleasedWhenClosed = false
         panel.isMovableByWindowBackground = false
         panel.delegate = self
-        panel.contentView = NSHostingView(rootView: PanelView(store: store, clipboard: clipboard, clipAction: clipAction, settings: settings, panelState: panelState, onOpenSettings: { [weak self] in
+        let hostingView = NSHostingView(rootView: PanelView(store: store, clipboard: clipboard, clipAction: clipAction, settings: settings, panelState: panelState, onOpenSettings: { [weak self] in
             self?.openSettingsFromPanel()
         }))
+        // NSHostingView 默认绘制不透明灰色背景，会在面板 8pt 透明 padding 区可见 → 设为透明
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = .clear
+        panel.contentView = hostingView
         self.panel = panel
         return panel
     }

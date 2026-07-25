@@ -10,32 +10,26 @@
     "language.portuguese": "Português",
     "language.russian": "Русский",
     "language.german": "Deutsch",
-
     "menu.show_panel": "Mostrar painel",
     "menu.check_updates": "Verificar atualizações…",
     "menu.settings": "Configurações…",
     "menu.about": "Sobre o EasyPaste",
     "menu.exit": "Sair do EasyPaste",
-
     "about.title": "EasyPaste",
     "about.description": "Versão 1.0\n\n⌘⇧V para abrir o painel, clique duplo ou Enter para colar no app anterior.",
     "about.button": "OK",
-
     "settings.tab_general": "Geral",
     "settings.tab_privacy": "Privacidade",
     "settings.tab_shortcuts": "Atalhos",
     "settings.tab_updates": "Atualizações",
-
     "settings.language_section": "Idioma",
     "settings.language_description": "As alterações têm efeito imediato.",
-
     "theme.section": "Tema",
     "theme.appearance": "Aparência",
     "theme.auto": "Auto",
     "theme.light": "Claro",
     "theme.dark": "Escuro",
     "theme.description": "As alterações têm efeito imediato.",
-
     "settings.section_panel": "Painel",
     "settings.panel_position": "Posição do painel",
     "settings.section_general": "Geral",
@@ -55,19 +49,16 @@
     "settings.clear_confirm_action": "Limpar",
     "settings.clear_confirm_cancel": "Cancelar",
     "settings.clear_confirm_message": "Esta ação não pode ser desfeita.",
-
     "settings.ignored_apps_header": "Ignorar conteúdo destas aplicações",
     "settings.no_ignored_apps": "Nenhuma aplicação ignorada",
     "settings.add_app": "Adicionar aplicação…",
     "settings.ignored_apps_footer": "O conteúdo copiado nestas aplicações não será salvo no histórico.",
     "settings.select_app_dialog_title": "Selecionar aplicação a ignorar",
-
     "settings.invoke_panel_label": "Mostrar painel",
     "settings.switch_board_shortcut_label": "Alternar quadro (no painel)",
     "settings.tab_switch_board_label": "Tab para alternar quadro",
     "settings.tab_switch_board_help": "Use Tab / Shift+Tab para navegar pelos quadros em sequência / reversão.",
     "settings.shortcuts_footer": "Clique no botão e pressione o novo atalho. Esc para cancelar. Efeito imediato.",
-
     "settings.check_updates_button": "Verificar atualizações…",
     "settings.current_version": "Versão atual",
     "settings.unknown_version": "Desconhecida",
@@ -79,7 +70,6 @@
     "settings.update_config_text": "Após implantar o appcast.xml, descomente SUFeedURL e SUPublicEDKey no Info.plist para ativar atualizações.",
     "settings.auto_update": "Atualização automática",
     "settings.update_engine": "Motor de atualização",
-
     "panel.clipboard_title": "Área de transferência",
     "panel.all_boards": "Tudo",
     "panel.search_placeholder": "Pesquisar na área de transferência",
@@ -89,7 +79,6 @@
     "panel.sound_off": "Som desativado",
     "panel.empty_state": "Sem conteúdo na área de transferência",
     "panel.preview_close_hint": "Espaço / Esc para fechar",
-
     "clip.paste_to_app": "Colar em %@",
     "clip.paste_plain_text": "Colar como texto simples",
     "clip.copy": "Copiar",
@@ -100,7 +89,6 @@
     "clip.delete": "Excluir",
     "clip.cannot_preview": "Pré-visualização indisponível",
     "clip.count_suffix": " car.",
-
     "clip.kind.text": "Texto",
     "clip.kind.link": "Link",
     "clip.kind.image": "Imagem",
@@ -112,7 +100,6 @@
     "clip.default_file": "Arquivo",
     "clip.default_color": "Cor",
     "clip.files_count": "%d arquivos",
-
     "time.just_now": "agora mesmo",
     "time.minutes_ago": " min atrás",
     "time.hours_ago": " h atrás",
@@ -120,7 +107,6 @@
     "time.weeks_ago": " sem. atrás",
     "time.months_ago": " mês(es) atrás",
     "time.years_ago": " ano(s) atrás",
-
     "history.1d": "1 dia",
     "history.2d": "2 dias",
     "history.3d": "3 dias",
@@ -143,18 +129,14 @@
     "history.11mo": "11 meses",
     "history.1y": "1 ano",
     "history.unlimited": "Ilimitado",
-
     "settings.position_bottom": "Embaixo",
     "settings.position_top": "Em cima",
     "settings.position_left": "Esquerda",
     "settings.position_right": "Direita",
-
     "settings.max_items_limited": "Limitado",
     "settings.max_items_unlimited": "Ilimitado",
-
     "privacy.keychain_access": "Acesso às Chaves",
     "privacy.passwords": "Senhas",
-
     "onboarding.welcome_title": "Bem-vindo ao EasyPaste",
     "onboarding.welcome_desc": "Seu assistente inteligente de área de transferência.\nSalvamento automático, colagem rápida, organização —\ncada cópia fica organizada.",
     "onboarding.auto_capture_title": "Captura automática",
@@ -170,7 +152,6 @@
     "onboarding.start_using": "Começar",
     "onboarding.next": "Próximo",
     "onboarding.previous": "Anterior",
-
     "onboarding.feature_auto_save": "Salva automaticamente o histórico",
     "onboarding.feature_cross_app": "Colagem rápida entre aplicações",
     "onboarding.feature_smart_org": "Categorização e pesquisa inteligentes",
@@ -189,13 +170,11 @@
     "onboarding.hint_invoke_panel": "Abrir painel",
     "onboarding.hint_preview": "Pré-visualizar",
     "onboarding.hint_type_search": "Pesquisar",
-
     "shortcut.recording": "Pressione teclas…",
     "space_key": "Espaço",
     "preview_hint": "Espaço",
     "default_board.ideas": "Ideias",
     "default_board.work": "Trabalho",
-
     "clip.menu.export_txt": "Exportar como TXT",
     "clip.menu.export_rtf": "Exportar como RTF",
     "clip.menu.qr_code": "Código QR",
@@ -209,5 +188,7 @@
     "clip.menu.json_preview": "Pré-visualização JSON",
     "settings.hide_dock_icon": "Ocultar ícone do Dock",
     "clip.preview.json_error": "Falha ao analisar JSON, exibindo texto bruto",
-    "clip.preview.qr_too_long": "O conteúdo é muito longo, o código QR pode ser difícil de escanear"
+    "clip.preview.qr_too_long": "O conteúdo é muito longo, o código QR pode ser difícil de escanear",
+    "settings.menu_bar_help": "Ao ativar, o EasyPaste mostrará um ícone na barra de menus para acesso rápido.",
+    "settings.hide_dock_icon_help": "Oculta o ícone do app na Dock. O app só será acessível pelo ícone da barra de menus e atalhos de teclado. Requer \"Mostrar na Barra de Menus\" ativado."
 }

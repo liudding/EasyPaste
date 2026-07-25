@@ -175,7 +175,8 @@ struct PanelView: View {
                 panelState.hidePanel()
             },
             onOpenURL: { clipAction.openURL($0) },
-            onPreviewJSON: { clip in withAnimation { panelState.jsonPreviewItem = clip } }
+            onPreviewJSON: { clip in withAnimation { panelState.jsonPreviewItem = clip } },
+            settings: settings
         )
         .background(
             GeometryReader { geo in

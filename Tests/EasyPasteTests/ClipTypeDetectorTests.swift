@@ -455,7 +455,8 @@ struct ClipboardStoreDedupTests {
 }
 
 /// AppSettings 的 hideDockIcon 测试：默认值、回调触发、快照编解码兼容性。
-@Suite
+/// 使用 .serialized 避免并行测试共享 UserDefaults.standard 导致 SIGSEGV。
+@Suite(.serialized)
 struct AppSettingsHideDockTests {
 
     // MARK: - 默认值

@@ -10,32 +10,26 @@
     "language.portuguese": "Português",
     "language.russian": "Русский",
     "language.german": "Deutsch",
-
     "menu.show_panel": "顯示面板",
     "menu.check_updates": "檢查更新…",
     "menu.settings": "設定…",
     "menu.about": "關於 EasyPaste",
     "menu.exit": "結束 EasyPaste",
-
     "about.title": "EasyPaste",
     "about.description": "版本 1.0\n\n⌘⇧V 喚起剪貼板面板，雙擊或 Enter 貼上到上一個應用程式。",
     "about.button": "好",
-
     "settings.tab_general": "一般",
     "settings.tab_privacy": "隱私",
     "settings.tab_shortcuts": "快速鍵",
     "settings.tab_updates": "更新",
-
     "settings.language_section": "語言",
     "settings.language_description": "切換語言立即生效，無需重新啟動。",
-
     "theme.section": "主題",
     "theme.appearance": "外觀",
     "theme.auto": "自動",
     "theme.light": "淺色",
     "theme.dark": "深色",
     "theme.description": "更改立即生效。",
-
     "settings.section_panel": "面板",
     "settings.panel_position": "面板位置",
     "settings.section_general": "一般",
@@ -55,19 +49,16 @@
     "settings.clear_confirm_action": "清除",
     "settings.clear_confirm_cancel": "取消",
     "settings.clear_confirm_message": "此操作無法還原，清除後資料無法復原。",
-
     "settings.ignored_apps_header": "忽略來自以下應用程式的內容",
     "settings.no_ignored_apps": "暫無忽略的應用程式",
     "settings.add_app": "加入應用程式…",
     "settings.ignored_apps_footer": "在這些應用程式中複製的內容不會儲存到剪貼板歷史。",
     "settings.select_app_dialog_title": "選擇要忽略的應用程式",
-
     "settings.invoke_panel_label": "喚起面板",
     "settings.switch_board_shortcut_label": "切換看板（面板內）",
     "settings.tab_switch_board_label": "Tab 切換看板",
     "settings.tab_switch_board_help": "使用 Tab / Shift+Tab 正向 / 反向切換看板。",
     "settings.shortcuts_footer": "點擊按鈕後按下新快速鍵，Esc 取消。修改立即生效。",
-
     "settings.check_updates_button": "檢查更新…",
     "settings.current_version": "目前版本",
     "settings.unknown_version": "未知",
@@ -79,7 +70,6 @@
     "settings.update_config_text": "部署 appcast.xml 後，取消 Info.plist 中 SUFeedURL 和 SUPublicEDKey 的註解即可啟用自動更新。",
     "settings.auto_update": "自動更新",
     "settings.update_engine": "更新引擎",
-
     "panel.clipboard_title": "剪貼板",
     "panel.all_boards": "全部",
     "panel.search_placeholder": "搜尋剪貼板",
@@ -89,7 +79,6 @@
     "panel.sound_off": "已停用音效",
     "panel.empty_state": "暫無剪貼內容",
     "panel.preview_close_hint": "空白鍵 / Esc 關閉",
-
     "clip.paste_to_app": "貼上到 %@",
     "clip.paste_plain_text": "貼上為純文字",
     "clip.copy": "複製",
@@ -100,7 +89,6 @@
     "clip.delete": "刪除",
     "clip.cannot_preview": "無法預覽",
     "clip.count_suffix": " 筆",
-
     "clip.kind.text": "文字",
     "clip.kind.link": "連結",
     "clip.kind.image": "圖片",
@@ -112,7 +100,6 @@
     "clip.default_file": "檔案",
     "clip.default_color": "顏色",
     "clip.files_count": "%d 個檔案",
-
     "time.just_now": "剛剛",
     "time.minutes_ago": " 分鐘前",
     "time.hours_ago": " 小時前",
@@ -120,7 +107,6 @@
     "time.weeks_ago": " 週前",
     "time.months_ago": " 個月前",
     "time.years_ago": " 年前",
-
     "history.1d": "1 天",
     "history.2d": "2 天",
     "history.3d": "3 天",
@@ -143,18 +129,14 @@
     "history.11mo": "11 個月",
     "history.1y": "1 年",
     "history.unlimited": "無限制",
-
     "settings.position_bottom": "底部",
     "settings.position_top": "頂部",
     "settings.position_left": "左側",
     "settings.position_right": "右側",
-
     "settings.max_items_limited": "限制筆數",
     "settings.max_items_unlimited": "無限制",
-
     "privacy.keychain_access": "鑰匙圈存取",
     "privacy.passwords": "密碼",
-
     "onboarding.welcome_title": "歡迎使用 EasyPaste",
     "onboarding.welcome_desc": "你的智慧剪貼板助手。\n自動儲存、快速貼上、智慧整理——\n讓每一次複製都井井有條。",
     "onboarding.auto_capture_title": "自動擷取",
@@ -170,7 +152,6 @@
     "onboarding.start_using": "開始使用",
     "onboarding.next": "下一步",
     "onboarding.previous": "上一步",
-
     "onboarding.feature_auto_save": "自動記錄剪貼板歷史",
     "onboarding.feature_cross_app": "跨應用快速貼上",
     "onboarding.feature_smart_org": "智慧分類與搜尋",
@@ -189,13 +170,11 @@
     "onboarding.hint_invoke_panel": "喚起面板",
     "onboarding.hint_preview": "預覽",
     "onboarding.hint_type_search": "輸入即搜尋",
-
     "shortcut.recording": "按下快速鍵…",
     "space_key": "空白鍵",
     "preview_hint": "空白鍵",
     "default_board.ideas": "靈感",
     "default_board.work": "工作",
-
     "clip.menu.export_txt": "匯出為 TXT",
     "clip.menu.export_rtf": "匯出為 RTF",
     "clip.menu.qr_code": "QR 碼",
@@ -209,5 +188,7 @@
     "clip.menu.json_preview": "JSON 預覽",
     "settings.hide_dock_icon": "隱藏 Dock 圖示",
     "clip.preview.json_error": "JSON 解析失敗，顯示原始文字",
-    "clip.preview.qr_too_long": "內容過長，QR 碼可能難以掃描"
+    "clip.preview.qr_too_long": "內容過長，QR 碼可能難以掃描",
+    "settings.menu_bar_help": "啟用後，EasyPaste 將在選單列顯示圖示以便快速存取。",
+    "settings.hide_dock_icon_help": "從 Dock 隱藏應用程式圖示。僅能透過選單列圖示和快捷鍵存取。需要開啟「在選單列顯示」。"
 }

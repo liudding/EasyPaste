@@ -53,7 +53,7 @@ final class AppServices {
 
     func boot() {
         // 根据 hideDockIcon 设置初始 Dock 策略
-        NSApp.setActivationPolicy(settings.hideDockIcon ? .accessory : .regular)
+        applyDockPolicy()
         clipboard.settings = settings
         clipboard.onItem = { [weak self] item in self?.store.add(item) }
         clipboard.start()
@@ -94,10 +94,27 @@ final class AppServices {
             self.store.maxItems = self.settings.maxItems
             self.store.pruneExpired()
         }
-        // Dock 图标可见性变化回调
+        // Dock 图标可见性变化回调：如果有设置窗口打开，延迟到窗口关闭后再切换。
         settings.onDockIconVisibilityChanged = { [weak self] in
             guard let self else { return }
-            NSApp.setActivationPolicy(self.settings.hideDockIcon ? .accessory : .regular)
+            // 先移除旧的观察者（防止重复注册）。
+            NotificationCenter.default.removeObserver(self, name: NSWindow.willCloseNotification, object: nil)
+            if let wc = self.settingsWC, let win = wc.window, win.isVisible {
+                NotificationCenter.default.addObserver(
+                    forName: NSWindow.willCloseNotification,
+                    object: win,
+                    queue: .main
+                ) { [weak self] _ in
+                    self?.applyDockPolicy()
+                }
+            } else {
+                self.applyDockPolicy()
+            }
+        }
+
+        // 面板 edge 位置变更回调：实时重定位已显示的窗口，否则只在下次 show() 生效。
+        settings.onPanelPositionChanged = { [weak self] in
+            self?.panel?.reposition()
         }
 
         registerShortcut()
@@ -109,6 +126,11 @@ final class AppServices {
                 self.onboarding.show(settings: self.settings)
             }
         }
+    }
+
+    /// 应用 Dock 图标策略（.regular / .accessory）。
+    private func applyDockPolicy() {
+        NSApp.setActivationPolicy(settings.hideDockIcon ? .accessory : .regular)
     }
 
     func registerShortcut() {
@@ -124,7 +146,7 @@ final class AppServices {
     /// 也不依赖 macOS 14+ 已移除的 showSettingsWindow: 选择器。
     func openSettingsWindow(on screen: NSScreen? = nil) {
         // 隐藏 Dock 时不强制恢复 .regular，保持 .accessory
-        if !settings.hideDockIcon { NSApp.setActivationPolicy(.regular) }
+        if !settings.hideDockIcon { applyDockPolicy() }
         NSApp.activate(ignoringOtherApps: true)
 
         let window: NSWindow
