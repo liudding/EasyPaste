@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import SwiftUI
 
 /// 管理「从屏幕边缘弹出的剪贴板面板」：非激活 NSPanel（不抢占前台应用），
@@ -268,6 +269,11 @@ final class PanelController: NSObject, NSWindowDelegate {
         }
         if panelState.searchFocused { return event }
 
+        // 检查上下文菜单快捷键（当面板可见且无浮层弹出时）
+        if handleContextMenuShortcut(event, flags: flags) {
+            return nil
+        }
+
         if matchesShortcut(event, settings.boardSwitchShortcut) {
             cycleBoard(direction: 1)
             return nil
@@ -312,11 +318,91 @@ final class PanelController: NSObject, NSWindowDelegate {
         }
         return event
     }
+    
+    /// 处理上下文菜单快捷键。如果匹配成功则执行相应操作并返回 true。
+    private func handleContextMenuShortcut(_ event: NSEvent, flags: NSEvent.ModifierFlags) -> Bool {
+        guard let item = selectedItem else { return false }
+        
+        // 跳过系统保留快捷键
+        let systemReservedKeys: [UInt16] = [
+            UInt16(kVK_ANSI_Q), UInt16(kVK_ANSI_W), UInt16(kVK_ANSI_Z), UInt16(kVK_ANSI_A)
+        ]
+        if systemReservedKeys.contains(event.keyCode) {
+            let sysFlags: NSEvent.ModifierFlags = [.command]
+            if flags.contains(sysFlags) { return false }
+        }
+        
+        // 跳过面板切换快捷键
+        if matchesShortcut(event, settings.invokeShortcut) || matchesShortcut(event, settings.boardSwitchShortcut) {
+            return false
+        }
+        
+        let currentShortcut = Shortcut(keyCode: event.keyCode, modifierFlags: flags.rawValue)
+        
+        // 遍历所有配置的上下文菜单快捷键，查找匹配项
+        for (actionID, config) in settings.contextMenuShortcuts where config.enabled {
+            if let shortcut = config.shortcut, matchesShortcut(currentShortcut, shortcut) {
+                executeAction(actionID: actionID, item: item, flags: flags)
+                return true
+            }
+        }
+        
+        return false
+    }
+    
+    /// 根据 actionID 执行对应的操作。
+    private func executeAction(actionID: String, item: Clip, flags: NSEvent.ModifierFlags) {
+        switch actionID {
+        case "paste":
+            paste(item, plain: false)
+        case "paste_plain":
+            paste(item, plain: true)
+        case "copy":
+            clipboard.copy(item)
+        case "rename":
+            panelState.renamingID = item.id
+        case "preview":
+            withAnimation { panelState.previewItem = item }
+        case "delete":
+            store.delete([item.id])
+        case "export_txt":
+            clipAction.exportAsText(item)
+        case "export_rtf":
+            clipAction.exportAsRTF(item)
+        case "save_as":
+            clipAction.exportAsImage(item)
+        case "qr_code":
+            if let text = item.text, !text.isEmpty {
+                withAnimation { panelState.qrCodeContent = text }
+            } else if let url = item.url?.absoluteString {
+                withAnimation { panelState.qrCodeContent = url }
+            }
+        case "send_email":
+            if let text = item.text {
+                clipAction.sendEmail(to: text)
+            }
+        case "json_preview":
+            if !(item.text?.isEmpty ?? true) {
+                withAnimation { panelState.jsonPreviewItem = item }
+            }
+        case "open_link":
+            if let url = item.url {
+                clipAction.openURL(url)
+            }
+        default:
+            break
+        }
+    }
 
     private func matchesShortcut(_ event: NSEvent, _ shortcut: Shortcut) -> Bool {
         guard event.keyCode == shortcut.keyCode else { return false }
         let flags = event.modifierFlags.intersection([.command, .shift, .option, .control])
         return flags == NSEvent.ModifierFlags(rawValue: shortcut.modifierFlags).intersection([.command, .shift, .option, .control])
+    }
+    
+    /// 比较两个 Shortcut 是否相同。
+    private func matchesShortcut(_ a: Shortcut, _ b: Shortcut) -> Bool {
+        a.keyCode == b.keyCode && a.modifierFlags == b.modifierFlags
     }
 
     private func expandSearch(with characters: String) {
