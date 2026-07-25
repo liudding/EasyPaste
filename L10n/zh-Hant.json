@@ -64,6 +64,8 @@
 
     "settings.invoke_panel_label": "喚起面板",
     "settings.switch_board_shortcut_label": "切換看板（面板內）",
+    "settings.tab_switch_board_label": "Tab 切換看板",
+    "settings.tab_switch_board_help": "使用 Tab / Shift+Tab 正向 / 反向切換看板。",
     "settings.shortcuts_footer": "點擊按鈕後按下新快速鍵，Esc 取消。修改立即生效。",
 
     "settings.check_updates_button": "檢查更新…",

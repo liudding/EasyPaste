@@ -56,6 +56,8 @@
     "settings.select_app_dialog_title": "무시할 앱 선택",
     "settings.invoke_panel_label": "패널 호출",
     "settings.switch_board_shortcut_label": "보드 전환 (패널 내)",
+    "settings.tab_switch_board_label": "Tab으로 보드 전환",
+    "settings.tab_switch_board_help": "Tab / Shift+Tab으로 보드를 순방향 / 역방향으로 전환합니다.",
     "settings.shortcuts_footer": "버튼을 클릭한 후 새 단축키를 누르세요. Esc로 취소. 변경 사항은 즉시 적용됩니다.",
     "settings.check_updates_button": "업데이트 확인…",
     "settings.current_version": "현재 버전",

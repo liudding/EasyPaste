@@ -209,6 +209,8 @@ struct SettingsView: View {
             Section {
                 LabeledContent(L10n.invokePanelLabel) { ShortcutRecorderView(shortcut: invokeBinding) }
                 LabeledContent(L10n.switchBoardShortcutLabel) { ShortcutRecorderView(shortcut: $settings.boardSwitchShortcut) }
+                Toggle(L10n.tabSwitchBoardLabel, isOn: $settings.tabSwitchBoardEnabled)
+                    .help(L10n.tabSwitchBoardHelp)
             } footer: {
                 Text(L10n.shortcutsFooter).font(.caption)
             }

@@ -64,6 +64,8 @@
 
     "settings.invoke_panel_label": "Mostrar panel",
     "settings.switch_board_shortcut_label": "Cambiar tablero (en el panel)",
+    "settings.tab_switch_board_label": "Tab para cambiar tablero",
+    "settings.tab_switch_board_help": "Usa Tab / Shift+Tab para recorrer los tableros hacia adelante / atrás.",
     "settings.shortcuts_footer": "Haz clic en el botón y pulsa el nuevo atajo. Esc para cancelar. Efecto inmediato.",
 
     "settings.check_updates_button": "Buscar actualizaciones…",

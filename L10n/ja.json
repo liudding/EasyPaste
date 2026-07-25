@@ -64,6 +64,8 @@
 
     "settings.invoke_panel_label": "パネルを表示",
     "settings.switch_board_shortcut_label": "ボード切替（パネル内）",
+    "settings.tab_switch_board_label": "Tabでボード切替",
+    "settings.tab_switch_board_help": "Tab / Shift+Tab でボードを順方向 / 逆方向に切り替えます。",
     "settings.shortcuts_footer": "ボタンをクリックして新しいショートカットを入力。Esc でキャンセル。変更はすぐに反映されます。",
 
     "settings.check_updates_button": "アップデートを確認…",

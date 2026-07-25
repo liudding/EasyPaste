@@ -64,6 +64,8 @@
 
     "settings.invoke_panel_label": "Показать панель",
     "settings.switch_board_shortcut_label": "Переключить доску (в панели)",
+    "settings.tab_switch_board_label": "Tab для переключения доски",
+    "settings.tab_switch_board_help": "Используйте Tab / Shift+Tab для перелистывания досок вперёд / назад.",
     "settings.shortcuts_footer": "Нажмите кнопку и введите новое сочетание. Esc для отмены. Изменения сразу вступают в силу.",
 
     "settings.check_updates_button": "Проверить обновления…",

@@ -242,8 +242,16 @@ final class PanelController: NSObject, NSWindowDelegate {
         if panelState.searchFocused { return event }
 
         if matchesShortcut(event, settings.boardSwitchShortcut) {
-            cycleBoard()
+            cycleBoard(direction: 1)
             return nil
+        }
+        // Tab / Shift+Tab 切换看板（仅无 command/option/control 修饰键时拦截）
+        if settings.tabSwitchBoardEnabled && keyCode == 48 {
+            let tabFlags = flags.intersection([.command, .option, .control])
+            if tabFlags.isEmpty {
+                cycleBoard(direction: flags.contains(.shift) ? -1 : 1)
+                return nil
+            }
         }
         if keyCode == 8, flags.contains(.command) {
             if let item = selectedItem { clipboard.copy(item) }
@@ -295,11 +303,14 @@ final class PanelController: NSObject, NSWindowDelegate {
         withAnimation(.easeOut(duration: 0.15)) { panelState.searchExpanded = false }
     }
 
-    private func cycleBoard() {
+    private func cycleBoard(direction: Int = 1) {
         let boards = store.boards
         let ids: [UUID?] = [nil] + boards.map { Optional($0.id) }
         let current = ids.firstIndex(where: { $0 == store.selectedBoardID }) ?? 0
-        store.selectedBoardID = ids[(current + 1) % ids.count]
+        let next = (current + direction + ids.count) % ids.count
+        store.selectedBoardID = ids[next]
+        // 切换看板后重置选中 clip 为当前看板下第一个
+        panelState.selectedID = store.filteredItems.first?.id
     }
 
     private func moveSelection(_ delta: Int) {

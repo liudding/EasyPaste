@@ -64,6 +64,8 @@
 
     "settings.invoke_panel_label": "Invoke Panel",
     "settings.switch_board_shortcut_label": "Switch Pinboard (in panel)",
+    "settings.tab_switch_board_label": "Tab to Switch Pinboard",
+    "settings.tab_switch_board_help": "Use Tab / Shift+Tab to cycle forward / backward through pinboards.",
     "settings.shortcuts_footer": "Press a new shortcut after clicking the button. Esc to cancel. Changes take effect immediately.",
 
     "settings.check_updates_button": "Check for Updates…",

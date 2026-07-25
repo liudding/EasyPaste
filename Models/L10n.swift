@@ -139,6 +139,8 @@ enum L10n {
 
     static var invokePanelLabel: String { tr("settings.invoke_panel_label") }
     static var switchBoardShortcutLabel: String { tr("settings.switch_board_shortcut_label") }
+    static var tabSwitchBoardLabel: String { tr("settings.tab_switch_board_label") }
+    static var tabSwitchBoardHelp: String { tr("settings.tab_switch_board_help") }
     static var shortcutsFooter: String { tr("settings.shortcuts_footer") }
 
     // MARK: - Settings Updates

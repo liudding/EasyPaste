@@ -70,6 +70,8 @@ final class AppSettings {
     ] { didSet { save() } }
     var invokeShortcut: Shortcut = .invokeDefault { didSet { save() } }
     var boardSwitchShortcut: Shortcut = .boardSwitchDefault { didSet { save() } }
+    /// 面板内 Tab / Shift+Tab 切换看板（正向/反向）。
+    var tabSwitchBoardEnabled = true { didSet { save() } }
     var hasCompletedOnboarding = false { didSet { save() } }
 
     /// 隐藏 Dock 图标。true = .accessory, false = .regular。
@@ -118,6 +120,7 @@ final class AppSettings {
         var ignoredApps: [IgnoredApp]
         var invokeShortcut: Shortcut
         var boardSwitchShortcut: Shortcut
+        var tabSwitchBoardEnabled: Bool
         var hasCompletedOnboarding: Bool
         var hideDockIcon: Bool
 
@@ -126,7 +129,8 @@ final class AppSettings {
              alwaysPastePlainText: Bool, historyStepIndex: Int,
              maxItemsMode: MaxItemsMode, maxItemsCount: Int,
              ignoredApps: [IgnoredApp], invokeShortcut: Shortcut,
-             boardSwitchShortcut: Shortcut, hasCompletedOnboarding: Bool,
+             boardSwitchShortcut: Shortcut, tabSwitchBoardEnabled: Bool,
+             hasCompletedOnboarding: Bool,
              hideDockIcon: Bool = false) {
             self.panelPosition = panelPosition
             self.openAtLogin = openAtLogin
@@ -141,6 +145,7 @@ final class AppSettings {
             self.ignoredApps = ignoredApps
             self.invokeShortcut = invokeShortcut
             self.boardSwitchShortcut = boardSwitchShortcut
+            self.tabSwitchBoardEnabled = tabSwitchBoardEnabled
             self.hasCompletedOnboarding = hasCompletedOnboarding
             self.hideDockIcon = hideDockIcon
         }
@@ -160,6 +165,7 @@ final class AppSettings {
             ignoredApps = try c.decode([IgnoredApp].self, forKey: .ignoredApps)
             invokeShortcut = try c.decode(Shortcut.self, forKey: .invokeShortcut)
             boardSwitchShortcut = try c.decode(Shortcut.self, forKey: .boardSwitchShortcut)
+            tabSwitchBoardEnabled = try c.decodeIfPresent(Bool.self, forKey: .tabSwitchBoardEnabled) ?? true
             hasCompletedOnboarding = try c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
             hideDockIcon = try c.decodeIfPresent(Bool.self, forKey: .hideDockIcon) ?? false
         }
@@ -181,6 +187,7 @@ final class AppSettings {
         ignoredApps = snapshot.ignoredApps
         invokeShortcut = snapshot.invokeShortcut
         boardSwitchShortcut = snapshot.boardSwitchShortcut
+        tabSwitchBoardEnabled = snapshot.tabSwitchBoardEnabled
         hasCompletedOnboarding = snapshot.hasCompletedOnboarding
         hideDockIcon = snapshot.hideDockIcon
     }
@@ -192,6 +199,7 @@ final class AppSettings {
                                 maxItemsMode: maxItemsMode, maxItemsCount: maxItemsCount,
                                 ignoredApps: ignoredApps, invokeShortcut: invokeShortcut,
                                 boardSwitchShortcut: boardSwitchShortcut,
+                                tabSwitchBoardEnabled: tabSwitchBoardEnabled,
                                 hasCompletedOnboarding: hasCompletedOnboarding,
                                 hideDockIcon: hideDockIcon)
         UserDefaults.standard.set(try? JSONEncoder().encode(snapshot), forKey: defaultsKey)

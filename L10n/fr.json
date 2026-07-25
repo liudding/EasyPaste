@@ -64,6 +64,8 @@
 
     "settings.invoke_panel_label": "Afficher le panneau",
     "settings.switch_board_shortcut_label": "Changer de tableau (dans le panneau)",
+    "settings.tab_switch_board_label": "Tab pour changer de tableau",
+    "settings.tab_switch_board_help": "Utilisez Tab / Shift+Tab pour parcourir les tableaux en avant / arrière.",
     "settings.shortcuts_footer": "Cliquez sur le bouton puis appuyez sur le nouveau raccourci. Échap pour annuler. Effet immédiat.",
 
     "settings.check_updates_button": "Rechercher les mises à jour…",

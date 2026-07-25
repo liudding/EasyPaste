@@ -64,6 +64,8 @@
 
     "settings.invoke_panel_label": "Mostrar painel",
     "settings.switch_board_shortcut_label": "Alternar quadro (no painel)",
+    "settings.tab_switch_board_label": "Tab para alternar quadro",
+    "settings.tab_switch_board_help": "Use Tab / Shift+Tab para navegar pelos quadros em sequência / reversão.",
     "settings.shortcuts_footer": "Clique no botão e pressione o novo atalho. Esc para cancelar. Efeito imediato.",
 
     "settings.check_updates_button": "Verificar atualizações…",

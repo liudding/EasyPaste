@@ -64,6 +64,8 @@
 
     "settings.invoke_panel_label": "Panel aufrufen",
     "settings.switch_board_shortcut_label": "Board wechseln (im Panel)",
+    "settings.tab_switch_board_label": "Tab zum Wechseln des Boards",
+    "settings.tab_switch_board_help": "Verwenden Sie Tab / Shift+Tab, um vorwärts / rückwärts durch Boards zu wechseln.",
     "settings.shortcuts_footer": "Klicken Sie auf die Schaltfläche und drücken Sie das neue Kürzel. Esc zum Abbrechen. Sofort wirksam.",
 
     "settings.check_updates_button": "Nach Updates suchen…",
