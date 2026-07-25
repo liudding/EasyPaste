@@ -23,6 +23,9 @@ struct ClipRow: FetchableRecord, PersistableRecord, Codable {
     let sourceAppColorRed: Double?
     let sourceAppColorGreen: Double?
     let sourceAppColorBlue: Double?
+    let contentColorRed: Double?
+    let contentColorGreen: Double?
+    let contentColorBlue: Double?
     let title: String?
 
     init(_ clip: Clip) {
@@ -43,6 +46,9 @@ struct ClipRow: FetchableRecord, PersistableRecord, Codable {
         sourceAppColorRed = clip.sourceAppColor?.red
         sourceAppColorGreen = clip.sourceAppColor?.green
         sourceAppColorBlue = clip.sourceAppColor?.blue
+        contentColorRed = clip.contentColor?.red
+        contentColorGreen = clip.contentColor?.green
+        contentColorBlue = clip.contentColor?.blue
         title = clip.title
     }
 
@@ -68,6 +74,9 @@ struct ClipRow: FetchableRecord, PersistableRecord, Codable {
         clip.title = title
         if let r = sourceAppColorRed, let g = sourceAppColorGreen, let b = sourceAppColorBlue {
             clip.sourceAppColor = CodableColor(red: r, green: g, blue: b)
+        }
+        if let r = contentColorRed, let g = contentColorGreen, let b = contentColorBlue {
+            clip.contentColor = CodableColor(red: r, green: g, blue: b)
         }
         return clip
     }

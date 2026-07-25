@@ -53,47 +53,62 @@ enum ClipKind: String, Codable, CaseIterable, Identifiable {
 struct Clip: Codable, Identifiable, Hashable {
     var id: UUID
     var kind: ClipKind
+    var boardID: UUID?
+    /// 自定义的标题
+    var title: String?
+
     var createdAt: Date
+    
     var text: String?
+    
     var url: URL?
+    /// 从 link 所对应的网页中提取的 title / description，用于卡片 body 显示。
+    var linkTitle: String?
+    var linkDescription: String?
+
     var fileURLs: [URL]?
     var imageData: Data?
-    var boardID: UUID?
+    
     var isFavorite: Bool
     var sourceApplication: String?
     var sourceApplicationBundleID: String?
+    /// 创建时计算并持久化的来源 app icon 主色调（已编码为 sRGB 分量）。
+    /// 旧数据无此字段时回退到 AppIconCache 计算。
+    var sourceAppColor: CodableColor? = nil
+
+    /// 从复制的内容中提取的颜色
+    /// 如果是富文本，则这是富文本的背景色。
+    /// 如果是颜色值，则是颜色值的颜色。
+    var contentColor: CodableColor? = nil
+
     /// 剪贴项在 macOS 剪贴板上的 Uniform Type Identifier（如 public.plain-text、public.html、public.png 等），用于标识原始数据类型。
     var uti: String?
     /// 对应 uti 的原始二进制数据，用于粘贴时保真写回剪贴板。
     var utiData: Data?
     /// 剪贴板上所有可用 UTI 类型及其原始数据，粘贴时全部写回以保真还原来源格式。
     var allPasteboardData: [UTIEntry]?
-    /// 创建时计算并持久化的来源 app icon 主色调（已编码为 sRGB 分量）。
-    /// 旧数据无此字段时回退到 AppIconCache 计算。
-    var sourceAppColor: CodableColor? = nil
-    var title: String?
 
-    init(kind: ClipKind, text: String? = nil, url: URL? = nil, fileURLs: [URL]? = nil, imageData: Data? = nil, uti: String? = nil, utiData: Data? = nil, allPasteboardData: [UTIEntry]? = nil) {
+    init(kind: ClipKind, text: String? = nil, url: URL? = nil, fileURLs: [URL]? = nil, imageData: Data? = nil, uti: String? = nil, utiData: Data? = nil, allPasteboardData: [UTIEntry]? = nil, contentColor: CodableColor? = nil) {
         self.id = UUID(); self.kind = kind; self.createdAt = .now
         self.text = text; self.url = url; self.fileURLs = fileURLs; self.imageData = imageData
         self.boardID = nil; self.isFavorite = false
-        self.sourceApplication = nil; self.sourceApplicationBundleID = nil; self.uti = uti; self.utiData = utiData; self.allPasteboardData = allPasteboardData; self.title = nil
+        self.sourceApplication = nil; self.sourceApplicationBundleID = nil; self.uti = uti; self.utiData = utiData; self.allPasteboardData = allPasteboardData; self.title = nil; self.contentColor = contentColor
     }
     
-
+    /// 默认是 kind 的名称
     var displayTitle: String {
-        if let title, !title.isEmpty { return title }
+        if let title: String, !title.isEmpty { return title }
         switch kind {
         case .text:
-            return text?.split(separator: "\n").first.map(String.init) ?? previewPlainText ?? L10n.tr("clip.default_text")
+            return L10n.tr("clip.default_text")
         case .link:
-            return url?.host ?? url?.absoluteString ?? previewPlainText ?? L10n.tr("clip.default_link")
+            return L10n.tr("clip.default_link")
         case .image:
             return L10n.tr("clip.default_image")
         case .file:
-            return fileURLs?.first?.lastPathComponent ?? L10n.tr("clip.default_file")
+            return L10n.tr("clip.default_file")
         case .color:
-            return text ?? L10n.tr("clip.default_color")
+            return L10n.tr("clip.default_color")
         }
     }
     var detail: String {

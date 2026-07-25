@@ -85,6 +85,17 @@ enum DatabaseManager {
                 try row.upsert(db)
             }
         }
+        // v1.0.2：持久化内容颜色（颜色值 / 富文本背景色）。
+        migrator.registerMigration("v1.0.2-contentColor") { db in
+            let hasColumn = try db.columns(in: "clips").contains { $0.name == "contentColorRed" }
+            if !hasColumn {
+                try db.alter(table: "clips") { t in
+                    t.add(column: "contentColorRed", .double)
+                    t.add(column: "contentColorGreen", .double)
+                    t.add(column: "contentColorBlue", .double)
+                }
+            }
+        }
         return migrator
     }
 }

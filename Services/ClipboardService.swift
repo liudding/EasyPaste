@@ -41,6 +41,49 @@ final class ClipboardService {
         onItem?(item)
     }
 
+    // MARK: - 内容颜色提取
+
+    /// 从复制的文本和富文本数据中提取内容颜色：
+    /// 1. 颜色值文本（#RGB / #RRGGBB / #RRGGBBAA）
+    /// 2. 富文本（RTF/RTFD）中的背景色
+    private func extractContentColor(text: String?, allData: [UTIEntry]) -> CodableColor? {
+        // 1. 色值文本
+        if let t = text?.trimmingCharacters(in: .whitespacesAndNewlines) {
+            if t.hasPrefix("#") && [4, 7, 9].contains(t.count) {
+                var hexStr = String(t.dropFirst())
+                if hexStr.count == 3 {
+                    let chars = Array(hexStr)
+                    hexStr = "\(chars[0])\(chars[0])\(chars[1])\(chars[1])\(chars[2])\(chars[2])"
+                }
+                if hexStr.count == 6, let v = UInt64(hexStr, radix: 16) {
+                    return CodableColor(
+                        red: Double((v >> 16) & 0xFF) / 255,
+                        green: Double((v >> 8) & 0xFF) / 255,
+                        blue: Double(v & 0xFF) / 255
+                    )
+                }
+            }
+        }
+        // 2. 富文本背景色
+        for entry in allData {
+            guard entry.uti == "public.rtf" || entry.uti == "com.apple.flat-rtfd" else { continue }
+            if let attr = try? NSAttributedString(
+                data: entry.data,
+                options: [.documentType: NSAttributedString.DocumentType.rtf],
+                documentAttributes: nil
+            ), attr.length > 0,
+               let bgColor = attr.attribute(.backgroundColor, at: 0, effectiveRange: nil) as? NSColor,
+               let rgb = bgColor.usingColorSpace(.sRGB) {
+                return CodableColor(
+                    red: Double(rgb.redComponent),
+                    green: Double(rgb.greenComponent),
+                    blue: Double(rgb.blueComponent)
+                )
+            }
+        }
+        return nil
+    }
+
     private func makeItem() -> Clip? {
         let allTypes = pasteboard.types ?? []
         
@@ -60,16 +103,20 @@ final class ClipboardService {
             }
         }
         let allPasteboardData = allData.isEmpty ? nil : allData
+        let contentColor = extractContentColor(
+            text: pasteboard.string(forType: .string),
+            allData: allData
+        )
         
         // 选取首选 UTI（按优先级）
         let primaryUTI = preferredUTI(from: availableTypes)
         let primaryUTIData = primaryUTI.flatMap { pasteboard.data(forType: NSPasteboard.PasteboardType($0)) }
         
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], !urls.isEmpty {
-            return Clip(kind: .file, fileURLs: urls, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
+            return Clip(kind: .file, fileURLs: urls, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData, contentColor: contentColor)
         }
         if let url = pasteboard.readObjects(forClasses: [NSURL.self], options: nil)?.first as? URL, url.scheme != "file" {
-            return Clip(kind: .link, url: url, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
+            return Clip(kind: .link, url: url, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData, contentColor: contentColor)
         }
         if let image = NSImage(pasteboard: pasteboard), let tiff = image.tiffRepresentation, tiff.count < 12_000_000 {
             // 优先采用 allPasteboardData 中的**原始图片格式**数据（png/jpeg/heic/webp…），
@@ -78,11 +125,11 @@ final class ClipboardService {
                 .first { $0.uti != "public.tiff" && (UTType($0.uti)?.conforms(to: .image) ?? false) }?
                 .data
                 ?? tiff
-            return Clip(kind: .image, imageData: originalImageData, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
+            return Clip(kind: .image, imageData: originalImageData, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData, contentColor: contentColor)
         }
         if let text = pasteboard.string(forType: .string), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let kind: ClipKind = text.hasPrefix("http://") || text.hasPrefix("https://") ? .link : .text
-            return Clip(kind: kind, text: text, url: URL(string: text), uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
+            return Clip(kind: kind, text: text, url: URL(string: text), uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData, contentColor: contentColor)
         }
         
         // 兜底：如果前面所有分支都没匹配到（例如某些 app 只写了自定义 UTI），
@@ -111,14 +158,14 @@ final class ClipboardService {
                 // 优先用原始图片格式（非 TIFF），回退 TIFF
                 let imageData = allPasteboardData.first { $0.uti != "public.tiff" && (UTType($0.uti)?.conforms(to: .image) ?? false) }?.data
                     ?? allPasteboardData.first(where: { $0.uti == "public.tiff" })?.data
-                return Clip(kind: .image, imageData: imageData, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
+                return Clip(kind: .image, imageData: imageData, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData, contentColor: contentColor)
             } else if let url = extractedURL {
-                return Clip(kind: .link, url: url, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
+                return Clip(kind: .link, url: url, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData, contentColor: contentColor)
             } else if let text = extractedText, !text.isEmpty {
-                return Clip(kind: .text, text: text, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
+                return Clip(kind: .text, text: text, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData, contentColor: contentColor)
             } else {
                 // 最后兜底：创建一个 link 类型，保存所有原始数据
-                return Clip(kind: .link, text: extractedText, url: extractedURL, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData)
+                return Clip(kind: .link, text: extractedText, url: extractedURL, uti: primaryUTI, utiData: primaryUTIData, allPasteboardData: allPasteboardData, contentColor: contentColor)
             }
         }
         
