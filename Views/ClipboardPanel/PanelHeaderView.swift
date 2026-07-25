@@ -27,22 +27,36 @@ struct PanelHeaderView: View {
     private let chipSpacing: CGFloat = 8
     @State private var l10nStore = L10nStore.shared
 
+    private var isVertical: Bool { settings.panelPosition.isVertical }
+
     private var headerTitle: String {
         store.selectedBoardID.flatMap { id in store.boards.first { $0.id == id }?.name } ?? L10n.clipboardTitle
     }
 
     var body: some View {
         let _ = l10nStore.version
-        HStack(spacing: 10) {
-            searchControl
-            // Text(headerTitle).font(.system(size: 15, weight: .bold)).lineLimit(1).fixedSize()
-            Rectangle().fill(.primary.opacity(0.12)).frame(width: 1, height: 18)
-            boardChips
-            Spacer()
-            quickSettingsInline
-            moreMenu
+        if isVertical {
+            // 竖直方向（左/右停靠）：顶部搜索 + 右侧设置，下方看板芯片
+            VStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    searchControlVertical
+                    quickSettingsInline
+                    moreMenu
+                }
+                .frame(height: 30)
+                boardChips
+            }
+        } else {
+            HStack(spacing: 10) {
+                searchControl
+                Rectangle().fill(.primary.opacity(0.12)).frame(width: 1, height: 18)
+                boardChips
+                Spacer()
+                quickSettingsInline
+                moreMenu
+            }
+            .frame(height: 30)
         }
-        .frame(height: 30)
     }
 
     // MARK: Search
@@ -73,6 +87,22 @@ struct PanelHeaderView: View {
             .buttonStyle(.plain).foregroundStyle(.secondary)
             .focusEffectDisabled()
         }
+    }
+
+    /// 竖直方向专用搜索栏：始终展开、填满可用宽度，无需折叠/展开切换。
+    @ViewBuilder private var searchControlVertical: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass").font(.system(size: 12)).foregroundStyle(.secondary)
+            TextField(L10n.searchPlaceholder, text: $store.query)
+                .textFieldStyle(.plain).font(.system(size: 13))
+                .focused($searchFocused)
+                .focusEffectDisabled()
+            if !store.query.isEmpty {
+                Button { store.query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }.buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(.primary.opacity(0.09), in: Capsule())
     }
 
     // MARK: Board Chips

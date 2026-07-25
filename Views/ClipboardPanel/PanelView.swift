@@ -85,7 +85,7 @@ struct PanelView: View {
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if isVertical {
-                        ScrollView(.vertical) { LazyVStack(spacing: 10) { cards(availableWidth: geo.size.width) }.padding(.vertical, 2) }
+                        ScrollView(.vertical) { LazyVStack(spacing: 10) { cards(availableWidth: geo.size.width - 28) }.padding(.horizontal, 14).padding(.vertical, 2) }
                     } else {
                         ScrollView(.horizontal) { LazyHStack(spacing: 10) { cards(availableWidth: geo.size.width) }.padding(.horizontal, 14) }
                     }
