@@ -265,8 +265,6 @@ struct ClipDragPayload: Codable, Transferable {
 
 extension UTType {
     static let easypasteClip = UTType(importedAs: "com.easypaste.clip")
-    /// 看板（Pinboard）之间拖拽重排用的内部类型，仅在 App 进程内生效。
-    static let easypasteBoard = UTType(importedAs: "com.easypaste.board")
 }
 
 extension Pasteboard {

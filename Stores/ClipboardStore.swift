@@ -159,16 +159,15 @@ final class ClipboardStore {
         persistBoardOrder()
     }
 
-    /// 看板实时重排（拖拽预览用）：把 `sourceID` 看板移动到数组的 `index` 位置
-    /// （`index` 基于拖拽落点相对各芯片中点的顺序；移除自身后的偏移已在此校正），带动画。
+    /// 看板实时重排（拖拽手势用）：把 `sourceID` 看板移动到 `gap` 间隔位
+    /// （`gap` 为移除自身后数组中的插入下标，0...count-1），带弹簧动画。
     /// 返回顺序是否真的发生了变化。
-    func reorderBoardLive(_ sourceID: UUID, to index: Int) -> Bool {
+    @discardableResult
+    func moveBoardToGap(_ sourceID: UUID, gap: Int) -> Bool {
         guard let from = boards.firstIndex(where: { $0.id == sourceID }) else { return false }
         var reordered = boards
         let moved = reordered.remove(at: from)
-        var insertAt = index
-        if from < index { insertAt -= 1 }
-        insertAt = min(max(insertAt, 0), reordered.count)
+        let insertAt = min(max(gap, 0), reordered.count)
         reordered.insert(moved, at: insertAt)
         guard reordered.map({ $0.id }) != boards.map({ $0.id }) else { return false }
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {

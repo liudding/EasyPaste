@@ -10,8 +10,21 @@ struct PanelHeaderView: View {
     @FocusState.Binding var searchFocused: Bool
     @FocusState.Binding var boardFieldFocused: Bool
 
+    /// 正在被手势拖拽重排的看板 id（nil 表示没有）。
     @State private var draggingBoardID: UUID?
+    /// 拖拽手势的实时水平位移（驱动浮动克隆层）。
+    @State private var dragTranslation: CGFloat = 0
+    /// 拖拽起始时被拖芯片在 `boardSpace` 下的 minX（克隆层锚点 + 插入位计算基准）。
+    @State private var dragStartMinX: CGFloat = 0
+    /// 拖拽期间冻结的各芯片宽度。插入位推导只用「当前顺序 + 冻结宽度」——
+    /// 让位动画中 GeometryReader 上报的是插值 frame，直接拿来算中点会来回抖动。
+    @State private var frozenChipWidths: [UUID: CGFloat] = [:]
+    /// 最左芯片槽位的 minX（重排不变量：无论哪个芯片占据该槽位，其起始 x 相同）。
+    @State private var dragBaseMinX: CGFloat = 0
+    /// 各看板芯片在 `boardSpace` 坐标系下的框（拖拽期间冻结，松手后恢复更新）。
     @State private var chipFrames: [UUID: CGRect] = [:]
+    /// 芯片间距（与下方 HStack spacing 同源，供重排布局推导）。
+    private let chipSpacing: CGFloat = 8
 
     private var headerTitle: String {
         store.selectedBoardID.flatMap { id in store.boards.first { $0.id == id }?.name } ?? "剪切板"
@@ -62,14 +75,14 @@ struct PanelHeaderView: View {
 
     private var boardChips: some View {
         ScrollView(.horizontal) {
-            HStack(spacing: 8) {
-                BoardChipView(title: "全部", color: .secondary, selected: store.selectedBoardID == nil, store: store, boardID: nil, draggingID: draggingBoardID, onDragStart: { _ in }) {
+            HStack(spacing: chipSpacing) {
+                BoardChipView(title: "全部", color: .secondary, selected: store.selectedBoardID == nil, draggable: false, isDragging: false, onReorderDragChanged: { _ in }, onReorderDragEnded: {}) {
                     store.selectedBoardID = nil
                 } onDrop: { clipID in
                     store.move(clipID, to: nil)
                 }
                 ForEach(store.boards) { board in
-                    BoardChipView(title: board.name, color: board.swiftUIColor, selected: store.selectedBoardID == board.id, store: store, boardID: board.id, draggingID: draggingBoardID, onDragStart: { draggingBoardID = $0 }) {
+                    BoardChipView(title: board.name, color: board.swiftUIColor, selected: store.selectedBoardID == board.id, draggable: true, isDragging: draggingBoardID == board.id, onReorderDragChanged: { boardDragChanged(board.id, translation: $0) }, onReorderDragEnded: boardDragEnded) {
                         store.selectedBoardID = board.id
                     } onDrop: { clipID in
                         store.move(clipID, to: board.id)
@@ -84,71 +97,58 @@ struct PanelHeaderView: View {
             }
             .padding(.horizontal, 2)
             .coordinateSpace(name: "boardSpace")
-            .onDrop(of: [UTType.easypasteBoard.identifier], delegate: BoardReorderDelegate(store: store, frames: $chipFrames, draggingID: $draggingBoardID))
-            .onPreferenceChange(BoardFrameKey.self) { chipFrames = $0 }
+            .onPreferenceChange(BoardFrameKey.self) { if draggingBoardID == nil { chipFrames = $0 } }
+            .overlay(alignment: .topLeading) {
+                // 浮动克隆层：被拖芯片的"本体"跟随手指，列表中只留下虚线间隙占位，
+                // 其余芯片实时让位——列表级重排，而非"投进另一个芯片"。
+                if let id = draggingBoardID, let board = store.boards.first(where: { $0.id == id }) {
+                    BoardChipLabel(title: board.name, color: board.swiftUIColor, selected: store.selectedBoardID == id)
+                        .scaleEffect(1.06)
+                        .shadow(color: .black.opacity(0.35), radius: 6, y: 3)
+                        .offset(x: dragStartMinX + dragTranslation)
+                }
+            }
         }
         .scrollClipDisabled()
         .scrollIndicators(.hidden)
     }
 
-    private struct BoardChipView: View {
-        let title: String
-        let color: Color
-        let selected: Bool
-        let store: ClipboardStore
-        let boardID: UUID?
-        let draggingID: UUID?
-        let onDragStart: (UUID) -> Void
-        let action: () -> Void
-        let onDrop: (UUID) -> Void
-
-        @State private var isTargeted = false
-        @State private var dropBounce = false
-
-        var body: some View {
-            let chip = HStack(spacing: 5) {
-                Circle().fill(color).frame(width: 7, height: 7)
-                Text(title).font(.system(size: 12, weight: .medium)).lineLimit(1)
+    /// 看板拖拽重排：克隆层跟随手指平移；插入间隔位（gap）用「当前顺序 + 冻结宽度」推导出的
+    /// 静止槽位中点计算，克隆层相关状态显式禁用动画——两者共同消除让位抖动与跟手偏移。
+    private func boardDragChanged(_ boardID: UUID, translation: CGFloat) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            if draggingBoardID != boardID {
+                draggingBoardID = boardID
+                dragStartMinX = chipFrames[boardID]?.minX ?? 0
+                frozenChipWidths = chipFrames.mapValues(\.width)
+                dragBaseMinX = chipFrames.values.map(\.minX).min() ?? 0
             }
-            .padding(.horizontal, 10).padding(.vertical, 5)
-            .background(
-                Capsule()
-                    .fill(selected ? color.opacity(0.28) : (isTargeted ? color.opacity(0.18) : .white.opacity(0.07)))
-            )
-            .overlay(Capsule().stroke(selected ? color.opacity(0.8) : (isTargeted ? color.opacity(0.5) : .clear), lineWidth: 1))
-            .foregroundStyle(selected ? .white : (isTargeted ? .primary : .secondary))
-            .contentShape(Capsule())
-            .onTapGesture { action() }
-            .scaleEffect(isTargeted ? 1.05 : (dropBounce ? 1.15 : 1.0))
-            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isTargeted)
-            .animation(.spring(response: 0.3, dampingFraction: 0.5), value: dropBounce)
-            .opacity(boardID != nil && boardID == draggingID ? 0.4 : 1.0)
-            .background(
-                BoardChipDropZone(onTargeted: { targeted in
-                    isTargeted = targeted
-                }, onDrop: { clipID in
-                    dropBounce = true
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.5).delay(0.1)) {
-                        dropBounce = false
-                    }
-                    onDrop(clipID)
-                })
-            )
+            dragTranslation = translation
+        }
+        let center = dragStartMinX + (frozenChipWidths[boardID] ?? 0) / 2 + translation
+        var gap = 0
+        var x = dragBaseMinX
+        for board in store.boards {
+            let width = frozenChipWidths[board.id] ?? 0
+            if board.id != boardID, x + width / 2 < center { gap += 1 }
+            x += width + chipSpacing
+        }
+        store.moveBoardToGap(boardID, gap: gap)
+    }
 
-            if let boardID {
-                chip
-                    .onDrag {
-                        onDragStart(boardID)
-                        let provider = NSItemProvider()
-                        provider.registerDataRepresentation(forTypeIdentifier: UTType.easypasteBoard.identifier, visibility: .ownProcess) { completion in
-                            completion(boardID.uuidString.data(using: .utf8), nil)
-                            return nil
-                        }
-                        return provider
-                    }
-            } else {
-                chip
-            }
+    /// 松手提交：顺序已在拖拽过程中实时落定，此处统一写库一次并清理拖拽态。
+    private func boardDragEnded() {
+        store.persistBoardOrder()
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            draggingBoardID = nil
+            dragTranslation = 0
+            dragStartMinX = 0
+            frozenChipWidths = [:]
+            dragBaseMinX = 0
         }
     }
 
@@ -159,44 +159,91 @@ struct PanelHeaderView: View {
         }
     }
 
-    private struct BoardReorderDelegate: DropDelegate {
-        let store: ClipboardStore
-        @Binding var frames: [UUID: CGRect]
-        @Binding var draggingID: UUID?
+    /// 芯片纯视觉（圆点 + 标题的胶囊），供列表芯片与拖拽浮动克隆层共用。
+    private struct BoardChipLabel: View {
+        let title: String
+        let color: Color
+        let selected: Bool
+        var highlighted: Bool = false
 
-        func validateDrop(info: DropInfo) -> Bool {
-            info.hasItemsConforming(to: [UTType.easypasteBoard.identifier])
-        }
-
-        func dropUpdated(info: DropInfo) -> DropProposal {
-            guard let drag = draggingID, let idx = insertionIndex(info: info) else {
-                return DropProposal(operation: .move)
+        var body: some View {
+            HStack(spacing: 5) {
+                Circle().fill(color).frame(width: 7, height: 7)
+                Text(title).font(.system(size: 12, weight: .medium)).lineLimit(1)
             }
-            if store.reorderBoardLive(drag, to: idx) {
-                store.persistBoardOrder()
-            }
-            return DropProposal(operation: .move)
-        }
-
-        func performDrop(info: DropInfo) -> Bool {
-            draggingID = nil
-            return true
-        }
-
-        func dropExited(info: DropInfo) {
-            draggingID = nil
-        }
-
-        private func insertionIndex(info: DropInfo) -> Int? {
-            let x = info.location.x
-            let sorted = frames.sorted { $0.value.midX < $1.value.midX }
-            for (i, (_, rect)) in sorted.enumerated() {
-                if x < rect.midX { return i }
-            }
-            return sorted.count
+            .padding(.horizontal, 10).padding(.vertical, 5)
+            .background(
+                Capsule()
+                    .fill(selected ? color.opacity(0.28) : (highlighted ? color.opacity(0.18) : .white.opacity(0.07)))
+            )
+            .overlay(Capsule().stroke(selected ? color.opacity(0.8) : (highlighted ? color.opacity(0.5) : .clear), lineWidth: 1))
+            .foregroundStyle(selected ? .white : (highlighted ? .primary : .secondary))
         }
     }
 
+    private struct BoardChipView: View {
+        let title: String
+        let color: Color
+        let selected: Bool
+        /// 是否可手势拖拽重排（“全部”等元芯片为 false）。
+        let draggable: Bool
+        /// 是否正被拖拽（列表中显示为半透明占位，本体由父视图的克隆层呈现）。
+        let isDragging: Bool
+        /// 拖拽手势位移回调（水平分量）。
+        let onReorderDragChanged: (CGFloat) -> Void
+        let onReorderDragEnded: () -> Void
+        let action: () -> Void
+        let onDrop: (UUID) -> Void
+
+        @State private var isTargeted = false
+        @State private var dropBounce = false
+
+        var body: some View {
+            let chip = BoardChipLabel(title: title, color: color, selected: selected, highlighted: isTargeted)
+                .contentShape(Capsule())
+                .onTapGesture { action() }
+                .scaleEffect(isTargeted ? 1.05 : (dropBounce ? 1.15 : 1.0))
+                .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isTargeted)
+                .animation(.spring(response: 0.3, dampingFraction: 0.5), value: dropBounce)
+                .background(
+                    BoardChipDropZone(onTargeted: { targeted in
+                        isTargeted = targeted
+                    }, onDrop: { clipID in
+                        dropBounce = true
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.5).delay(0.1)) {
+                            dropBounce = false
+                        }
+                        onDrop(clipID)
+                    })
+                )
+
+            if draggable {
+                chip
+                    .opacity(isDragging ? 0 : 1)
+                    .background {
+                        // 拖拽中原位只留"插入间隙"虚线胶囊，本体由父视图克隆层呈现；
+                        // 占位与克隆层不同款，避免"芯片从鼠标位置偏移走"的视觉错觉。
+                        if isDragging {
+                            Capsule()
+                                .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                                .foregroundStyle(.white.opacity(0.35))
+                        }
+                    }
+                    // 列表级重排手势：minimumDistance 保证点按选中不受影响；
+                    // 位移超过阈值后手势优先于 TapGesture，松手不会误触选中。
+                    .gesture(
+                        DragGesture(minimumDistance: 4)
+                            .onChanged { onReorderDragChanged($0.translation.width) }
+                            .onEnded { _ in onReorderDragEnded() }
+                    )
+            } else {
+                chip
+            }
+        }
+    }
+
+    /// 芯片背后的 AppKit 落点视图：承接「clip 拖到看板换板」。
+    /// 看板重排不走这里——它由芯片上的 DragGesture 驱动（列表级排序，见 BoardChipView）。
     private struct BoardChipDropZone: NSViewRepresentable {
         var onTargeted: (Bool) -> Void
         var onDrop: (UUID) -> Void
@@ -208,7 +255,10 @@ struct PanelHeaderView: View {
             return view
         }
 
-        func updateNSView(_ nsView: DroppableView, context: Context) {}
+        func updateNSView(_ nsView: DroppableView, context: Context) {
+            nsView.onTargeted = onTargeted
+            nsView.onDrop = onDrop
+        }
 
         class DroppableView: NSView {
             var onTargeted: (Bool) -> Void = { _ in }
