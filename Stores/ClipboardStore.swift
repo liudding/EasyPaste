@@ -167,6 +167,62 @@ final class ClipboardStore {
         backupService.scheduleBackupOnIdle()
     }
 
+    /// 重命名看板（空名则忽略）。
+    func renameBoard(_ id: UUID, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty,
+              let i = boards.firstIndex(where: { $0.id == id }) else { return }
+        boards[i].name = trimmed
+        _ = try? dbQueue.write { db in try PasteboardRow(boards[i], sortIndex: i).upsert(db) }
+        backupService.scheduleBackupOnIdle()
+    }
+
+    /// 修改看板颜色。
+    func updateBoardColor(_ id: UUID, color: String) {
+        guard let i = boards.firstIndex(where: { $0.id == id }) else { return }
+        boards[i].color = color
+        _ = try? dbQueue.write { db in try PasteboardRow(boards[i], sortIndex: i).upsert(db) }
+        backupService.scheduleBackupOnIdle()
+    }
+
+    /// 删除看板：移除看板行，并将该看板上的所有剪贴项解绑（boardID 置 nil）。
+    func deleteBoard(_ id: UUID) {
+        let boardKey = id.uuidString
+        boards.removeAll { $0.id == id }
+        for i in items.indices where items[i].boardID == id {
+            items[i].boardID = nil
+        }
+        _ = try? dbQueue.write { db in
+            try PasteboardRow.deleteOne(db, key: boardKey)
+            try db.execute(sql: "UPDATE clips SET boardID = NULL WHERE boardID = ?", arguments: [boardKey])
+        }
+        if selectedBoardID == id { selectedBoardID = nil }
+        backupService.scheduleBackupOnIdle()
+    }
+
+    /// 删除看板及其所有剪贴项。
+    func deleteBoardAndClips(_ id: UUID) {
+        let boardKey = id.uuidString
+        let clipIDs = items.filter { $0.boardID == id }.map(\.id)
+        let clipKeys = clipIDs.map(\.uuidString)
+        boards.removeAll { $0.id == id }
+        items.removeAll { $0.boardID == id }
+        _ = try? dbQueue.write { db in
+            try PasteboardRow.deleteOne(db, key: boardKey)
+            if !clipKeys.isEmpty {
+                try ClipRow.deleteAll(db, keys: clipKeys)
+                try db.execute(literal: "DELETE FROM clip_blobs WHERE clipID NOT IN (SELECT id FROM clips)")
+            }
+        }
+        if selectedBoardID == id { selectedBoardID = nil }
+        backupService.scheduleBackupOnIdle()
+    }
+
+    /// 返回指定看板上的剪贴项数量。
+    func clipCount(for boardID: UUID) -> Int {
+        items.filter { $0.boardID == boardID }.count
+    }
+
     /// 看板拖拽重排：把 `sourceID` 看板移动到 `targetID` 看板之前，并持久化新顺序。
     func moveBoard(_ sourceID: UUID, to targetID: UUID) {
         guard sourceID != targetID,

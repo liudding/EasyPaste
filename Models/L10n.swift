@@ -182,6 +182,12 @@ enum L10n {
     static var searchPlaceholder: String { tr("panel.search_placeholder") }
     static var newBoardPlaceholder: String { tr("panel.new_board_placeholder") }
     static var addBoardConfirm: String { tr("panel.add_board_confirm") }
+    static var boardColor: String { tr("panel.board_color") }
+    static var deleteBoardTitle: String { tr("panel.delete_board_title") }
+    static var deleteBoardMessage: String { tr("panel.delete_board_message") }
+    static var deleteBoardOnly: String { tr("panel.delete_board_only") }
+    static var deleteBoardAll: String { tr("panel.delete_board_all") }
+    static var cancel: String { tr("panel.cancel") }
     static var soundOn: String { tr("panel.sound_on") }
     static var soundOff: String { tr("panel.sound_off") }
 

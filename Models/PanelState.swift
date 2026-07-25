@@ -12,6 +12,9 @@ final class PanelState {
     var addingBoard = false
     var newBoardName = ""
     var newBoardColor = "orange"
+    /// 正在编辑（重命名）的看板 ID。
+    var editingBoardID: UUID?
+    var editingBoardName = ""
     var targetAppName: String?
     /// 二维码浮层内容。非 nil 时面板展示 QRCodeView。
     var qrCodeContent: String?
