@@ -135,6 +135,11 @@ struct ClipCardView: View {
         .onTapGesture { onSelect() }
         .simultaneousGesture(TapGesture(count: 2).onEnded { onPaste(item) })
         .onDrag { makeProvider() }
+        // 右键选中：捕获层仅在 rightMouseDown 时拦截事件触发一次选中，随后转发 responder chain
+        // 让外层 SwiftUI `.contextMenu` 的 NSMenu 正常弹出。左键/拖拽透传不受影响。
+        // 不能在 contextMenu 的 @ViewBuilder 闭包内调 onSelect——该闭包在 body 更新时对所有可见卡片
+        // 急切求值，每张卡都写 selectedID → 互相覆盖 → 无限重渲染 → 主线程阻塞(ANR)。
+        .overlay(RightClickSelector(onSelect: onSelect))
         .contextMenu { contextMenu }
     }
 
@@ -398,5 +403,44 @@ struct ClipCardView: View {
             }
         }
         return provider
+    }
+}
+
+// MARK: - Right-click selection capture
+
+/// 右键选中捕获层：仅在 rightMouseDown 时拦截事件以触发一次选中，随后转发给 responder chain
+/// 让外层 SwiftUI `.contextMenu` 设置的 NSMenu 正常弹出。其余事件（左键、拖拽）透传给下层 SwiftUI。
+///
+/// 与 `BoardContextMenuOverlay` 同一 hitTest 模式：`hitTest` 仅在 `NSApp.currentEvent?.type == .rightMouseDown`
+/// 时返回自身，否则返回 nil（透明）。`rightMouseDown` 调 `onSelect()` 后调 `super.rightMouseDown(with:)`，
+/// NSView 默认实现沿 nextResponder(=superview) 向上查找 `menu(for:)`，最终命中 `.contextMenu` 的 NSMenu。
+private struct RightClickSelector: NSViewRepresentable {
+    let onSelect: () -> Void
+
+    func makeNSView(context: Context) -> RightClickSelectorView {
+        let view = RightClickSelectorView()
+        view.onSelect = onSelect
+        return view
+    }
+
+    func updateNSView(_ nsView: RightClickSelectorView, context: Context) {
+        nsView.onSelect = onSelect
+    }
+
+    final class RightClickSelectorView: NSView {
+        var onSelect: (() -> Void)?
+
+        /// 仅在右键按下时捕获事件，其余事件透传给下层 SwiftUI（左键、拖拽等）。
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            guard NSApp.currentEvent?.type == .rightMouseDown else { return nil }
+            return super.hitTest(point)
+        }
+
+        override func rightMouseDown(with event: NSEvent) {
+            onSelect?()
+            // 转发 responder chain：NSView 默认实现会沿 nextResponder 向上查找 menu(for:)，
+            // 最终命中外层 SwiftUI `.contextMenu` 设置的 NSMenu 并弹出。不消耗事件。
+            super.rightMouseDown(with: event)
+        }
     }
 }
