@@ -8,6 +8,7 @@ struct OnboardingView: View {
     @State private var currentPage = 0
     @State private var direction: Int = 1  // 1 = forward, -1 = backward
     @State private var l10nStore = L10nStore.shared
+    @State private var themeStore = ThemeStore.shared
 
     private let pages: [OnboardingPage] = [
         .welcome,
@@ -20,6 +21,7 @@ struct OnboardingView: View {
 
     var body: some View {
         let _ = l10nStore.version
+        let _ = themeStore.version
         ZStack {
             // 背景
             backgroundGradient
@@ -47,14 +49,20 @@ struct OnboardingView: View {
             }
         }
         .frame(width: 540, height: 440)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(themeStore.effectiveColorScheme)
     }
 
     // MARK: Background
 
+    @Environment(\.colorScheme) private var colorScheme
+
     private var backgroundGradient: some View {
         ZStack {
-            Color(red: 0.08, green: 0.085, blue: 0.11)
+            if colorScheme == .dark {
+                Color(red: 0.08, green: 0.085, blue: 0.11)
+            } else {
+                Color(red: 0.95, green: 0.95, blue: 0.97)
+            }
             // subtle radial glow
             RadialGradient(
                 colors: [
@@ -104,7 +112,7 @@ struct OnboardingView: View {
                                 .foregroundStyle(Color(red: 0.35, green: 0.78, blue: 0.56))
                             Text(feature)
                                 .font(.system(size: 13))
-                                .foregroundStyle(.white.opacity(0.85))
+                                .foregroundStyle(.primary.opacity(0.85))
                         }
                     }
                 }
@@ -148,10 +156,10 @@ struct OnboardingView: View {
     private func shortcutBadge(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 12, weight: .medium, design: .monospaced))
-            .foregroundStyle(.white.opacity(0.7))
+            .foregroundStyle(.primary.opacity(0.7))
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
-            .background(.white.opacity(0.08), in: Capsule())
+            .background(.primary.opacity(0.08), in: Capsule())
     }
 
     // MARK: Bottom Bar
@@ -162,7 +170,7 @@ struct OnboardingView: View {
             HStack(spacing: 8) {
                 ForEach(0..<pages.count, id: \.self) { index in
                     Circle()
-                        .fill(index == currentPage ? Color.white : Color.white.opacity(0.25))
+                        .fill(index == currentPage ? Color.primary : Color.primary.opacity(0.25))
                         .frame(width: 7, height: 7)
                         .animation(.easeInOut(duration: 0.2), value: currentPage)
                 }
@@ -183,7 +191,7 @@ struct OnboardingView: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
-                .background(.white.opacity(0.07), in: Capsule())
+                .background(.primary.opacity(0.07), in: Capsule())
             }
 
             // 下一步 / 开始使用

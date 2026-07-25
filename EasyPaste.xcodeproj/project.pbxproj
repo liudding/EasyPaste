@@ -17,6 +17,7 @@
 		606A4A64AAB97E3C60B80DAB /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 6B944661976A565B89F25974 /* AppIcon.icns */; };
 		A0000001 /* EasyPasteApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000101 /* EasyPasteApp.swift */; };
 		A0000002 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000102 /* AppSettings.swift */; };
+		7E001001 /* ThemeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E001101 /* ThemeStore.swift */; };
 		A0000003 /* Clip.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000103 /* Clip.swift */; };
 		A0000004 /* PanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000104 /* PanelState.swift */; };
 		A0000005 /* Shortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000105 /* Shortcut.swift */; };
@@ -54,6 +55,7 @@
 		6B944661976A565B89F25974 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = SOURCE_ROOT; };
 		A0000101 /* EasyPasteApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EasyPasteApp.swift; sourceTree = "<group>"; };
 		A0000102 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		7E001101 /* ThemeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeStore.swift; sourceTree = "<group>"; };
 		A0000103 /* Clip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Clip.swift; sourceTree = "<group>"; };
 		A0000104 /* PanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelState.swift; sourceTree = "<group>"; };
 		A0000105 /* Shortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shortcut.swift; sourceTree = "<group>"; };
@@ -153,6 +155,7 @@
 			isa = PBXGroup;
 			children = (
 				A0000102 /* AppSettings.swift */,
+				7E001101 /* ThemeStore.swift */,
 				A0000103 /* Clip.swift */,
 				A0000104 /* PanelState.swift */,
 				A0000105 /* Shortcut.swift */,
@@ -305,6 +308,7 @@
 			files = (
 				A0000001 /* EasyPasteApp.swift in Sources */,
 				A0000002 /* AppSettings.swift in Sources */,
+				7E001001 /* ThemeStore.swift in Sources */,
 				A0000003 /* Clip.swift in Sources */,
 				A0000004 /* PanelState.swift in Sources */,
 				A0000005 /* Shortcut.swift in Sources */,

@@ -18,11 +18,21 @@ struct PanelView: View {
     /// 卡片滚入视口后额外露出的相邻卡片宽度（pt）。
     private let neighborPeek: CGFloat = 36
     @State private var l10nStore = L10nStore.shared
+    @State private var themeStore = ThemeStore.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     private var isVertical: Bool { settings.panelPosition.isVertical }
 
+    /// 面板背景叠色：深色主题用深蓝黑（原视觉），浅色主题用近白半透明。
+    private var panelOverlayColor: Color {
+        colorScheme == .dark
+            ? Color(red: 0.07, green: 0.075, blue: 0.09).opacity(0.82)
+            : Color(red: 0.96, green: 0.96, blue: 0.98).opacity(0.86)
+    }
+
     var body: some View {
         let _ = l10nStore.version
+        let _ = themeStore.version
         ZStack {
             VStack(spacing: 0) {
                 PanelHeaderView(store: store, settings: settings, panelState: panelState, onOpenSettings: onOpenSettings, searchFocused: $searchFocused, boardFieldFocused: $boardFieldFocused)
@@ -32,15 +42,15 @@ struct PanelView: View {
                     .padding(.bottom, 14)
             }
             .background(.ultraThinMaterial)
-            .background(Color(red: 0.07, green: 0.075, blue: 0.09).opacity(0.82))
+            .background(panelOverlayColor)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(.white.opacity(0.10), lineWidth: 1))
-            .shadow(color: .black.opacity(0.45), radius: 24, y: 10)
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(.primary.opacity(0.10), lineWidth: 1))
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.45 : 0.18), radius: 24, y: 10)
 
             if let item = panelState.previewItem { previewOverlay(item) }
         }
         .padding(8)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(themeStore.effectiveColorScheme)
         .onAppear {
             panelState.focusSearch = { searchFocused = true }
             AppIconCache.shared.warm(bundleIDs: store.filteredItems.compactMap(\.sourceApplicationBundleID))
@@ -188,7 +198,7 @@ struct PanelView: View {
             .padding(18)
             .frame(maxWidth: 520, maxHeight: 380)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.12)))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(.primary.opacity(0.12)))
         }
         .transition(.opacity)
     }

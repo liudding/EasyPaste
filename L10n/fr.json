@@ -29,6 +29,13 @@
     "settings.language_section": "Langue",
     "settings.language_description": "Les modifications prennent effet immédiatement.",
 
+    "theme.section": "Thème",
+    "theme.appearance": "Apparence",
+    "theme.auto": "Auto",
+    "theme.light": "Clair",
+    "theme.dark": "Sombre",
+    "theme.description": "Les modifications prennent effet immédiatement.",
+
     "settings.section_panel": "Panneau",
     "settings.panel_position": "Position du panneau",
     "settings.section_general": "Général",

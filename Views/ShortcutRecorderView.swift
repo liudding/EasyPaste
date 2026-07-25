@@ -16,7 +16,7 @@ struct ShortcutRecorderView: View {
             Text(recording ? L10n.shortcutRecording : shortcut.displayString)
                 .frame(minWidth: 110)
                 .padding(.horizontal, 10).padding(.vertical, 4)
-                .background(recording ? .orange.opacity(0.3) : .white.opacity(0.08), in: .rect(cornerRadius: 6))
+                .background(recording ? .orange.opacity(0.3) : .primary.opacity(0.08), in: .rect(cornerRadius: 6))
         }
         .buttonStyle(.plain)
         .font(.system(size: 12, weight: .medium, design: .monospaced))

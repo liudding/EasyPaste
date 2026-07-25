@@ -91,7 +91,7 @@ struct ClipCardView: View {
         }
         .frame(width: vertical ? availableWidth : 170)
         .clipShape(.rect(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? headerColor : .white.opacity(0.07), lineWidth: selected ? 1.5 : 1))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? headerColor : .primary.opacity(0.07), lineWidth: selected ? 1.5 : 1))
         .contentShape(.rect)
         .onTapGesture { onSelect() }
         .simultaneousGesture(TapGesture(count: 2).onEnded { onPaste(item) })
@@ -172,7 +172,7 @@ struct ClipCardView: View {
         case .link:
             // 链接：优先展示原始富文本格式，无则 fallback 到 URL 摘要或纯文本预览
             if let attr = item.attributedText {
-                AttributedTextView(attributedString: attr, maxLines: 4)
+                AttributedTextView(attributedString: attr, maxLines: 4, isSelectable: false)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else if let url = item.url {
                 VStack(alignment: .leading, spacing: 3) {
@@ -196,7 +196,7 @@ struct ClipCardView: View {
         case .text:
             // 优先展示原始富文本格式，无则 fallback 到纯文本预览
             if let attr = item.attributedText {
-                AttributedTextView(attributedString: attr, maxLines: 4)
+                AttributedTextView(attributedString: attr, maxLines: 4, isSelectable: false)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else if let preview = item.previewPlainText {
                 Text(preview).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(4).multilineTextAlignment(.leading)
@@ -238,7 +238,7 @@ struct ClipCardView: View {
         if selected { return headerColor.opacity(0.18) }
         // 色值类型 body 底色就是解析的色值颜色
         if item.kind == .color { return item.resolvedColorValue ?? item.kind.defaultColor }
-        return Color.white.opacity(0.06)
+        return Color.primary.opacity(0.06)
     }
 
     /// 判断一个颜色是否为亮色（用于决定文本用黑/白）。

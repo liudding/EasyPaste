@@ -29,6 +29,13 @@
     "settings.language_section": "Язык",
     "settings.language_description": "Изменения вступают в силу немедленно.",
 
+    "theme.section": "Тема",
+    "theme.appearance": "Оформление",
+    "theme.auto": "Авто",
+    "theme.light": "Светлая",
+    "theme.dark": "Тёмная",
+    "theme.description": "Изменения вступают в силу немедленно.",
+
     "settings.section_panel": "Панель",
     "settings.panel_position": "Положение панели",
     "settings.section_general": "Общие",

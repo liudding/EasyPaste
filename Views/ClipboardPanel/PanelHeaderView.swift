@@ -35,8 +35,8 @@ struct PanelHeaderView: View {
         let _ = l10nStore.version
         HStack(spacing: 10) {
             searchControl
-            Text(headerTitle).font(.system(size: 15, weight: .bold)).lineLimit(1).fixedSize()
-            Rectangle().fill(.white.opacity(0.12)).frame(width: 1, height: 18)
+            // Text(headerTitle).font(.system(size: 15, weight: .bold)).lineLimit(1).fixedSize()
+            Rectangle().fill(.primary.opacity(0.12)).frame(width: 1, height: 18)
             boardChips
             Spacer()
             quickSettingsInline
@@ -59,7 +59,7 @@ struct PanelHeaderView: View {
                 }
             }
             .padding(.horizontal, 10).padding(.vertical, 6)
-            .background(.white.opacity(0.09), in: Capsule())
+            .background(.primary.opacity(0.09), in: Capsule())
             .transition(.opacity.combined(with: .scale(scale: 0.6, anchor: .leading)))
         } else {
             Button {
@@ -176,7 +176,7 @@ struct PanelHeaderView: View {
             .padding(.horizontal, 10).padding(.vertical, 5)
             .background(
                 Capsule()
-                    .fill(selected ? color.opacity(0.28) : (highlighted ? color.opacity(0.18) : .white.opacity(0.07)))
+                    .fill(selected ? color.opacity(0.28) : (highlighted ? color.opacity(0.18) : .primary.opacity(0.07)))
             )
             .overlay(Capsule().stroke(selected ? color.opacity(0.8) : (highlighted ? color.opacity(0.5) : .clear), lineWidth: 1))
             .foregroundStyle(selected ? .white : (highlighted ? .primary : .secondary))
@@ -228,7 +228,7 @@ struct PanelHeaderView: View {
                         if isDragging {
                             Capsule()
                                 .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                                .foregroundStyle(.white.opacity(0.35))
+                                .foregroundStyle(.primary.opacity(0.35))
                         }
                     }
                     // 列表级重排手势：minimumDistance 保证点按选中不受影响；
@@ -347,12 +347,12 @@ struct PanelHeaderView: View {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 10).padding(.vertical, 4)
-                        .background(Capsule().fill(.white.opacity(0.16)))
-                        .overlay(Capsule().stroke(.white.opacity(0.28), lineWidth: 0.5))
+                        .background(Capsule().fill(.primary.opacity(0.16)))
+                        .overlay(Capsule().stroke(.primary.opacity(0.28), lineWidth: 0.5))
                 }.buttonStyle(.plain)
             }
             .padding(.horizontal, 10).padding(.vertical, 5)
-            .background(.white.opacity(0.09), in: Capsule())
+            .background(.primary.opacity(0.09), in: Capsule())
         } else {
             Button {
                 panelState.addingBoard = true
@@ -406,14 +406,14 @@ struct PanelHeaderView: View {
 
     @ViewBuilder
     private var positionGroup: some View {
-        Rectangle().fill(.white.opacity(0.12)).frame(width: 1, height: 14)
+        Rectangle().fill(.primary.opacity(0.12)).frame(width: 1, height: 14)
         HStack(spacing: 1) {
             positionButton(.top, icon: "inset.filled.tophalf.rectangle")
             positionButton(.left, icon: "inset.filled.lefthalf.rectangle")
             positionButton(.right, icon: "inset.filled.righthalf.rectangle")
             positionButton(.bottom, icon: "inset.filled.bottomhalf.rectangle")
         }
-        .background(.white.opacity(0.07), in: Capsule())
+        .background(.primary.opacity(0.07), in: Capsule())
         .padding(.horizontal, 4)
     }
 

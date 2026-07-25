@@ -99,6 +99,12 @@ enum L10n {
     static var languageSection: String { tr("settings.language_section") }
     static var languageDescription: String { tr("settings.language_description") }
 
+    // MARK: - Theme
+
+    static var themeSection: String { tr("theme.section") }
+    static var themeAppearance: String { tr("theme.appearance") }
+    static var themeDescription: String { tr("theme.description") }
+
     // MARK: - Settings General
 
     static var sectionPanel: String { tr("settings.section_panel") }

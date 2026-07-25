@@ -9,9 +9,11 @@ struct SettingsView: View {
     @State private var showClearConfirm = false
     @State private var selectedLocale: L10n.Locale = L10nStore.shared.locale
     @State private var l10nStore = L10nStore.shared
+    @State private var themeStore = ThemeStore.shared
 
     var body: some View {
         let _ = l10nStore.version
+        let _ = themeStore.version
         TabView {
             general.tabItem { Label(L10n.tabGeneral, systemImage: "gear") }
             privacy.tabItem { Label(L10n.tabPrivacy, systemImage: "hand.raised") }
@@ -20,6 +22,7 @@ struct SettingsView: View {
         }
         .padding(20)
         .frame(width: 480, height: 440)
+        .preferredColorScheme(themeStore.effectiveColorScheme)
         .onAppear { selectedLocale = L10nStore.shared.locale }
     }
 
@@ -31,7 +34,14 @@ struct SettingsView: View {
                 Picker(L10n.panelPosition, selection: $settings.panelPosition) {
                     ForEach(AppSettings.PanelPosition.allCases) { Text($0.title).tag($0) }
                 }
-                
+
+                Picker(L10n.themeAppearance, selection: themeBinding) {
+                    ForEach(ThemeAppearance.allCases) { theme in
+                        Label(theme.displayName, systemImage: theme.icon).tag(theme)
+                    }
+                }
+                .pickerStyle(.menu)
+
                 Picker(L10n.languageSection, selection: $selectedLocale) {
                     ForEach(L10n.Locale.allCases) { locale in
                         Text(locale.name).tag(locale)
@@ -44,7 +54,7 @@ struct SettingsView: View {
             } header: {
                 Text(L10n.sectionPanel)
             } footer: {
-                Text(L10n.languageDescription).font(.caption)
+                Text(L10n.themeDescription).font(.caption)
             }
             Section(L10n.sectionGeneral) {
                 Toggle(L10n.openAtLogin, isOn: $settings.openAtLogin)
@@ -89,6 +99,13 @@ struct SettingsView: View {
         return Binding<Double>(
             get: { Double(settings.historyStepIndex) / (stepsCount - 1) },
             set: { settings.historyStepIndex = Int(round($0 * (stepsCount - 1))) }
+        )
+    }
+
+    private var themeBinding: Binding<ThemeAppearance> {
+        Binding(
+            get: { themeStore.appearance },
+            set: { themeStore.appearance = $0 }
         )
     }
 

@@ -29,6 +29,13 @@
     "settings.language_section": "Idioma",
     "settings.language_description": "As alterações têm efeito imediato.",
 
+    "theme.section": "Tema",
+    "theme.appearance": "Aparência",
+    "theme.auto": "Auto",
+    "theme.light": "Claro",
+    "theme.dark": "Escuro",
+    "theme.description": "As alterações têm efeito imediato.",
+
     "settings.section_panel": "Painel",
     "settings.panel_position": "Posição do painel",
     "settings.section_general": "Geral",

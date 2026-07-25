@@ -29,6 +29,13 @@
     "settings.language_section": "言語",
     "settings.language_description": "変更はすぐに反映されます。",
 
+    "theme.section": "テーマ",
+    "theme.appearance": "外観",
+    "theme.auto": "自動",
+    "theme.light": "ライト",
+    "theme.dark": "ダーク",
+    "theme.description": "変更はすぐに反映されます。",
+
     "settings.section_panel": "パネル",
     "settings.panel_position": "パネル位置",
     "settings.section_general": "一般",

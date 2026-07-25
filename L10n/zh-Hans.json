@@ -29,6 +29,13 @@
     "settings.language_section": "语言",
     "settings.language_description": "切换语言立即生效，无需重启。",
 
+    "theme.section": "主题",
+    "theme.appearance": "外观",
+    "theme.auto": "自动",
+    "theme.light": "浅色",
+    "theme.dark": "深色",
+    "theme.description": "更改立即生效。",
+
     "settings.section_panel": "面板",
     "settings.panel_position": "面板位置",
     "settings.section_general": "通用",

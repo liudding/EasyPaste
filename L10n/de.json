@@ -29,6 +29,13 @@
     "settings.language_section": "Sprache",
     "settings.language_description": "Änderungen werden sofort wirksam.",
 
+    "theme.section": "Design",
+    "theme.appearance": "Erscheinungsbild",
+    "theme.auto": "Automatisch",
+    "theme.light": "Hell",
+    "theme.dark": "Dunkel",
+    "theme.description": "Änderungen werden sofort wirksam.",
+
     "settings.section_panel": "Panel",
     "settings.panel_position": "Panel-Position",
     "settings.section_general": "Allgemein",
