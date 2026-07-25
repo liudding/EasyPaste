@@ -7,67 +7,87 @@ struct SettingsView: View {
     let store: ClipboardStore
     let onInvokeShortcutChanged: (Shortcut) -> Void
     @State private var showClearConfirm = false
+    @State private var selectedLocale: L10n.Locale = L10n.current
 
     var body: some View {
         TabView {
-            general.tabItem { Label("通用", systemImage: "gear") }
-            privacy.tabItem { Label("隐私", systemImage: "hand.raised") }
-            shortcuts.tabItem { Label("快捷键", systemImage: "keyboard") }
-            updates.tabItem { Label("更新", systemImage: "arrow.down.circle") }
+            general.tabItem { Label(L10n.tabGeneral, systemImage: "gear") }
+            privacy.tabItem { Label(L10n.tabPrivacy, systemImage: "hand.raised") }
+            shortcuts.tabItem { Label(L10n.tabShortcuts, systemImage: "keyboard") }
+            updates.tabItem { Label(L10n.tabUpdates, systemImage: "arrow.down.circle") }
         }
         .padding(20)
         .frame(width: 480, height: 440)
+        .onAppear { selectedLocale = L10n.current }
     }
 
     // MARK: General
 
     private var general: some View {
         Form {
-            Section("面板") {
-                Picker("面板位置", selection: $settings.panelPosition) {
+            Section {
+                Picker(L10n.panelPosition, selection: $settings.panelPosition) {
                     ForEach(AppSettings.PanelPosition.allCases) { Text($0.title).tag($0) }
                 }
+                
+                Picker(L10n.languageSection, selection: $selectedLocale) {
+                    ForEach(L10n.Locale.allCases) { locale in
+                        Text(locale.name).tag(locale)
+                    }
+                }
+                .pickerStyle(.radioGroup)
+                .onChange(of: selectedLocale) { _, newValue in
+                    L10n.current = newValue
+                }
+            } header: {
+                Text(L10n.sectionPanel)
+            } footer: {
+                Text(L10n.languageDescription).font(.caption)
             }
-            Section("通用") {
-                Toggle("登录时打开", isOn: $settings.openAtLogin)
-                Toggle("iCloud 同步剪贴板历史", isOn: $settings.iCloudSync)
-                Toggle("在菜单栏显示", isOn: $settings.showInMenuBar)
-                Picker("粘贴音效", selection: $settings.soundName) {
-                    Text("无").tag("")
+            Section(L10n.sectionGeneral) {
+                Toggle(L10n.openAtLogin, isOn: $settings.openAtLogin)
+                Toggle(L10n.icloudSync, isOn: $settings.iCloudSync)
+                Toggle(L10n.showInMenuBar, isOn: $settings.showInMenuBar)
+                Picker(L10n.pasteSound, selection: $settings.soundName) {
+                    Text(L10n.soundNone).tag("")
                     ForEach(AppSettings.soundNames, id: \.self) { Text($0).tag($0) }
                 }
-                Toggle("始终以纯文本粘贴", isOn: $settings.alwaysPastePlainText)
+                Toggle(L10n.alwaysPastePlainText, isOn: $settings.alwaysPastePlainText)
             }
-            Section("历史") {
+            Section(L10n.sectionHistory) {
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack { Text("保留时长"); Spacer(); Text(settings.historyLimitLabel).foregroundStyle(.secondary) }
-                    Slider(value: historyIndexBinding, in: 0...Double(AppSettings.historySteps.count - 1), step: 1)
+                    HStack { Text(L10n.retentionPeriod); Spacer(); Text(settings.historyLimitLabel).foregroundStyle(.secondary) }
+                    Slider(value: historyIndexBinding, in: 0...1, step: 1.0 / Double(AppSettings.historyStepsRaw.count - 1))
                 }
                 Divider()
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack { Text("最大保留条数"); Spacer(); Text(settings.maxItemsLabel).foregroundStyle(.secondary) }
-                    Picker("最大保留条数", selection: $settings.maxItemsMode) {
+                    HStack { Text(L10n.maxRetentionCount); Spacer(); Text(settings.maxItemsLabel).foregroundStyle(.secondary) }
+                    Picker(L10n.maxRetentionCount, selection: $settings.maxItemsMode) {
                         ForEach(AppSettings.MaxItemsMode.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
                     if settings.maxItemsMode == .limited {
                         Stepper(value: $settings.maxItemsCount, in: 100...10000, step: 100) {
-                            Text("\(settings.maxItemsCount) 条")
+                            Text("\(settings.maxItemsCount) \(L10n.characters)")
                         }
                     }
                 }
-                Button("清除全部历史…", role: .destructive) { showClearConfirm = true }
-                    .alert("清除全部剪贴板历史？", isPresented: $showClearConfirm) {
-                        Button("清除", role: .destructive) { store.clearAll() }
-                        Button("取消", role: .cancel) {}
-                    } message: { Text("此操作不可撤销。") }
+                Button(L10n.clearAllHistory, role: .destructive) { showClearConfirm = true }
+                    .alert(L10n.clearConfirmTitle, isPresented: $showClearConfirm) {
+                        Button(L10n.clearConfirmAction, role: .destructive) { store.clearAll() }
+                        Button(L10n.clearConfirmCancel, role: .cancel) {}
+                    } message: { Text(L10n.clearConfirmMessage) }
             }
         }
         .formStyle(.grouped)
     }
 
     private var historyIndexBinding: Binding<Double> {
-        Binding(get: { Double(settings.historyStepIndex) }, set: { settings.historyStepIndex = Int($0) })
+        let stepsCount = Double(AppSettings.historyStepsRaw.count)
+        return Binding<Double>(
+            get: { Double(settings.historyStepIndex) / (stepsCount - 1) },
+            set: { settings.historyStepIndex = Int(round($0 * (stepsCount - 1))) }
+        )
     }
 
     // MARK: Privacy
@@ -76,7 +96,7 @@ struct SettingsView: View {
         Form {
             Section {
                 if settings.ignoredApps.isEmpty {
-                    Text("没有忽略的 App").foregroundStyle(.secondary)
+                    Text(L10n.noIgnoredApps).foregroundStyle(.secondary)
                 }
                 ForEach(settings.ignoredApps) { app in
                     HStack(spacing: 8) {
@@ -91,11 +111,11 @@ struct SettingsView: View {
                         }.buttonStyle(.plain)
                     }
                 }
-                Button("添加 App…") { addIgnoredApp() }
+                Button(L10n.addApp) { addIgnoredApp() }
             } header: {
-                Text("忽略以下 App 的剪贴板内容")
+                Text(L10n.ignoredAppsHeader)
             } footer: {
-                Text("在这些 App 中拷贝的内容不会保存到历史。").font(.caption)
+                Text(L10n.ignoredAppsFooter).font(.caption)
             }
         }
         .formStyle(.grouped)
@@ -114,7 +134,7 @@ struct SettingsView: View {
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
-        panel.title = "选择要忽略的应用"
+        panel.title = L10n.selectAppDialogTitle
         if panel.runModal() == .OK, let url = panel.url, let bundle = Bundle(url: url), let bundleID = bundle.bundleIdentifier {
             let name = bundle.infoDictionary?["CFBundleName"] as? String ?? url.deletingPathExtension().lastPathComponent
             if !settings.ignoredApps.contains(where: { $0.bundleID == bundleID }) {
@@ -128,10 +148,10 @@ struct SettingsView: View {
     private var shortcuts: some View {
         Form {
             Section {
-                LabeledContent("唤起面板") { ShortcutRecorderView(shortcut: invokeBinding) }
-                LabeledContent("切换 Pinboard（面板内）") { ShortcutRecorderView(shortcut: $settings.boardSwitchShortcut) }
+                LabeledContent(L10n.invokePanelLabel) { ShortcutRecorderView(shortcut: invokeBinding) }
+                LabeledContent(L10n.switchBoardShortcutLabel) { ShortcutRecorderView(shortcut: $settings.boardSwitchShortcut) }
             } footer: {
-                Text("点击右侧按钮后按下新的快捷键，Esc 取消。修改立即生效。").font(.caption)
+                Text(L10n.shortcutsFooter).font(.caption)
             }
         }
         .formStyle(.grouped)
@@ -145,39 +165,39 @@ struct SettingsView: View {
     
     private var updates: some View {
         Form {
-            Section("自动更新") {
-                Button("检查更新…") {
+            Section(L10n.autoUpdate) {
+                Button(L10n.checkUpdatesButton) {
                     SparkleBridge.shared.checkForUpdates()
                 }
                 
-                let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "未知"
-                let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "未知"
+                let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? L10n.unknownVersion
+                let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? L10n.unknownVersion
                 
-                LabeledContent("当前版本") { Text("\(version) (\(build))") }
+                LabeledContent(L10n.currentVersion) { Text("\(version) (\(build))") }
                 
                 #if canImport(Sparkle)
-                LabeledContent("更新引擎") {
+                LabeledContent(L10n.updateEngine) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
-                    Text("Sparkle 已启用")
+                    Text(L10n.updateEngineEnabled)
                 }
                 #else
-                LabeledContent("更新引擎") {
+                LabeledContent(L10n.updateEngine) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
-                    Text("仅开发模式（需 Xcode 构建）")
+                    Text(L10n.updateEngineDevMode)
                 }
                 #endif
             }
             
-            Section("更新说明") {
-                Text("新版本将在此处显示更新说明。")
+            Section(L10n.releaseNotesSection) {
+                Text(L10n.releaseNotesPlaceholder)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             
-            Section("配置") {
-                Text("部署 appcast.xml 后，取消 Info.plist 中 SUFeedURL 和 SUPublicEDKey 的注释即可启用自动更新。")
+            Section(L10n.updateConfigSection) {
+                Text(L10n.updateConfigText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)

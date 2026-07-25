@@ -170,7 +170,7 @@ struct OnboardingView: View {
 
             // 上一步（不在第一页时显示）
             if currentPage > 0 {
-                Button("上一步") {
+                Button(L10n.onboardingPrevious) {
                     direction = -1
                     withAnimation(.easeInOut(duration: 0.28)) {
                         currentPage -= 1
@@ -185,7 +185,7 @@ struct OnboardingView: View {
             }
 
             // 下一步 / 开始使用
-            Button(currentPage == pages.count - 1 ? "开始使用" : "下一步") {
+            Button(currentPage == pages.count - 1 ? L10n.onboardingStartUsing : L10n.onboardingNext) {
                 if currentPage == pages.count - 1 {
                     onComplete()
                 } else {
@@ -237,68 +237,72 @@ private struct OnboardingPage {
     // MARK: Presets
 
     static let welcome = OnboardingPage(
-        title: "欢迎使用 EasyPaste",
-        description: "你的智能剪贴板助手。\n自动保存、快速粘贴、智能整理——\n让每一次复制都井井有条。",
+        title: L10n.onboardingWelcomeTitle,
+        description: L10n.onboardingWelcomeDesc,
         iconName: "clipboard.fill",
         accentColor: Color(red: 0.28, green: 0.54, blue: 0.90),
-        features: ["自动记录剪贴板历史", "跨应用快速粘贴", "智能分类与搜索"]
+        features: [
+            L10n.tr("onboarding.feature_auto_save"),
+            L10n.tr("onboarding.feature_cross_app"),
+            L10n.tr("onboarding.feature_smart_org")
+        ]
     )
 
     static let autoCapture = OnboardingPage(
-        title: "自动捕获",
-        description: "一切你拷贝的内容，EasyPaste 都会自动保存。",
+        title: L10n.onboardingAutoCaptureTitle,
+        description: L10n.onboardingAutoCaptureDesc,
         iconName: "tray.full.fill",
         accentColor: Color(red: 0.96, green: 0.62, blue: 0.24),
         features: [
-            "文本、链接、图片、文件、颜色值",
-            "记录内容来源应用",
-            "可在隐私设置中忽略敏感应用"
+            L10n.tr("onboarding.feature_types"),
+            L10n.tr("onboarding.feature_source_app"),
+            L10n.tr("onboarding.feature_ignore_apps")
         ]
     )
 
     static let quickAccess = OnboardingPage(
-        title: "一键唤起",
-        description: "随时随地按下快捷键，\n剪贴板面板即刻从屏幕边缘滑出。",
+        title: L10n.onboardingQuickAccessTitle,
+        description: L10n.onboardingQuickAccessDesc,
         iconName: "keyboard.fill",
         accentColor: Color(red: 0.35, green: 0.78, blue: 0.56),
         features: [
-            "方向键选择，回车粘贴到当前应用",
-            "⇧Enter 以纯文本粘贴",
-            "⌘C 重新拷贝到剪贴板"
+            L10n.tr("onboarding.feature_arrow_keys"),
+            L10n.tr("onboarding.feature_shift_enter"),
+            L10n.tr("onboarding.feature_cmd_c")
         ],
-        shortcutHint: "⌘ ⇧ V  唤起面板"
+        shortcutHint: "⌘ ⇧ V  \(L10n.tr("onboarding.hint_invoke_panel"))"
     )
 
     static let organization = OnboardingPage(
-        title: "智能整理",
-        description: "用 Pinboard 分类整理你的剪贴内容，\n灵感、工作、代码……各归其位。",
+        title: L10n.onboardingOrganizationTitle,
+        description: L10n.onboardingOrganizationDesc,
         iconName: "square.grid.2x2.fill",
         accentColor: Color(red: 0.55, green: 0.33, blue: 0.76),
         features: [
-            "拖拽卡片到不同 Pinboard",
-            "自定义 Pinboard 名称和颜色",
-            "面板内按 Pinboard 筛选内容"
+            L10n.tr("onboarding.feature_drag_drop"),
+            L10n.tr("onboarding.feature_custom_boards"),
+            L10n.tr("onboarding.feature_filter_by_board")
         ]
     )
 
     static let searchPreview = OnboardingPage(
-        title: "搜索与预览",
-        description: "面板打开后直接打字即可搜索，\n按空格键预览任意内容。",
+        title: L10n.onboardingSearchPreviewTitle,
+        description: L10n.onboardingSearchPreviewDesc,
         iconName: "magnifyingglass.circle.fill",
         accentColor: Color(red: 0.92, green: 0.38, blue: 0.42),
         features: [
-            "面板内直接输入即开始搜索",
-            "空格键查看文本/图片/链接预览",
-            "双击卡片直接粘贴"
+            L10n.tr("onboarding.feature_type_search"),
+            L10n.tr("onboarding.feature_space_preview"),
+            L10n.tr("onboarding.feature_double_click_paste")
         ],
-        shortcutHint: "空格  预览  |  输入即搜索"
+        shortcutHint: "␣ \(L10n.tr("onboarding.hint_preview"))  |  \(L10n.tr("onboarding.hint_type_search"))"
     )
 
     static let ready = OnboardingPage(
-        title: "准备就绪",
-        description: "EasyPaste 已就绪。\n复制一段文字试试吧——\n然后按 ⌘⇧V 唤出面板。",
+        title: L10n.onboardingReadyTitle,
+        description: L10n.onboardingReadyDesc,
         iconName: "sparkles",
         accentColor: Color(red: 0.28, green: 0.54, blue: 0.90),
-        shortcutHint: "⌘ ⇧ V  开始使用"
+        shortcutHint: "⌘ ⇧ V  \(L10n.onboardingStartUsing)"
     )
 }

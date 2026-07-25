@@ -104,7 +104,7 @@ struct ClipCardView: View {
             HStack(spacing: 5) {
                 Image(systemName: item.kind.symbol).font(.system(size: 10, weight: .semibold)).foregroundStyle(.white)
                 if renaming {
-                    TextField("名称", text: $draftTitle)
+                    TextField(L10n.rename, text: $draftTitle)
                         .textFieldStyle(.plain).font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.white)
                         .focused($renameFocused)
@@ -133,14 +133,14 @@ struct ClipCardView: View {
     /// 将 Date 转成 "2分钟前"、"1小时前" 等简短的 time ago 格式。
     private func timeAgoString(from date: Date) -> String {
         let interval = Date.now.timeIntervalSince(date)
-        if interval < 60 { return "刚刚" }
-        if interval < 3600 { return "\(Int(interval / 60))分钟前" }
-        if interval < 86400 { return "\(Int(interval / 3600))小时前" }
-        if interval < 604800 { return "\(Int(interval / 86400))天前" }
-        if interval < 2592000 { return "\(Int(interval / 604800))周前" }
+        if interval < 60 { return L10n.justNow }
+        if interval < 3600 { return "\(Int(interval / 60))\(L10n.minutesAgo)" }
+        if interval < 86400 { return "\(Int(interval / 3600))\(L10n.hoursAgo)" }
+        if interval < 604800 { return "\(Int(interval / 86400))\(L10n.daysAgo)" }
+        if interval < 2592000 { return "\(Int(interval / 604800))\(L10n.weeksAgo)" }
         let months = Int(interval / 2592000)
-        if months < 12 { return "\(months)月前" }
-        return "\(Int(interval / 31536000))年前"
+        if months < 12 { return "\(months)\(L10n.monthsAgo)" }
+        return "\(Int(interval / 31536000))\(L10n.yearsAgo)"
     }
 
     // MARK: Body (content area, varies by type)
@@ -184,7 +184,7 @@ struct ClipCardView: View {
             } else if let preview = item.previewPlainText {
                 Text(preview).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(4).multilineTextAlignment(.leading)
             } else {
-                Text("无法预览").font(.system(size: 9)).foregroundStyle(.tertiary)
+                Text(L10n.cannotPreview).font(.system(size: 9)).foregroundStyle(.tertiary)
             }
         case .file:
             VStack(alignment: .leading, spacing: 4) {
@@ -199,7 +199,7 @@ struct ClipCardView: View {
             } else if let preview = item.previewPlainText {
                 Text(preview).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(4).multilineTextAlignment(.leading)
             } else {
-                Text("无法预览").font(.system(size: 9)).foregroundStyle(.tertiary)
+                Text(L10n.cannotPreview).font(.system(size: 9)).foregroundStyle(.tertiary)
             }
         }
     }
@@ -209,7 +209,7 @@ struct ClipCardView: View {
     @ViewBuilder private var cardFooter: some View {
         switch item.kind {
         case .text:
-            Text("\(item.characterCount) 字符").font(.system(size: 9)).foregroundStyle(.tertiary)
+            Text("\(item.characterCount)\(L10n.characters)").font(.system(size: 9)).foregroundStyle(.tertiary)
         case .link:
             HStack(spacing: 4) {
                 Text(item.linkFooterTitle).lineLimit(1).font(.system(size: 9, weight: .medium)).foregroundStyle(.secondary)
@@ -251,24 +251,24 @@ struct ClipCardView: View {
     // MARK: Context menu & drag provider (unchanged)
 
     @ViewBuilder private var contextMenu: some View {
-        Button { onPaste(item) } label: { menuRow("粘贴到 \(targetName ?? "当前应用")", hint: "↩") }
-        Button { onPastePlain(item) } label: { menuRow("以纯文本粘贴", hint: "⇧↩") }
-        Button { onCopy(item) } label: { menuRow("拷贝", hint: "⌘C") }
-        Button("重命名…") { onRename(item) }
+        Button { onPaste(item) } label: { menuRow(String(format: L10n.pasteToApp, targetName ?? ""), hint: "↩") }
+        Button { onPastePlain(item) } label: { menuRow(L10n.pastePlainText, hint: "⇧↩") }
+        Button { onCopy(item) } label: { menuRow(L10n.copyAction, hint: "⌘C") }
+        Button(L10n.rename) { onRename(item) }
         Divider()
-        Menu("固定到") {
+        Menu(L10n.pinTo) {
             ForEach(boards) { board in
                 Button { onPin(item, board.id) } label: {
                     if item.boardID == board.id { Label(board.name, systemImage: "checkmark") } else { Text(board.name) }
                 }
             }
             if !boards.isEmpty { Divider() }
-            Button("取消固定") { onPin(item, nil) }
+            Button(L10n.unpin) { onPin(item, nil) }
         }
         Divider()
-        Button { onPreview(item) } label: { menuRow("预览", hint: "空格") }
+        Button { onPreview(item) } label: { menuRow(L10n.preview, hint: "空格") }
         Divider()
-        Button("删除", role: .destructive) { onDelete(item) }
+        Button(L10n.delete, role: .destructive) { onDelete(item) }
     }
 
     private func menuRow(_ title: String, hint: String) -> some View {

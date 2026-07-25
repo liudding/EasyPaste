@@ -14,7 +14,7 @@ struct EasyPasteApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("EasyPaste", systemImage: "clipboard.on.clipboard", isInserted: Binding(
+        MenuBarExtra(L10n.appName, systemImage: "clipboard.on.clipboard", isInserted: Binding(
             get: { services.settings.showInMenuBar },
             set: { services.settings.showInMenuBar = $0 }
         )) {
@@ -60,8 +60,23 @@ final class AppServices {
         store.maxItems = settings.maxItems
         store.pruneExpired()
 
+        // 性能：预热来源 app 图标缓存。首次唤起面板时，每张可见卡片都会在主线程同步调用
+        // AppIconCache.icon(forBundleID:displaySize:)；冷缓存下每次都要做 LaunchServices 查询
+        // (urlForApplication) + icon 解码 + TIFF 像素采样(主色调) + lockFocus 缩放，单卡数十 ms，
+        // 8~10 张可见卡片累加即首次唤起「大延迟」的主因。
+        // 这里在后台队列提前预热（warm 内部已 dispatch 到 .utility），使首次渲染即命中字典缓存。
+        // 注意：PanelView.onAppear 里也有一句 warm，但 onAppear 在首次渲染「之后」才触发，
+        // 无法救首次渲染；放到 boot 才能真正提前。onAppear 那句保留，兜底启动后新捕获的条目。
+        let bundleIDs = store.items.compactMap { $0.sourceApplicationBundleID }
+        AppIconCache.shared.warm(bundleIDs: bundleIDs)
+
         panel = PanelController(store: store, clipboard: clipboard, settings: settings, panelState: panelState)
         panel?.openSettingsHandler = { [weak self] screen in self?.openSettingsWindow(on: screen) }
+
+        // 性能：预建面板与其 SwiftUI 视图树（离屏、不显示）并触发一次布局，
+        // 提前编译 .ultraThinMaterial 着色器、构建头部视图图，使首次真实唤起只做定位 + 动画。
+        // 延后一拍执行，避免阻塞菜单栏图标出现；makePanel() 在首次 show() 时直接命中已建好的面板。
+        DispatchQueue.main.async { [weak self] in self?.panel?.prewarm() }
 
         settings.onStorageLocationChanged = { [weak self] in
             self?.store.setICloudSyncEnabled(self?.settings.iCloudSync ?? false)
@@ -114,7 +129,7 @@ final class AppServices {
             )
             let hosting = NSHostingController(rootView: root)
             window = NSWindow(contentViewController: hosting)
-            window.title = "设置"
+            window.title = L10n.settings
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
             window.isReleasedWhenClosed = false
             window.contentMinSize = NSSize(width: 480, height: 440)

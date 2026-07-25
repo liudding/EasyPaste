@@ -9,7 +9,12 @@ final class AppSettings {
         case bottom, top, left, right
         var id: String { rawValue }
         var title: String {
-            switch self { case .bottom: "底部"; case .top: "顶部"; case .left: "左侧"; case .right: "右侧" }
+            switch self {
+            case .bottom: L10n.tr("settings.position_bottom")
+            case .top: L10n.tr("settings.position_top")
+            case .left: L10n.tr("settings.position_left")
+            case .right: L10n.tr("settings.position_right")
+            }
         }
         var isVertical: Bool { self == .left || self == .right }
     }
@@ -19,7 +24,10 @@ final class AppSettings {
         case limited, unlimited
         var id: String { rawValue }
         var title: String {
-            switch self { case .limited: "限制"; case .unlimited: "无限" }
+            switch self {
+            case .limited: L10n.tr("settings.max_items_limited")
+            case .unlimited: L10n.tr("settings.max_items_unlimited")
+            }
         }
     }
 
@@ -29,14 +37,19 @@ final class AppSettings {
         let name: String
     }
 
-    /// (days, label)；days == 0 表示无限保留。
-    static let historySteps: [(days: Int, label: String)] = [
-        (1, "1 天"), (2, "2 天"), (3, "3 天"), (4, "4 天"), (5, "5 天"), (6, "6 天"),
-        (7, "1 周"), (14, "2 周"), (21, "3 周"),
-        (30, "1 个月"), (60, "2 个月"), (90, "3 个月"), (120, "4 个月"), (150, "5 个月"),
-        (180, "6 个月"), (210, "7 个月"), (240, "8 个月"), (270, "9 个月"),
-        (300, "10 个月"), (330, "11 个月"), (365, "1 年"), (0, "无限")
+    /// (days, labelKey)；days == 0 表示无限保留。labelKey maps to L10n for i18n.
+    static let historyStepsRaw: [(days: Int, labelKey: String)] = [
+        (1, "history.1d"), (2, "history.2d"), (3, "history.3d"), (4, "history.4d"), (5, "history.5d"), (6, "history.6d"),
+        (7, "history.1w"), (14, "history.2w"), (21, "history.3w"),
+        (30, "history.1mo"), (60, "history.2mo"), (90, "history.3mo"), (120, "history.4mo"), (150, "history.5mo"),
+        (180, "history.6mo"), (210, "history.7mo"), (240, "history.8mo"), (270, "history.9mo"),
+        (300, "history.10mo"), (330, "history.11mo"), (365, "history.1y"), (0, "history.unlimited")
     ]
+    
+    static func historyStepLabel(forIndex index: Int) -> String {
+        let clamped = min(max(index, 0), historyStepsRaw.count - 1)
+        return L10n.tr(historyStepsRaw[clamped].labelKey)
+    }
 
     static let soundNames = ["Pop", "Ping", "Tink", "Glass", "Hero", "Submarine", "Blow", "Bottle", "Frog", "Funk", "Morse", "Purr", "Sosumi"]
 
@@ -48,12 +61,12 @@ final class AppSettings {
     /// 快捷面板声音开关：当 soundName != "" 时有效；"" 时音效始终关闭。
     var soundEnabled = true { didSet { save() } }
     var alwaysPastePlainText = false { didSet { save() } }
-    var historyStepIndex = AppSettings.historySteps.count - 1 { didSet { save(); onHistoryLimitChanged?() } }
+    var historyStepIndex = AppSettings.historyStepsRaw.count - 1 { didSet { save(); onHistoryLimitChanged?() } }
     var maxItemsMode: MaxItemsMode = .limited { didSet { save(); onMaxItemsChanged?() } }
     var maxItemsCount: Int = 2000 { didSet { save(); onMaxItemsChanged?() } }
     var ignoredApps: [IgnoredApp] = [
-        IgnoredApp(bundleID: "com.apple.keychainaccess", name: "钥匙串访问"),
-        IgnoredApp(bundleID: "com.apple.Passwords", name: "密码")
+        IgnoredApp(bundleID: "com.apple.keychainaccess", name: "Keychain Access"),
+        IgnoredApp(bundleID: "com.apple.Passwords", name: "Passwords")
     ] { didSet { save() } }
     var invokeShortcut: Shortcut = .invokeDefault { didSet { save() } }
     var boardSwitchShortcut: Shortcut = .boardSwitchDefault { didSet { save() } }
@@ -64,15 +77,17 @@ final class AppSettings {
     var onMaxItemsChanged: (() -> Void)?
 
     var historyLimitDays: Int {
-        let clamped = min(max(historyStepIndex, 0), AppSettings.historySteps.count - 1)
-        return AppSettings.historySteps[clamped].days
+        let clamped = min(max(historyStepIndex, 0), AppSettings.historyStepsRaw.count - 1)
+        return AppSettings.historyStepsRaw[clamped].days
     }
     var historyLimitLabel: String {
-        let clamped = min(max(historyStepIndex, 0), AppSettings.historySteps.count - 1)
-        return AppSettings.historySteps[clamped].label
+        AppSettings.historyStepLabel(forIndex: historyStepIndex)
     }
     var maxItemsLabel: String {
-        switch maxItemsMode { case .limited: "\(maxItemsCount) 条"; case .unlimited: "无限" }
+        switch maxItemsMode {
+        case .limited: "\(maxItemsCount) \(L10n.tr("clip.count_suffix"))"
+        case .unlimited: L10n.tr("settings.max_items_unlimited")
+        }
     }
     var maxItems: ClipboardStore.MaxItems {
         switch maxItemsMode { case .limited: .limited(max(1, maxItemsCount)); case .unlimited: .unlimited }

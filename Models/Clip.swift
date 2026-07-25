@@ -30,7 +30,11 @@ enum ClipKind: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .text: "文本"; case .link: "链接"; case .image: "图片"; case .file: "文件"; case .color: "颜色"
+        case .text: L10n.tr("clip.kind.text")
+        case .link: L10n.tr("clip.kind.link")
+        case .image: L10n.tr("clip.kind.image")
+        case .file: L10n.tr("clip.kind.file")
+        case .color: L10n.tr("clip.kind.color")
         }
     }
     var symbol: String { switch self { case .text: "text.alignleft"; case .link: "link"; case .image: "photo"; case .file: "doc"; case .color: "paintpalette.fill" } }
@@ -80,19 +84,24 @@ struct Clip: Codable, Identifiable, Hashable {
     var displayTitle: String {
         if let title, !title.isEmpty { return title }
         switch kind {
-            case .text: return text?.split(separator: "\n").first.map(String.init) ?? previewPlainText ?? "文本"
-            case .link: return url?.host ?? url?.absoluteString ?? previewPlainText ?? "链接"
-            case .image: return "图片"
-            case .file: return fileURLs?.first?.lastPathComponent ?? "文件"
-            case .color: return text ?? "颜色"
+        case .text:
+            return text?.split(separator: "\n").first.map(String.init) ?? previewPlainText ?? L10n.tr("clip.default_text")
+        case .link:
+            return url?.host ?? url?.absoluteString ?? previewPlainText ?? L10n.tr("clip.default_link")
+        case .image:
+            return L10n.tr("clip.default_image")
+        case .file:
+            return fileURLs?.first?.lastPathComponent ?? L10n.tr("clip.default_file")
+        case .color:
+            return text ?? L10n.tr("clip.default_color")
         }
     }
     var detail: String {
         switch kind {
         case .text: return text ?? previewPlainText ?? ""
         case .link: return url?.absoluteString ?? previewPlainText ?? ""
-        case .image: return ImageSizeCache.shared.sizeDescription(for: self) ?? "图片"
-        case .file: return "\(fileURLs?.count ?? 0) 个文件"
+        case .image: return ImageSizeCache.shared.sizeDescription(for: self) ?? L10n.tr("clip.default_image")
+        case .file: return String(format: L10n.tr("clip.files_count"), fileURLs?.count ?? 0)
         case .color: return text ?? ""
         }
     }

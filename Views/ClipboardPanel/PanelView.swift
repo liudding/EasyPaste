@@ -66,7 +66,7 @@ struct PanelView: View {
                     if store.filteredItems.isEmpty {
                         VStack(spacing: 8) {
                             Image(systemName: "rectangle.on.rectangle").font(.system(size: 26)).foregroundStyle(.tertiary)
-                            Text("暂无剪贴内容").font(.system(size: 13)).foregroundStyle(.secondary)
+                            Text(L10n.emptyState).font(.system(size: 13)).foregroundStyle(.secondary)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if isVertical {
@@ -181,7 +181,7 @@ struct PanelView: View {
                     }.buttonStyle(.plain).foregroundStyle(.secondary)
                 }
                 previewContent(item).frame(maxWidth: .infinity)
-                Text("空格 / Esc 关闭").font(.caption2).foregroundStyle(.tertiary)
+                Text(L10n.previewCloseHint).font(.caption2).foregroundStyle(.tertiary)
             }
             .padding(18)
             .frame(maxWidth: 520, maxHeight: 380)

@@ -27,7 +27,7 @@ struct PanelHeaderView: View {
     private let chipSpacing: CGFloat = 8
 
     private var headerTitle: String {
-        store.selectedBoardID.flatMap { id in store.boards.first { $0.id == id }?.name } ?? "剪切板"
+        store.selectedBoardID.flatMap { id in store.boards.first { $0.id == id }?.name } ?? L10n.clipboardTitle
     }
 
     var body: some View {
@@ -49,7 +49,7 @@ struct PanelHeaderView: View {
         if panelState.searchExpanded {
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass").font(.system(size: 12)).foregroundStyle(.secondary)
-                TextField("搜索剪贴板", text: $store.query)
+                TextField(L10n.searchPlaceholder, text: $store.query)
                     .textFieldStyle(.plain).font(.system(size: 13))
                     .focused($searchFocused).frame(width: 170)
                 if !store.query.isEmpty {
@@ -76,7 +76,7 @@ struct PanelHeaderView: View {
     private var boardChips: some View {
         ScrollView(.horizontal) {
             HStack(spacing: chipSpacing) {
-                BoardChipView(title: "全部", color: .secondary, selected: store.selectedBoardID == nil, draggable: false, isDragging: false, onReorderDragChanged: { _ in }, onReorderDragEnded: {}) {
+                BoardChipView(title: L10n.allBoards, color: .secondary, selected: store.selectedBoardID == nil, draggable: false, isDragging: false, onReorderDragChanged: { _ in }, onReorderDragEnded: {}) {
                     store.selectedBoardID = nil
                 } onDrop: { clipID in
                     store.move(clipID, to: nil)
@@ -330,7 +330,7 @@ struct PanelHeaderView: View {
     @ViewBuilder private var addBoardControl: some View {
         if panelState.addingBoard {
             HStack(spacing: 6) {
-                TextField("新 Board", text: $panelState.newBoardName)
+                TextField(L10n.newBoardPlaceholder, text: $panelState.newBoardName)
                     .textFieldStyle(.plain).font(.system(size: 12))
                     .frame(width: 90).focused($boardFieldFocused)
                     .onSubmit(commitNewBoard)
@@ -341,7 +341,7 @@ struct PanelHeaderView: View {
                     }.buttonStyle(.plain)
                 }
                 Button(action: commitNewBoard) {
-                    Label("确定", systemImage: "checkmark")
+                    Label(L10n.addBoardConfirm, systemImage: "checkmark")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 10).padding(.vertical, 4)
@@ -374,10 +374,10 @@ struct PanelHeaderView: View {
 
     private var moreMenu: some View {
         Menu {
-            Button("关于 EasyPaste") { AboutPresenter.show() }
-            Button("设置…") { openSettingsWindow() }
+            Button(L10n.aboutEasyPaste) { AboutPresenter.show() }
+            Button(L10n.settings) { openSettingsWindow() }
             Divider()
-            Button("退出 EasyPaste") { NSApp.terminate(nil) }
+            Button(L10n.exitEasyPaste) { NSApp.terminate(nil) }
         } label: {
             Image(systemName: "ellipsis").font(.system(size: 13, weight: .bold))
                 .frame(width: 34, height: 34).contentShape(.rect)
@@ -439,7 +439,7 @@ struct PanelHeaderView: View {
                 .foregroundStyle(settings.soundEnabled ? .primary : .tertiary)
         }
         .buttonStyle(.plain)
-        .help(settings.soundEnabled ? "音效已开启" : "音效已关闭")
+        .help(settings.soundEnabled ? L10n.soundOn : L10n.soundOff)
     }
 
     private var plainTextToggle: some View {
@@ -452,6 +452,6 @@ struct PanelHeaderView: View {
                 .foregroundStyle(settings.alwaysPastePlainText ? .primary : .tertiary)
         }
         .buttonStyle(.plain)
-        .help(settings.alwaysPastePlainText ? "纯文本粘贴已开启" : "纯文本粘贴已关闭")
+        .help(settings.alwaysPastePlainText ? L10n.plainTextPasteOn : L10n.plainTextPasteOff)
     }
 }

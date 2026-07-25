@@ -39,6 +39,22 @@ final class PanelController: NSObject, NSWindowDelegate {
         if isVisible && !hiding { hide() } else { show() }
     }
 
+    /// 预建面板与其 SwiftUI 视图树（离屏、不显示），并触发一次布局。
+    /// 提前编译 `.ultraThinMaterial` 着色器、构建头部视图图与 NSHostingView，
+    /// 使首次真实唤起时 `makePanel()` 直接返回已建好的面板，只做定位 + 滑入动画。
+    ///
+    /// 不调用 `orderFront`，因此 `panel.isVisible` 仍为 false，`toggle()`/`show()`
+    /// 的可见性判断不受影响；`windowDidResignKey` 也只对「曾成为 key」的窗口触发，
+    /// 从未成为 key 的预建面板不会误触发自动隐藏。
+    func prewarm() {
+        let panel = makePanel()
+        // 用真实面板尺寸的离屏 frame 触发 SwiftUI 首次布局（origin 在 .zero 即可，
+        // 因为不会 orderFront，不会出现在屏幕上）。
+        let size = frameForPanel(on: currentScreen()).size
+        panel.setFrame(NSRect(origin: .zero, size: size), display: false)
+        panel.contentView?.layoutSubtreeIfNeeded()
+    }
+
     func show() {
         let panel = makePanel()
         hiding = false
