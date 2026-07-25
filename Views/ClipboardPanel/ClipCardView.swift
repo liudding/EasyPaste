@@ -77,6 +77,7 @@ struct ClipCardView: View {
             }
         }
         .background(bodyFooterBackground, in: .rect(bottomLeadingRadius: 12, bottomTrailingRadius: 12))
+        .textSelection(.disabled)
     }
 
     var body: some View {
