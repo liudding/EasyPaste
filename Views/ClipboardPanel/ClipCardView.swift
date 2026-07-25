@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// 卡片内容区固定高度（pt）：footer 已合并进 body，无论剪贴项有无可预览内容，body 都占满这个高度。
+/// 卡片内容区固定高度（pt）
 private let clipCardBodyHeight: CGFloat = 110
 
 struct ClipCardView: View {
@@ -190,89 +190,15 @@ struct ClipCardView: View {
     @ViewBuilder private var cardBody: some View {
         switch item.kind {
         case .color:
-            // 色值：body 底色已是该色值颜色，居中显示色值文本。
-            Color.clear.overlay(
-                Text(item.text ?? "").font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(isLightColor(item.resolvedColorValue ?? item.kind.defaultColor) ? .black : .white)
-            )
+            ColorCardBody(item: item)
         case .image:
-            // 图片：scaledToFill 填满区域（视觉居中），尺寸描述居中置于其下。
-            VStack(spacing: 4) {
-                if let image = ImageSizeCache.shared.thumbnail(for: item) {
-                    // Color.clear 占据父级提议的尺寸，overlay 在其上绘制 scaledToFill 图片；
-                    // 这样图片的布局尺寸 = Color.clear 的尺寸 = 父级提议尺寸，不会因宽图而撑爆卡片。
-                    Color.clear.overlay(
-                        Image(nsImage: image).resizable().scaledToFill()
-                    )
-                    .clipShape(.rect(cornerRadius: 6))
-                } else {
-                    // 图片数据为空时用 Color.clear 撑满区域，overlay 居中显示占位图标。
-                    Color.clear.overlay(
-                        Image(systemName: "photo")
-                            .font(.system(size: 28))
-                            .foregroundStyle(.tertiary)
-                    )
-                }
-                // 合并自原 footer：图片尺寸信息。
-                if let sizeDesc = item.imageSizeDescription {
-                    Text(sizeDesc).font(.system(size: 9)).foregroundStyle(.tertiary)
-                }
-            }
+            ImageCardBody(item: item)
         case .link:
-            // 内容 + 合并自原 footer 的链接信息，整体垂直居中。
-            VStack(alignment: .leading, spacing: 4) {
-                Spacer(minLength: 0)
-                // 优先展示原始富文本格式，无则 fallback 到 URL 摘要或纯文本预览
-                if let attr = item.attributedText {
-                    AttributedTextView(attributedString: attr, maxLines: 4, isSelectable: false)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else if let url = item.url {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(url.host ?? "").font(.system(size: 11, weight: .bold)).foregroundStyle(headerColor)
-                        if let preview = item.previewPlainText, preview != url.absoluteString {
-                            Text(preview).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(2)
-                        } else {
-                            Text(url.absoluteString).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(3)
-                        }
-                    }
-                } else if let preview = item.previewPlainText {
-                    Text(preview).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(4).multilineTextAlignment(.leading)
-                } else {
-                    Text(L10n.cannotPreview).font(.system(size: 9)).foregroundStyle(.tertiary)
-                }
-                // 合并自原 footer：链接标题 + URL。
-                HStack(spacing: 4) {
-                    Text(item.linkFooterTitle).lineLimit(1).font(.system(size: 9, weight: .medium)).foregroundStyle(.secondary)
-                    Text(item.linkFooterURL).lineLimit(1).font(.system(size: 8)).foregroundStyle(.tertiary)
-                }
-                Spacer(minLength: 0)
-            }
+            LinkCardBody(item: item, headerColor: headerColor)
         case .file:
-            // 图标 + 文件详情整体居中。
-            VStack(spacing: 4) {
-                Spacer(minLength: 0)
-                Image(systemName: "doc.fill").font(.title3).foregroundStyle(.secondary)
-                // 合并自原 footer：文件详情（原 body/footer 重复展示，现仅展示一次）。
-                Text(item.detail).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
-                Spacer(minLength: 0)
-            }
+            FileCardBody(item: item)
         case .text:
-            // 内容 + 合并自原 footer 的字符数，整体垂直居中。
-            VStack(alignment: .leading, spacing: 4) {
-                Spacer(minLength: 0)
-                // 优先展示原始富文本格式，无则 fallback 到纯文本预览
-                if let attr = item.attributedText {
-                    AttributedTextView(attributedString: attr, maxLines: 4, isSelectable: false)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else if let preview = item.previewPlainText {
-                    Text(preview).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(4).multilineTextAlignment(.leading)
-                } else {
-                    Text(L10n.cannotPreview).font(.system(size: 9)).foregroundStyle(.tertiary)
-                }
-                // 合并自原 footer：字符数。
-                Text("\(item.characterCount)\(L10n.characters)").font(.system(size: 9)).foregroundStyle(.tertiary)
-                Spacer(minLength: 0)
-            }
+            TextCardBody(item: item)
         }
     }
 
@@ -288,15 +214,6 @@ struct ClipCardView: View {
         return colorScheme == .dark
             ? Color(white: 0.16)
             : Color(white: 0.98)
-    }
-
-    /// 判断一个颜色是否为亮色（用于决定文本用黑/白）。
-    private func isLightColor(_ color: Color) -> Bool {
-        // 粗略判断：取 RGB 亮度 > 0.5 就是亮色
-        let nsColor = NSColor(color)
-        guard let rgb = nsColor.usingColorSpace(.sRGB) else { return false }
-        let luminance = 0.299 * rgb.redComponent + 0.587 * rgb.greenComponent + 0.114 * rgb.blueComponent
-        return luminance > 0.5
     }
 
     // MARK: Context menu & drag provider
