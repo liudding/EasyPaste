@@ -21,8 +21,8 @@ final class PanelController: NSObject, NSWindowDelegate {
     private var isAnimating = false
     private var hiding = false
 
-    /// 从 SwiftUI 场景捕获的 openSettings 动作（由 AppServices 注入）。
-    var openSettings: (() -> Void)?
+    /// 打开设置窗口的回调（由 AppServices 注入：自己托管的 NSWindow）。
+    var openSettingsHandler: ((NSScreen?) -> Void)?
 
     var isVisible: Bool { panel?.isVisible ?? false }
 
@@ -286,43 +286,33 @@ final class PanelController: NSObject, NSWindowDelegate {
         return items.first
     }
 
+    /// 立即移除浮动面板：无动画、不受 `isAnimating` 早返回限制，
+    /// 确保它不会以 `.floating` 层级覆盖普通层级的设置窗口。
+    private func forceHidePanel() {
+        stopMonitors()
+        hiding = false
+        isAnimating = false
+        panel?.orderOut(nil)
+        panelState.previewItem = nil
+        panelState.renamingID = nil
+        panelState.addingBoard = false
+        store.query = ""
+        panelState.searchExpanded = false
+    }
+
     private func openSettingsFromPanel() {
         NSApp.setActivationPolicy(.regular)
-        // 等待面板隐藏动画完成（0.15s），避免 .floating 层级面板遮挡设置窗口。
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            NSApp.activate(ignoringOtherApps: true)
-
-            // 1. 已有设置窗口则直接置前
-            for window in NSApp.windows {
-                if window === self.panel { continue }
-                if window.title == "设置" || window.title.contains("Settings") {
-                    window.makeKeyAndOrderFront(nil)
-                    return
-                }
-            }
-
-            // 2. 优先使用从 SwiftUI 场景捕获的 openSettings 动作（macOS 14+ 官方 API，最可靠）
-            if let open = self.openSettings {
-                open()
-                return
-            }
-
-            // 3. 在主菜单中查找"设置…"菜单项并触发其 action
-            if let mainMenu = NSApp.mainMenu {
-                for item in mainMenu.items {
-                    guard let submenu = item.submenu else { continue }
-                    for menuItem in submenu.items {
-                        if menuItem.action == Selector(("showSettingsWindow:")) {
-                            NSApp.sendAction(menuItem.action!, to: menuItem.target, from: nil)
-                            return
-                        }
-                    }
-                }
-            }
-
-            // 4. 最终兜底：直接 sendAction（macOS 15 上可能无效）
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        }
+        // 在隐藏面板前先记录面板当前所在屏幕（此时面板仍可见，screen 可靠）。
+        // 设置窗口应出现在“唤起它的面板”所在屏幕，而不是主屏——用面板屏幕最确定。
+        let screen = self.panel?.screen
+        // 立即移除浮动面板，避免 .floating 层级遮挡设置窗口。
+        forceHidePanel()
+        // 先激活 app，再触发设置窗口。
+        NSApp.activate(ignoringOtherApps: true)
+        // 窗口呈现交由 AppServices 自己托管的 NSWindow 完成：
+        // 不依赖 macOS 14+ 已移除的 showSettingsWindow: 选择器，
+        // 也不依赖需在 SwiftUI 场景内捕获、对“只用快捷键唤起面板”的用户为 nil 的 openSettings 环境动作。
+        openSettingsHandler?(screen)
     }
 
     private func paste(_ item: Clip, plain: Bool) {

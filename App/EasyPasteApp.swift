@@ -18,21 +18,14 @@ struct EasyPasteApp: App {
             get: { services.settings.showInMenuBar },
             set: { services.settings.showInMenuBar = $0 }
         )) {
-            MenuBarView(store: services.store, clipboard: services.clipboard, onShowPanel: { services.showPanel() })
-            SettingsActionCapture(services: services)
+            MenuBarView(
+                store: services.store,
+                clipboard: services.clipboard,
+                onShowPanel: { services.showPanel() },
+                onOpenSettings: { services.openSettingsWindow() }
+            )
         }
         .menuBarExtraStyle(.menu)
-
-        Settings {
-            SettingsView(settings: services.settings, store: services.store, onInvokeShortcutChanged: { _ in services.registerShortcut() })
-                .background(SettingsActionCapture(services: services))
-                .onAppear {
-                    // 设置窗口出现时确保 app 激活、窗口置前
-                    // （SettingsLink / openSettings 不一定自动激活 app）。
-                    NSApp.setActivationPolicy(.regular)
-                    NSApp.activate(ignoringOtherApps: true)
-                }
-        }
     }
 }
 
@@ -46,10 +39,11 @@ final class AppServices {
     let panelState = PanelState()
     private let onboarding = OnboardingWindowController()
     private(set) var panel: PanelController?
-    /// 从 SwiftUI 场景层次中捕获的 openSettings 动作。
-    /// PanelView 在独立 NSHostingView 中，无法直接访问 @Environment(\.openSettings)，
-    /// 需要在场景内部捕获后传递给 PanelController 使用。
-    var openSettingsAction: (() -> Void)?
+    /// 设置窗口控制器：直接用 AppKit 托管 SettingsView。
+    /// 不再依赖 SwiftUI Settings 场景 / openSettings 环境动作（该动作需场景内捕获，
+    /// 对只用快捷键唤起面板的用户恒为 nil），也不依赖 macOS 14+ 已移除的
+    /// showSettingsWindow: 选择器，从而从面板与菜单栏都能稳定打开设置。
+    private var settingsWC: NSWindowController?
 
     init() {
         store = ClipboardStore()
@@ -67,7 +61,7 @@ final class AppServices {
         store.pruneExpired()
 
         panel = PanelController(store: store, clipboard: clipboard, settings: settings, panelState: panelState)
-        panel?.openSettings = { [weak self] in self?.openSettingsAction?() }
+        panel?.openSettingsHandler = { [weak self] screen in self?.openSettingsWindow(on: screen) }
 
         settings.onStorageLocationChanged = { [weak self] in
             self?.store.setICloudSyncEnabled(self?.settings.iCloudSync ?? false)
@@ -101,6 +95,53 @@ final class AppServices {
     }
 
     func showPanel() { panel?.show() }
+
+    /// 直接以 AppKit 窗口托管 SettingsView 并置前。
+    /// 不依赖 SwiftUI Settings 场景 / openSettings 环境动作（只对已打开过场景的用户有效），
+    /// 也不依赖 macOS 14+ 已移除的 showSettingsWindow: 选择器。
+    func openSettingsWindow(on screen: NSScreen? = nil) {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+
+        let window: NSWindow
+        if let wc = settingsWC, let existing = wc.window {
+            window = existing
+        } else {
+            let root = SettingsView(
+                settings: settings,
+                store: store,
+                onInvokeShortcutChanged: { [weak self] _ in self?.registerShortcut() }
+            )
+            let hosting = NSHostingController(rootView: root)
+            window = NSWindow(contentViewController: hosting)
+            window.title = "设置"
+            window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+            window.isReleasedWhenClosed = false
+            window.contentMinSize = NSSize(width: 480, height: 440)
+            settingsWC = NSWindowController(window: window)
+        }
+
+        // 定位屏幕：优先用调用方传入的（面板所在屏），否则用鼠标所在屏，再退主屏。
+        // 从面板「设置…」唤起时传的是面板 screen，所以设置窗口一定落在面板所在屏幕。
+        let targetScreen: NSScreen
+        if let s = screen {
+            targetScreen = s
+        } else {
+            let mouse = NSEvent.mouseLocation
+            targetScreen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) })
+                ?? NSScreen.main
+                ?? NSScreen.screens.first
+                ?? NSScreen()
+        }
+        let size = NSSize(width: 480, height: 440)
+        var frame = NSRect(origin: .zero, size: size)
+        frame.origin.x = targetScreen.visibleFrame.midX - size.width / 2
+        frame.origin.y = targetScreen.visibleFrame.midY - size.height / 2
+        window.setFrame(frame, display: true)
+
+        settingsWC?.showWindow(nil)
+        window.makeKeyAndOrderFront(nil)
+    }
 }
 
 @MainActor
@@ -123,19 +164,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag { services?.showPanel() }
         return true
-    }
-}
-
-/// 在 SwiftUI 场景层次中捕获 @Environment(\.openSettings) 动作。
-/// PanelView 寄宿在独立 NSHostingView 中，无法访问该环境值；
-/// 通过此视图捕获后存入 AppServices，供 PanelController 使用。
-private struct SettingsActionCapture: View {
-    @Environment(\.openSettings) private var openSettings
-    let services: AppServices
-
-    var body: some View {
-        Color.clear
-            .frame(width: 0, height: 0)
-            .onAppear { services.openSettingsAction = { openSettings() } }
     }
 }

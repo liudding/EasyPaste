@@ -5,6 +5,7 @@ struct MenuBarView: View {
     let store: ClipboardStore
     let clipboard: ClipboardService
     let onShowPanel: () -> Void
+    let onOpenSettings: () -> Void
 
     var body: some View {
         Button("显示面板") { onShowPanel() }
@@ -15,15 +16,15 @@ struct MenuBarView: View {
             }
             Divider()
         }
-        
+
         // Sparkle 检查更新菜单项
         Button("检查更新…") {
             SparkleBridge.shared.checkForUpdates()
         }
-        
-        // SettingsLink 是 macOS 14+ 官方方式打开 Settings 场景；
-        // sendAction(showSettingsWindow:) 在 Sonoma+ 已被移除。
-        SettingsLink { Text("设置…") }
+
+        // 直接走 AppServices.openSettingsWindow()（自己托管的 NSWindow），
+        // 不再依赖 SwiftUI Settings 场景 / showSettingsWindow:（macOS 14+ 已移除）。
+        Button("设置…") { onOpenSettings() }
         Button("关于 EasyPaste") { AboutPresenter.show() }
         Divider()
         Button("退出 EasyPaste") { NSApp.terminate(nil) }
