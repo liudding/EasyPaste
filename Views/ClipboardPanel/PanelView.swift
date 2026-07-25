@@ -261,7 +261,14 @@ struct PanelView: View {
                             .overlay(Circle().stroke(.white, lineWidth: panelState.newBoardColor == name ? 1.5 : 0))
                     }.buttonStyle(.plain)
                 }
-                Button(action: commitNewBoard) { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }.buttonStyle(.plain)
+                Button(action: commitNewBoard) {
+                    Label("确定", systemImage: "checkmark")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(Capsule().fill(.white.opacity(0.16)))
+                        .overlay(Capsule().stroke(.white.opacity(0.28), lineWidth: 0.5))
+                }.buttonStyle(.plain)
             }
             .padding(.horizontal, 10).padding(.vertical, 5)
             .background(.white.opacity(0.09), in: Capsule())
@@ -300,7 +307,7 @@ struct PanelView: View {
     }
 
     private func openSettingsWindow() {
-        panelState.hidePanel()
+        // 隐藏面板交由 PanelController 处理（forceHidePanel），确保浮动面板不会遮挡设置窗口。
         onOpenSettings()
     }
 
