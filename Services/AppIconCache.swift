@@ -103,29 +103,72 @@ final class AppIconCache: @unchecked Sendable {
         entry(forBundleID: bundleID).icon
     }
 
-    /// 从 app icon 中提取主色调（取中心区域平均颜色），返回可编码的 sRGB 分量。
+    /// 从 app icon 中提取主色调。
+    ///
+    /// 策略：扫描整个 icon（跳过透明像素），将颜色量化分桶，**优先选取「与浅色主题背景可区分」
+    /// （亮度 ≤ 阈值）的桶中占比最大的颜色**——这样能直接从 icon 里挑出天然的深色主色，
+    /// 避免取到 icon 中心常见的白字/浅色 logo。仅当 icon 内不存在足够暗的颜色时，
+    /// 才回退到占比最大的颜色（交由 `ClipCardView.readableHeaderColor` 压暗处理）。
     private func extractDominantColor(from icon: NSImage) -> CodableColor? {
         guard let tiffData = icon.tiffRepresentation,
               let rep = NSBitmapImageRep(data: tiffData) else { return nil }
-        var rSum = 0, gSum = 0, bSum = 0, count = 0
-        let cx = Int(rep.pixelsWide / 2), cy = Int(rep.pixelsHigh / 2)
-        let half = 8
-        for x in (cx - half)..<(cx + half) {
-            for y in (cy - half)..<(cy + half) {
-                guard x >= 0, x < rep.pixelsWide, y >= 0, y < rep.pixelsHigh else { continue }
-                guard let color = rep.colorAt(x: x, y: y) else { continue }
-                rSum += Int(color.redComponent * 255)
-                gSum += Int(color.greenComponent * 255)
-                bSum += Int(color.blueComponent * 255)
-                count += 1
+        let w = rep.pixelsWide, h = rep.pixelsHigh
+        guard w > 0, h > 0 else { return nil }
+
+        // 采样步长：覆盖整个 icon，约 32×32 个采样点（平衡覆盖度与性能，每个 bundleID 仅计算一次）。
+        let stepX = max(1, w / 32), stepY = max(1, h / 32)
+
+        // 量化桶：每通道 /32 → 0~7（8 级），key = br*64 + bg*8 + bb（共 512 桶）。
+        var buckets: [Int: (rSum: Int, gSum: Int, bSum: Int, count: Int)] = [:]
+        var y = 0
+        while y < h {
+            var x = 0
+            while x < w {
+                if let color = rep.colorAt(x: x, y: y), color.alphaComponent >= 0.5 {
+                    let r = Int(color.redComponent * 255)
+                    let g = Int(color.greenComponent * 255)
+                    let b = Int(color.blueComponent * 255)
+                    let br = min(7, r / 32), bg = min(7, g / 32), bb = min(7, b / 32)
+                    let key = br * 64 + bg * 8 + bb
+                    var bucket = buckets[key] ?? (0, 0, 0, 0)
+                    bucket.rSum += r
+                    bucket.gSum += g
+                    bucket.bSum += b
+                    bucket.count += 1
+                    buckets[key] = bucket
+                }
+                x += stepX
             }
+            y += stepY
         }
-        guard count > 0 else { return nil }
-        return CodableColor(
-            red: Double(rSum) / Double(count) / 255,
-            green: Double(gSum) / Double(count) / 255,
-            blue: Double(bSum) / Double(count) / 255
-        )
+        guard !buckets.isEmpty else { return nil }
+
+        // 计算每个桶的平均色与亮度，转候选列表。
+        struct Candidate { let r: Double, g: Double, b: Double, count: Int, luminance: Double }
+        var candidates: [Candidate] = []
+        for (_, v) in buckets {
+            let r = Double(v.rSum) / Double(v.count) / 255
+            let g = Double(v.gSum) / Double(v.count) / 255
+            let b = Double(v.bSum) / Double(v.count) / 255
+            candidates.append(Candidate(
+                r: r, g: g, b: b, count: v.count,
+                luminance: 0.299 * r + 0.587 * g + 0.114 * b
+            ))
+        }
+
+        // 阈值与 readableHeaderColor 一致：亮度 ≤ 0.6 视为与浅色背景(white:0.98)可区分。
+        let maxLuminance: Double = 0.6
+        // 优先：在「足够暗」的候选中取占比最大者（最主流的天然深色，无需后续压暗）。
+        if let best = candidates
+            .filter({ $0.luminance <= maxLuminance })
+            .max(by: { $0.count < $1.count }) {
+            return CodableColor(red: best.r, green: best.g, blue: best.b)
+        }
+        // 兜底：icon 内无足够暗的色，返回占比最大者（由 readableHeaderColor 等比压暗，保色相）。
+        if let best = candidates.max(by: { $0.count < $1.count }) {
+            return CodableColor(red: best.r, green: best.g, blue: best.b)
+        }
+        return nil
     }
 }
 

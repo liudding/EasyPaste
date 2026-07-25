@@ -2,10 +2,8 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// 卡片内容区固定高度（pt）：无论剪贴项有无可预览内容，body 都占满这个高度。
-private let clipCardBodyHeight: CGFloat = 90
-/// 卡片 footer 固定占位高度（pt）：即使内容为空也保留此高度，避免 body 因 footer 塌陷而变高。
-private let clipCardFooterHeight: CGFloat = 20
+/// 卡片内容区固定高度（pt）：footer 已合并进 body，无论剪贴项有无可预览内容，body 都占满这个高度。
+private let clipCardBodyHeight: CGFloat = 110
 
 struct ClipCardView: View {
     let item: Clip
@@ -31,21 +29,56 @@ struct ClipCardView: View {
     @State private var draftTitle = ""
     @FocusState private var renameFocused: Bool
     @State private var l10nStore = L10nStore.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     /// 卡片头部区背景色：优先 pin board 色 → app icon 提取色 → 类型默认色。
     /// 色值类型 header 不使用解析色值本身，依然走 app icon 色 → 默认色逻辑。
+    /// 统一在浅色外观下解析为固定 sRGB（系统语义色如 .yellow 会随主题变暗，固定后两种主题一致），
+    /// 并压暗过亮颜色，确保浅色主题下与近白背景可区分、header 白字可读。
     private var headerColor: Color {
+        let raw: Color
         // 1) 有 pin board 则用 board 色
         if let boardID = item.boardID,
            let board = boards.first(where: { $0.id == boardID }) {
-            return board.swiftUIColor
-        }
+            raw = board.swiftUIColor
         // 2) 有 app icon 提取色
-        if let appColor = item.sourceAppDominantColor {
-            return appColor
-        }
+        } else if let appColor = item.sourceAppDominantColor {
+            raw = appColor
         // 3) 类型默认色兜底
-        return item.kind.defaultColor
+        } else {
+            raw = item.kind.defaultColor
+        }
+        return readableHeaderColor(raw)
+    }
+
+    /// 将 header 颜色解析为固定 sRGB 分量，并压暗过亮值（亮度 > 阈值时按比例降至阈值）。
+    private func readableHeaderColor(_ color: Color) -> Color {
+        let (r, g, b) = fixedRGB(color)
+        let luminance = 0.299 * r + 0.587 * g + 0.114 * b
+        // 阈值 0.6：浅色主题背景近白(0.98)，超过此亮度的颜色（如系统 .yellow、浅色 app icon 主色）
+        // 会与背景混为一体且白字不可读，需压暗。
+        let maxLuminance: Double = 0.6
+        if luminance <= maxLuminance {
+            return Color(red: r, green: g, blue: b)
+        }
+        let factor = maxLuminance / luminance
+        return Color(red: r * factor, green: g * factor, blue: b * factor)
+    }
+
+    /// 在浅色(aqua)外观下解析 Color 为固定 sRGB 分量。
+    /// 系统语义色（.yellow/.green 等）会随当前外观变化；强制 aqua 解析可保证两种主题下 header 颜色一致。
+    private func fixedRGB(_ color: Color) -> (r: Double, g: Double, b: Double) {
+        let nsColor = NSColor(color)
+        let previous = NSAppearance.current
+        NSAppearance.current = NSAppearance(named: .aqua)
+        var r: Double = 0, g: Double = 0, b: Double = 0
+        if let rgb = nsColor.usingColorSpace(.sRGB) {
+            r = Double(rgb.redComponent)
+            g = Double(rgb.greenComponent)
+            b = Double(rgb.blueComponent)
+        }
+        NSAppearance.current = previous
+        return (r, g, b)
     }
 
     /// 来源 app icon（从缓存读取 22×22 缩放版本）。
@@ -53,31 +86,27 @@ struct ClipCardView: View {
         AppIconCache.shared.icon(forBundleID: item.sourceApplicationBundleID, displaySize: 22)
     }
 
-    /// 内容区固定高度：色值卡片无 footer，需额外吃下 footer 高度使整卡与其余类型等高。
-    private var clipCardBodyRenderHeight: CGFloat {
-        item.kind == .color ? clipCardBodyHeight + clipCardFooterHeight : clipCardBodyHeight
-    }
-
-    /// 内容区 + Footer：body 高度固定，footer 占位固定，整块高度与剪贴内容无关。
+    /// 内容区：footer 已移除，原 footer 信息合并进 body，body 占满整块高度。
     @ViewBuilder private var cardBodyRegion: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // ZStack：底层 Color.clear 保证固定尺寸，上层 cardBody 叠加内容。
-            ZStack(alignment: item.kind == .color ? .center : .topLeading) {
-                Color.clear
-                cardBody
-                    .padding(.horizontal, item.kind == .color ? 0 : 10)
-                    .padding(.top, item.kind == .color ? 0 : 6)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: clipCardBodyRenderHeight)
-            .clipped()
-            if item.kind != .color {
-                cardFooter
-                    .padding(.horizontal, 10).padding(.bottom, 7)
-                    .frame(maxWidth: .infinity, minHeight: clipCardFooterHeight, alignment: .top)
+        ZStack(alignment: .center) {
+            // 底层 Color.clear 保证固定尺寸，上层 cardBody 叠加内容。
+            Color.clear
+            cardBody
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        }
+        .padding(.horizontal, item.kind == .color ? 0 : 10)
+        .padding(.vertical, item.kind == .color ? 0 : 6)
+        .frame(maxWidth: .infinity)
+        .frame(height: clipCardBodyHeight)
+        .clipped()
+        // body 背景不透明，按主题设定颜色（底部圆角）。
+        .background(bodyBackground, in: .rect(bottomLeadingRadius: 12, bottomTrailingRadius: 12))
+        // 选中态：在不透明底色上叠加 headerColor 薄膜，保持整体不透明。
+        .overlay {
+            if selected {
+                headerColor.opacity(0.18)
             }
         }
-        .background(bodyFooterBackground, in: .rect(bottomLeadingRadius: 12, bottomTrailingRadius: 12))
         .textSelection(.disabled)
     }
 
@@ -86,7 +115,7 @@ struct ClipCardView: View {
         VStack(alignment: .leading, spacing: 0) {
             // ── 头部区：flat color 背景 + 类型 icon + 标题 + time ago + app icon ──
             cardHeader
-            // ── 内容区 + Footer：按类型分化 ──
+            // ── 内容区：按类型分化（原 footer 信息已合并进 body）──
             cardBodyRegion
         }
         .frame(width: vertical ? availableWidth : 170)
@@ -128,7 +157,7 @@ struct ClipCardView: View {
             Text(timeAgoString(from: item.createdAt)).font(.system(size: 9)).foregroundStyle(.white.opacity(0.65))
         }
         .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, 6)
-        .background(headerColor.opacity(0.85))
+        .background(headerColor)
         .clipShape(.rect(topLeadingRadius: 12, topTrailingRadius: 12))
     }
 
@@ -146,99 +175,109 @@ struct ClipCardView: View {
     }
 
     // MARK: Body (content area, varies by type)
+    // 原 footer 展示的信息已合并进各类型的 body：内容置顶，附加信息经 Spacer 推到底部。
 
     @ViewBuilder private var cardBody: some View {
         switch item.kind {
         case .color:
-            // 貌值：body 不需要再填色（卡片背景已是该色值），居中显示色值文本
-            Text(item.text ?? "").font(.system(size: 14, weight: .bold))
-                .foregroundStyle(isLightColor(item.resolvedColorValue ?? item.kind.defaultColor) ? .black : .white)
+            // 色值：body 底色已是该色值颜色，居中显示色值文本。
+            Color.clear.overlay(
+                Text(item.text ?? "").font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(isLightColor(item.resolvedColorValue ?? item.kind.defaultColor) ? .black : .white)
+            )
         case .image:
-            if let image = ImageSizeCache.shared.thumbnail(for: item) {
-                // Color.clear 占据父级提议的尺寸，overlay 在其上绘制 scaledToFill 图片；
-                // 这样图片的布局尺寸 = Color.clear 的尺寸 = 父级提议尺寸，不会因宽图而撑爆卡片。
-                Color.clear.overlay(
-                    Image(nsImage: image).resizable().scaledToFill()
-                )
-                .clipShape(.rect(cornerRadius: 6))
-            } else {
-                // 图片数据为空时用 Color.clear 撑满区域，overlay 居中显示占位图标。
-                Color.clear.overlay(
-                    Image(systemName: "photo")
-                        .font(.system(size: 28))
-                        .foregroundStyle(.tertiary)
-                )
-            }
-        case .link:
-            // 链接：优先展示原始富文本格式，无则 fallback 到 URL 摘要或纯文本预览
-            if let attr = item.attributedText {
-                AttributedTextView(attributedString: attr, maxLines: 4, isSelectable: false)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else if let url = item.url {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(url.host ?? "").font(.system(size: 11, weight: .bold)).foregroundStyle(headerColor)
-                    if let preview = item.previewPlainText, preview != url.absoluteString {
-                        Text(preview).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(2)
-                    } else {
-                        Text(url.absoluteString).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(3)
-                    }
+            // 图片：scaledToFill 填满区域（视觉居中），尺寸描述居中置于其下。
+            VStack(spacing: 4) {
+                if let image = ImageSizeCache.shared.thumbnail(for: item) {
+                    // Color.clear 占据父级提议的尺寸，overlay 在其上绘制 scaledToFill 图片；
+                    // 这样图片的布局尺寸 = Color.clear 的尺寸 = 父级提议尺寸，不会因宽图而撑爆卡片。
+                    Color.clear.overlay(
+                        Image(nsImage: image).resizable().scaledToFill()
+                    )
+                    .clipShape(.rect(cornerRadius: 6))
+                } else {
+                    // 图片数据为空时用 Color.clear 撑满区域，overlay 居中显示占位图标。
+                    Color.clear.overlay(
+                        Image(systemName: "photo")
+                            .font(.system(size: 28))
+                            .foregroundStyle(.tertiary)
+                    )
                 }
-            } else if let preview = item.previewPlainText {
-                Text(preview).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(4).multilineTextAlignment(.leading)
-            } else {
-                Text(L10n.cannotPreview).font(.system(size: 9)).foregroundStyle(.tertiary)
+                // 合并自原 footer：图片尺寸信息。
+                if let sizeDesc = item.imageSizeDescription {
+                    Text(sizeDesc).font(.system(size: 9)).foregroundStyle(.tertiary)
+                }
             }
-        case .file:
-            VStack(alignment: .leading, spacing: 4) {
-                Image(systemName: "doc.fill").font(.title3).foregroundStyle(.secondary)
-                Text(item.detail).font(.system(size: 9)).foregroundStyle(.secondary)
-            }
-        case .text:
-            // 优先展示原始富文本格式，无则 fallback 到纯文本预览
-            if let attr = item.attributedText {
-                AttributedTextView(attributedString: attr, maxLines: 4, isSelectable: false)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else if let preview = item.previewPlainText {
-                Text(preview).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(4).multilineTextAlignment(.leading)
-            } else {
-                Text(L10n.cannotPreview).font(.system(size: 9)).foregroundStyle(.tertiary)
-            }
-        }
-    }
-
-    // MARK: Footer (varies by type)
-
-    @ViewBuilder private var cardFooter: some View {
-        switch item.kind {
-        case .text:
-            Text("\(item.characterCount)\(L10n.characters)").font(.system(size: 9)).foregroundStyle(.tertiary)
         case .link:
-            HStack(spacing: 4) {
-                Text(item.linkFooterTitle).lineLimit(1).font(.system(size: 9, weight: .medium)).foregroundStyle(.secondary)
-                Text(item.linkFooterURL).lineLimit(1).font(.system(size: 8)).foregroundStyle(.tertiary)
-            }
-        case .image:
-            if let sizeDesc = item.imageSizeDescription {
-                Text(sizeDesc).font(.system(size: 9)).foregroundStyle(.tertiary)
-            } else {
-                // 如果没有图片尺寸信息，也提供一个占位文本高度的视图，以确保 footer 高度绝对一致
-                Text(" ").font(.system(size: 9)).opacity(0)
+            // 内容 + 合并自原 footer 的链接信息，整体垂直居中。
+            VStack(alignment: .leading, spacing: 4) {
+                Spacer(minLength: 0)
+                // 优先展示原始富文本格式，无则 fallback 到 URL 摘要或纯文本预览
+                if let attr = item.attributedText {
+                    AttributedTextView(attributedString: attr, maxLines: 4, isSelectable: false)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else if let url = item.url {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(url.host ?? "").font(.system(size: 11, weight: .bold)).foregroundStyle(headerColor)
+                        if let preview = item.previewPlainText, preview != url.absoluteString {
+                            Text(preview).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(2)
+                        } else {
+                            Text(url.absoluteString).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(3)
+                        }
+                    }
+                } else if let preview = item.previewPlainText {
+                    Text(preview).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(4).multilineTextAlignment(.leading)
+                } else {
+                    Text(L10n.cannotPreview).font(.system(size: 9)).foregroundStyle(.tertiary)
+                }
+                // 合并自原 footer：链接标题 + URL。
+                HStack(spacing: 4) {
+                    Text(item.linkFooterTitle).lineLimit(1).font(.system(size: 9, weight: .medium)).foregroundStyle(.secondary)
+                    Text(item.linkFooterURL).lineLimit(1).font(.system(size: 8)).foregroundStyle(.tertiary)
+                }
+                Spacer(minLength: 0)
             }
         case .file:
-            Text(item.detail).font(.system(size: 9)).foregroundStyle(.tertiary)
-        case .color:
-            Text(item.text ?? "").font(.system(size: 9)).foregroundStyle(.tertiary)
+            // 图标 + 文件详情整体居中。
+            VStack(spacing: 4) {
+                Spacer(minLength: 0)
+                Image(systemName: "doc.fill").font(.title3).foregroundStyle(.secondary)
+                // 合并自原 footer：文件详情（原 body/footer 重复展示，现仅展示一次）。
+                Text(item.detail).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
+                Spacer(minLength: 0)
+            }
+        case .text:
+            // 内容 + 合并自原 footer 的字符数，整体垂直居中。
+            VStack(alignment: .leading, spacing: 4) {
+                Spacer(minLength: 0)
+                // 优先展示原始富文本格式，无则 fallback 到纯文本预览
+                if let attr = item.attributedText {
+                    AttributedTextView(attributedString: attr, maxLines: 4, isSelectable: false)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else if let preview = item.previewPlainText {
+                    Text(preview).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(4).multilineTextAlignment(.leading)
+                } else {
+                    Text(L10n.cannotPreview).font(.system(size: 9)).foregroundStyle(.tertiary)
+                }
+                // 合并自原 footer：字符数。
+                Text("\(item.characterCount)\(L10n.characters)").font(.system(size: 9)).foregroundStyle(.tertiary)
+                Spacer(minLength: 0)
+            }
         }
     }
 
     // MARK: Background
 
-    /// body+footer 区域的背景色（底部有圆角）。
-    private var bodyFooterBackground: Color {
-        if selected { return headerColor.opacity(0.18) }
+    /// body 区域背景色（不透明，按主题设定颜色，底部有圆角）。
+    /// - 色值类型：底色即为解析的色值颜色。
+    /// - 其余类型：深色主题用深灰、浅色主题用近白，均为不透明实色，面板材质不再透出。
+    private var bodyBackground: Color {
         // 色值类型 body 底色就是解析的色值颜色
         if item.kind == .color { return item.resolvedColorValue ?? item.kind.defaultColor }
-        return Color.primary.opacity(0.06)
+        // 按主题不透明底色：深色稍亮于面板、浅色近白，确保与面板材质有层次。
+        return colorScheme == .dark
+            ? Color(white: 0.16)
+            : Color(white: 0.98)
     }
 
     /// 判断一个颜色是否为亮色（用于决定文本用黑/白）。

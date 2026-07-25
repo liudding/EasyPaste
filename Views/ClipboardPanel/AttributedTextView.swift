@@ -36,4 +36,19 @@ struct AttributedTextView: NSViewRepresentable {
     func updateNSView(_ nsView: NSTextView, context: Context) {
         nsView.textStorage?.setAttributedString(attributedString)
     }
+
+    /// 报告文本的自然内容尺寸：NSTextView 默认无 intrinsic content size，会被视为 greedy
+    /// 而撑满父级提议的全部空间，导致卡片 body 内的 Spacer 失效、内容无法垂直居中。
+    /// 这里按可用宽度换行布局后返回实际占用高度，让 SwiftUI 将其视为定高视图。
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSTextView, context: Context) -> CGSize? {
+        guard let layoutManager = nsView.layoutManager,
+              let textContainer = nsView.textContainer else { return nil }
+        let width = proposal.width ?? nsView.bounds.width
+        guard width > 0 else { return nil }
+        // 限定容器宽度让文本按可用宽度换行；高度不限，由布局结果决定。
+        textContainer.size = NSSize(width: width, height: .greatestFiniteMagnitude)
+        layoutManager.ensureLayout(for: textContainer)
+        let usedRect = layoutManager.usedRect(for: textContainer)
+        return CGSize(width: width, height: ceil(usedRect.height))
+    }
 }
