@@ -25,7 +25,7 @@ struct SettingsView: View {
         } detail: {
             detailView
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    Color.clear.frame(height: titleBarInset)
+                    detailHeader
                 }
         }
         .navigationSplitViewStyle(.balanced)
@@ -63,6 +63,33 @@ struct SettingsView: View {
         case .privacy: privacy
         case .shortcuts: shortcuts
         case .updates: updates
+        }
+    }
+
+    /// 当前选中分区的标题，用于详情区顶部 head 展示。
+    private var sectionTitle: String {
+        switch selectedSection {
+        case .general: L10n.tabGeneral
+        case .privacy: L10n.tabPrivacy
+        case .shortcuts: L10n.tabShortcuts
+        case .updates: L10n.tabUpdates
+        }
+    }
+
+    /// 详情区顶部 head：高度与侧栏 head（titleBarInset）一致，
+    /// 左对齐显示当前分区标题，底部细分割线与内容区分隔。
+    private var detailHeader: some View {
+        HStack {
+            Text(sectionTitle)
+                .font(.headline)
+            Spacer()
+        }
+        .padding(.horizontal, 24)
+        .frame(maxWidth: .infinity)
+        .frame(height: titleBarInset)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .overlay(alignment: .bottom) {
+            Divider()
         }
     }
 
