@@ -10,20 +10,59 @@ struct SettingsView: View {
     @State private var selectedLocale: L10n.Locale = L10nStore.shared.locale
     @State private var l10nStore = L10nStore.shared
     @State private var themeStore = ThemeStore.shared
+    @State private var selectedSection: SettingsSection = .general
+
+    /// 标题栏区域高度（标准 macOS titled 窗口无 toolbar 时为 28pt）。
+    /// 侧栏顶部用此高度让出悬浮的交通灯按钮空间；detail 同高度顶部内边距保持对齐。
+    private let titleBarInset: CGFloat = 28
 
     var body: some View {
         let _ = l10nStore.version
         let _ = themeStore.version
-        TabView {
-            general.tabItem { Label(L10n.tabGeneral, systemImage: "gear") }
-            privacy.tabItem { Label(L10n.tabPrivacy, systemImage: "hand.raised") }
-            shortcuts.tabItem { Label(L10n.tabShortcuts, systemImage: "keyboard") }
-            updates.tabItem { Label(L10n.tabUpdates, systemImage: "arrow.down.circle") }
+        NavigationSplitView {
+            sidebar
+        } detail: {
+            detailView
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    Color.clear.frame(height: titleBarInset)
+                }
         }
-        .padding(20)
-        .frame(width: 480, height: 440)
+        .navigationSplitViewStyle(.balanced)
+        .frame(minWidth: 680, minHeight: 460)
         .preferredColorScheme(themeStore.effectiveColorScheme)
         .onAppear { selectedLocale = L10nStore.shared.locale }
+    }
+
+    // MARK: - Sidebar
+
+    private var sidebar: some View {
+        List(selection: $selectedSection) {
+            Label(L10n.tabGeneral, systemImage: "gear")
+                .tag(SettingsSection.general)
+            Label(L10n.tabPrivacy, systemImage: "hand.raised.fill")
+                .tag(SettingsSection.privacy)
+            Label(L10n.tabShortcuts, systemImage: "keyboard")
+                .tag(SettingsSection.shortcuts)
+            Label(L10n.tabUpdates, systemImage: "arrow.down.circle")
+                .tag(SettingsSection.updates)
+        }
+        .listStyle(.sidebar)
+        .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            Color.clear.frame(height: titleBarInset)
+        }
+    }
+
+    // MARK: - Detail
+
+    @ViewBuilder
+    private var detailView: some View {
+        switch selectedSection {
+        case .general: general
+        case .privacy: privacy
+        case .shortcuts: shortcuts
+        case .updates: updates
+        }
     }
 
     // MARK: General
@@ -224,4 +263,13 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
     }
+}
+
+// MARK: - Settings Section
+
+enum SettingsSection: Hashable {
+    case general
+    case privacy
+    case shortcuts
+    case updates
 }

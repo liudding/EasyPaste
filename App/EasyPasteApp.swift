@@ -130,9 +130,16 @@ final class AppServices {
             let hosting = NSHostingController(rootView: root)
             window = NSWindow(contentViewController: hosting)
             window.title = L10n.settings
-            window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+            // 透明标题栏 + 全尺寸内容视图：移除可见的顶部标题栏带，但保留红黄绿三按钮，
+            // 使其悬浮在左侧 sidebar 顶部（类似系统设置/Mail）。侧栏内容由 SwiftUI 的
+            // safeAreaInset 顶部内边距让出按钮空间。isMovableByWindowBackground 让用户可
+            // 从侧栏顶部非交互区拖动窗口。
+            window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+            window.titlebarAppearsTransparent = true
+            window.titleVisibility = .hidden
+            window.isMovableByWindowBackground = true
             window.isReleasedWhenClosed = false
-            window.contentMinSize = NSSize(width: 480, height: 440)
+            window.contentMinSize = NSSize(width: 680, height: 460)
             settingsWC = NSWindowController(window: window)
         }
 
@@ -148,7 +155,7 @@ final class AppServices {
                 ?? NSScreen.screens.first
                 ?? NSScreen()
         }
-        let size = NSSize(width: 480, height: 440)
+        let size = NSSize(width: 780, height: 540)
         var frame = NSRect(origin: .zero, size: size)
         frame.origin.x = targetScreen.visibleFrame.midX - size.width / 2
         frame.origin.y = targetScreen.visibleFrame.midY - size.height / 2
