@@ -100,11 +100,13 @@ struct PasteboardRow: FetchableRecord, PersistableRecord, Codable {
     let id: String
     let name: String
     let color: String
+    var sortIndex: Int?
 
-    init(_ board: Pasteboard) {
+    init(_ board: Pasteboard, sortIndex: Int? = nil) {
         id = board.id.uuidString
         name = board.name
         color = board.color
+        self.sortIndex = sortIndex
     }
 
     func toPasteboard() -> Pasteboard {

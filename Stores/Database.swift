@@ -71,6 +71,20 @@ enum DatabaseManager {
                 t.column("enabled", .integer).notNull()
             }
         }
+        // v1.0.1：看板支持手动排序，新增 sortIndex 列并回填既有行顺序。
+        migrator.registerMigration("v1.0.1-board-order") { db in
+            let hasColumn = try db.columns(in: "pasteboards").contains { $0.name == "sortIndex" }
+            if !hasColumn {
+                try db.alter(table: "pasteboards") { t in
+                    t.add(column: "sortIndex", .integer)
+                }
+            }
+            let rows = try PasteboardRow.fetchAll(db)
+            for (index, var row) in rows.enumerated() {
+                row.sortIndex = index
+                try row.upsert(db)
+            }
+        }
         return migrator
     }
 }

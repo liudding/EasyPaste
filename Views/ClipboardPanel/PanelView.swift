@@ -16,6 +16,10 @@ struct PanelView: View {
     @State private var frameStore = ClipFrameStore()
     /// 视口在滚动轴向上的尺寸。
     @State private var viewportExtent: CGFloat = 0
+    /// 当前正在被拖拽重排的看板 id（nil 表示没有）。
+    @State private var draggingBoardID: UUID?
+    /// 各看板芯片在 `boardSpace` 坐标系下的实时框（id -> rect），用于计算拖拽落点插入位置。
+    @State private var chipFrames: [UUID: CGRect] = [:]
     /// 卡片滚入视口后额外露出的相邻卡片宽度（pt）。
     private let neighborPeek: CGFloat = 36
 
@@ -108,21 +112,29 @@ struct PanelView: View {
     private var boardChips: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
-                BoardChipView(title: "全部", color: .secondary, selected: store.selectedBoardID == nil) {
+                BoardChipView(title: "全部", color: .secondary, selected: store.selectedBoardID == nil, store: store, boardID: nil, draggingID: draggingBoardID, onDragStart: { _ in }) {
                     store.selectedBoardID = nil
                 } onDrop: { clipID in
                     store.move(clipID, to: nil)
                 }
                 ForEach(store.boards) { board in
-                    BoardChipView(title: board.name, color: board.swiftUIColor, selected: store.selectedBoardID == board.id) {
+                    BoardChipView(title: board.name, color: board.swiftUIColor, selected: store.selectedBoardID == board.id, store: store, boardID: board.id, draggingID: draggingBoardID, onDragStart: { draggingBoardID = $0 }) {
                         store.selectedBoardID = board.id
                     } onDrop: { clipID in
                         store.move(clipID, to: board.id)
                     }
+                    .background(
+                        GeometryReader { g in
+                            Color.clear.preference(key: BoardFrameKey.self, value: [board.id: g.frame(in: .named("boardSpace"))])
+                        }
+                    )
                 }
                 addBoardControl
             }
             .padding(.horizontal, 2)
+            .coordinateSpace(name: "boardSpace")
+            .onDrop(of: [UTType.easypasteBoard.identifier], delegate: BoardReorderDelegate(store: store, frames: $chipFrames, draggingID: $draggingBoardID))
+            .onPreferenceChange(BoardFrameKey.self) { chipFrames = $0 }
         }
         .scrollClipDisabled()
         .scrollIndicators(.hidden)
@@ -132,6 +144,13 @@ struct PanelView: View {
         let title: String
         let color: Color
         let selected: Bool
+        let store: ClipboardStore
+        /// 看板 id；nil 表示不可重排的元芯片（如“全部”）。
+        let boardID: UUID?
+        /// 当前正在拖拽的看板 id（用于把源芯片半透明化）。
+        let draggingID: UUID?
+        /// 拖拽开始回调，用于把源 id 写入父视图的 `draggingBoardID`。
+        let onDragStart: (UUID) -> Void
         let action: () -> Void
         let onDrop: (UUID) -> Void
 
@@ -139,23 +158,23 @@ struct PanelView: View {
         @State private var dropBounce = false
 
         var body: some View {
-            Button(action: action) {
-                HStack(spacing: 5) {
-                    Circle().fill(color).frame(width: 7, height: 7)
-                    Text(title).font(.system(size: 12, weight: .medium)).lineLimit(1)
-                }
-                .padding(.horizontal, 10).padding(.vertical, 5)
-                .background(
-                    Capsule()
-                        .fill(selected ? color.opacity(0.28) : (isTargeted ? color.opacity(0.18) : .white.opacity(0.07)))
-                )
-                .overlay(Capsule().stroke(selected ? color.opacity(0.8) : (isTargeted ? color.opacity(0.5) : .clear), lineWidth: 1))
-                .foregroundStyle(selected ? .white : (isTargeted ? .primary : .secondary))
+            let chip = HStack(spacing: 5) {
+                Circle().fill(color).frame(width: 7, height: 7)
+                Text(title).font(.system(size: 12, weight: .medium)).lineLimit(1)
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 10).padding(.vertical, 5)
+            .background(
+                Capsule()
+                    .fill(selected ? color.opacity(0.28) : (isTargeted ? color.opacity(0.18) : .white.opacity(0.07)))
+            )
+            .overlay(Capsule().stroke(selected ? color.opacity(0.8) : (isTargeted ? color.opacity(0.5) : .clear), lineWidth: 1))
+            .foregroundStyle(selected ? .white : (isTargeted ? .primary : .secondary))
+            .contentShape(Capsule())
+            .onTapGesture { action() }
             .scaleEffect(isTargeted ? 1.05 : (dropBounce ? 1.15 : 1.0))
             .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isTargeted)
             .animation(.spring(response: 0.3, dampingFraction: 0.5), value: dropBounce)
+            .opacity(boardID != nil && boardID == draggingID ? 0.4 : 1.0)
             .background(
                 BoardChipDropZone(onTargeted: { targeted in
                     isTargeted = targeted
@@ -167,6 +186,70 @@ struct PanelView: View {
                     onDrop(clipID)
                 })
             )
+
+            if let boardID {
+                chip
+                    .onDrag {
+                        onDragStart(boardID)
+                        let provider = NSItemProvider()
+                        provider.registerDataRepresentation(forTypeIdentifier: UTType.easypasteBoard.identifier, visibility: .ownProcess) { completion in
+                            completion(boardID.uuidString.data(using: .utf8), nil)
+                            return nil
+                        }
+                        return provider
+                    }
+            } else {
+                chip
+            }
+        }
+    }
+
+    /// 看板芯片拖拽重排的落点框收集（id -> 在 `boardSpace` 坐标系下的 rect）。
+    private struct BoardFrameKey: PreferenceKey {
+        static var defaultValue: [UUID: CGRect] { [:] }
+        static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+            value.merge(nextValue()) { _, new in new }
+        }
+    }
+
+    /// 看板拖拽重排的容器级拖放代理：根据拖拽落点相对各芯片中点的位置，实时把被拖看板插到对应槽位，
+    /// 让其它芯片“让位”（带动画），并在每次实际换位时落库。
+    private struct BoardReorderDelegate: DropDelegate {
+        let store: ClipboardStore
+        @Binding var frames: [UUID: CGRect]
+        @Binding var draggingID: UUID?
+
+        func validateDrop(info: DropInfo) -> Bool {
+            info.hasItemsConforming(to: [UTType.easypasteBoard.identifier])
+        }
+
+        func dropUpdated(info: DropInfo) -> DropProposal {
+            guard let drag = draggingID, let idx = insertionIndex(info: info) else {
+                return DropProposal(operation: .move)
+            }
+            if store.reorderBoardLive(drag, to: idx) {
+                store.persistBoardOrder()
+            }
+            return DropProposal(operation: .move)
+        }
+
+        func performDrop(info: DropInfo) -> Bool {
+            draggingID = nil
+            return true
+        }
+
+        func dropExited(info: DropInfo) {
+            draggingID = nil
+        }
+
+        /// 落点 x 小于某个芯片中点时，插入到该芯片之前；否则追加到末尾。
+        private func insertionIndex(info: DropInfo) -> Int? {
+            let x = info.location.x
+            let sorted = frames.sorted { $0.value.midX < $1.value.midX }
+            for (i, (_, rect)) in sorted.enumerated() {
+                if x < rect.midX { return i }
+            }
+            return sorted.count
         }
     }
 

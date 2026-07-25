@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import GRDB
+import SwiftUI
 
 @Observable @MainActor
 final class ClipboardStore {
@@ -62,7 +63,7 @@ final class ClipboardStore {
         reloadItems()
         // 看板：空库时播种默认看板（应用默认数据，非旧历史导入）。
         do {
-            let rows = try dbQueue.read { try PasteboardRow.fetchAll($0) }
+            let rows = try dbQueue.read { try PasteboardRow.fetchAll($0, sql: "SELECT * FROM pasteboards ORDER BY sortIndex IS NULL, sortIndex, rowid") }
             boards = rows.map { $0.toPasteboard() }
         } catch {
             boards = []
@@ -140,7 +141,49 @@ final class ClipboardStore {
     func addBoard(named name: String, color: String = "purple") {
         let board = Pasteboard(name: name, color: color)
         boards.append(board)
-        _ = try? dbQueue.write { db in try PasteboardRow(board).insert(db) }
+        _ = try? dbQueue.write { db in try PasteboardRow(board, sortIndex: boards.count - 1).insert(db) }
+        backupService.scheduleBackupOnIdle()
+    }
+
+    /// 看板拖拽重排：把 `sourceID` 看板移动到 `targetID` 看板之前，并持久化新顺序。
+    func moveBoard(_ sourceID: UUID, to targetID: UUID) {
+        guard sourceID != targetID,
+              boards.firstIndex(where: { $0.id == sourceID }) != nil,
+              boards.firstIndex(where: { $0.id == targetID }) != nil else { return }
+        var reordered = boards
+        guard let from = reordered.firstIndex(where: { $0.id == sourceID }) else { return }
+        let moved = reordered.remove(at: from)
+        let insertAt = reordered.firstIndex(where: { $0.id == targetID }) ?? reordered.count
+        reordered.insert(moved, at: insertAt)
+        boards = reordered
+        persistBoardOrder()
+    }
+
+    /// 看板实时重排（拖拽预览用）：把 `sourceID` 看板移动到数组的 `index` 位置
+    /// （`index` 基于拖拽落点相对各芯片中点的顺序；移除自身后的偏移已在此校正），带动画。
+    /// 返回顺序是否真的发生了变化。
+    func reorderBoardLive(_ sourceID: UUID, to index: Int) -> Bool {
+        guard let from = boards.firstIndex(where: { $0.id == sourceID }) else { return false }
+        var reordered = boards
+        let moved = reordered.remove(at: from)
+        var insertAt = index
+        if from < index { insertAt -= 1 }
+        insertAt = min(max(insertAt, 0), reordered.count)
+        reordered.insert(moved, at: insertAt)
+        guard reordered.map({ $0.id }) != boards.map({ $0.id }) else { return false }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            boards = reordered
+        }
+        return true
+    }
+
+    /// 将当前内存中的看板顺序写穿到 DB（sortIndex 列），供重排后持久化。
+    func persistBoardOrder() {
+        _ = try? dbQueue.write { db in
+            for (index, board) in boards.enumerated() {
+                try PasteboardRow(board, sortIndex: index).upsert(db)
+            }
+        }
         backupService.scheduleBackupOnIdle()
     }
 
