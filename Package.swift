@@ -17,6 +17,8 @@ let package = Package(
         .package(url: "https://github.com/groue/GRDB.swift", exact: "7.11.1"),
 
         .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.4"),
+
+        .package(url: "https://github.com/getsentry/sentry-cocoa", from: "9.23.0"),
     ],
     targets: [
         .executableTarget(

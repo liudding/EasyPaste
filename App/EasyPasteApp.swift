@@ -204,6 +204,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static var invokingApplication: NSRunningApplication?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        SentrySDK.start { options in
+            options.dsn = "https://5c451e16cf24d13b9f7e00789331255a@o4507779151888384.ingest.us.sentry.io/4511796503642112"
+            options.debug = true // Enabling debug when first installing is always helpful
+
+            // Adds IP for users.
+            // For more information, visit: https://docs.sentry.io/platforms/apple/data-management/data-collected/
+            options.sendDefaultPii = true
+        }
+
         // 初始化 Sparkle 更新服务（在 AppKit 启动阶段）
         _ = SparkleBridge.shared
         services?.boot()
