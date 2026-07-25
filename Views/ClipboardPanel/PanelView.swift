@@ -27,7 +27,8 @@ struct PanelView: View {
                 header
                     .padding(.horizontal, 14).padding(.top, 14)
                 clipStrip
-                    .padding(.top, 12).padding(.bottom, 14)
+                    .padding(.top, 10)
+                    .padding(.bottom, 14)
             }
             .background(.ultraThinMaterial)
             .background(Color(red: 0.07, green: 0.075, blue: 0.09).opacity(0.82))
@@ -71,6 +72,8 @@ struct PanelView: View {
             Text(headerTitle).font(.system(size: 15, weight: .bold)).lineLimit(1).fixedSize()
             Rectangle().fill(.white.opacity(0.12)).frame(width: 1, height: 18)
             boardChips
+            Spacer()
+            quickSettingsInline
             moreMenu
         }
         .frame(height: 30)
@@ -289,7 +292,7 @@ struct PanelView: View {
             Button("退出 EasyPaste") { NSApp.terminate(nil) }
         } label: {
             Image(systemName: "ellipsis").font(.system(size: 13, weight: .bold))
-                .frame(width: 28, height: 28).contentShape(.rect)
+                .frame(width: 34, height: 34).contentShape(.rect)
         }
         .menuIndicator(.hidden)
         .menuStyle(.borderlessButton)
@@ -299,6 +302,73 @@ struct PanelView: View {
     private func openSettingsWindow() {
         panelState.hidePanel()
         onOpenSettings()
+    }
+
+    // MARK: Quick Settings Inline (in header, left of moreMenu)
+
+    private var quickSettingsInline: some View {
+        HStack(spacing: 2) {
+            // Sound toggle
+            soundToggle
+            // Plain text toggle
+            plainTextToggle
+            // Position group
+            positionGroup
+        }
+        .frame(height: 24)
+    }
+
+    @ViewBuilder
+    private var positionGroup: some View {
+        Rectangle().fill(.white.opacity(0.12)).frame(width: 1, height: 14)
+        HStack(spacing: 1) {
+            positionButton(.top, icon: "inset.filled.tophalf.rectangle")
+            positionButton(.left, icon: "inset.filled.lefthalf.rectangle")
+            positionButton(.right, icon: "inset.filled.righthalf.rectangle")
+            positionButton(.bottom, icon: "inset.filled.bottomhalf.rectangle")
+        }
+        .background(.white.opacity(0.07), in: Capsule())
+        .padding(.horizontal, 4)
+    }
+
+    @ViewBuilder
+    private func positionButton(_ position: AppSettings.PanelPosition, icon: String) -> some View {
+        let isActive = settings.panelPosition == position
+        Button {
+            withAnimation(.easeOut(duration: 0.15)) { settings.panelPosition = position }
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: isActive ? .bold : .regular))
+                .frame(width: 18, height: 18)
+                .foregroundStyle(isActive ? .white : .secondary)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var soundToggle: some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.15)) { settings.soundEnabled.toggle() }
+        } label: {
+            Image(systemName: settings.soundEnabled ? "speaker.wave.3.fill" : "speaker.slash.fill")
+                .font(.system(size: 11, weight: settings.soundEnabled ? .semibold : .regular))
+                .frame(width: 20, height: 20)
+                .foregroundStyle(settings.soundEnabled ? .primary : .tertiary)
+        }
+        .buttonStyle(.plain)
+        .help(settings.soundEnabled ? "音效已开启" : "音效已关闭")
+    }
+
+    private var plainTextToggle: some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.15)) { settings.alwaysPastePlainText.toggle() }
+        } label: {
+            Image(systemName: settings.alwaysPastePlainText ? "textformat.convert" : "textformat")
+                .font(.system(size: 11, weight: settings.alwaysPastePlainText ? .semibold : .regular))
+                .frame(width: 20, height: 20)
+                .foregroundStyle(settings.alwaysPastePlainText ? .primary : .tertiary)
+        }
+        .buttonStyle(.plain)
+        .help(settings.alwaysPastePlainText ? "纯文本粘贴已开启" : "纯文本粘贴已关闭")
     }
 
     // MARK: Clip strip

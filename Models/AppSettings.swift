@@ -14,6 +14,15 @@ final class AppSettings {
         var isVertical: Bool { self == .left || self == .right }
     }
 
+    /// 历史最大保留条数模式。`limited` 由 `maxItemsCount` 决定上限，`unlimited` 表示不限条数。
+    enum MaxItemsMode: String, Codable, CaseIterable, Identifiable {
+        case limited, unlimited
+        var id: String { rawValue }
+        var title: String {
+            switch self { case .limited: "限制"; case .unlimited: "无限" }
+        }
+    }
+
     struct IgnoredApp: Codable, Identifiable, Hashable {
         var id: String { bundleID }
         let bundleID: String
@@ -36,8 +45,12 @@ final class AppSettings {
     var iCloudSync = false { didSet { save(); onStorageLocationChanged?() } }
     var showInMenuBar = true { didSet { save() } }
     var soundName = "Pop" { didSet { save() } }
+    /// 快捷面板声音开关：当 soundName != "" 时有效；"" 时音效始终关闭。
+    var soundEnabled = true { didSet { save() } }
     var alwaysPastePlainText = false { didSet { save() } }
     var historyStepIndex = AppSettings.historySteps.count - 1 { didSet { save(); onHistoryLimitChanged?() } }
+    var maxItemsMode: MaxItemsMode = .limited { didSet { save(); onMaxItemsChanged?() } }
+    var maxItemsCount: Int = 2000 { didSet { save(); onMaxItemsChanged?() } }
     var ignoredApps: [IgnoredApp] = [
         IgnoredApp(bundleID: "com.apple.keychainaccess", name: "钥匙串访问"),
         IgnoredApp(bundleID: "com.apple.Passwords", name: "密码")
@@ -48,6 +61,7 @@ final class AppSettings {
 
     var onStorageLocationChanged: (() -> Void)?
     var onHistoryLimitChanged: (() -> Void)?
+    var onMaxItemsChanged: (() -> Void)?
 
     var historyLimitDays: Int {
         let clamped = min(max(historyStepIndex, 0), AppSettings.historySteps.count - 1)
@@ -56,6 +70,12 @@ final class AppSettings {
     var historyLimitLabel: String {
         let clamped = min(max(historyStepIndex, 0), AppSettings.historySteps.count - 1)
         return AppSettings.historySteps[clamped].label
+    }
+    var maxItemsLabel: String {
+        switch maxItemsMode { case .limited: "\(maxItemsCount) 条"; case .unlimited: "无限" }
+    }
+    var maxItems: ClipboardStore.MaxItems {
+        switch maxItemsMode { case .limited: .limited(max(1, maxItemsCount)); case .unlimited: .unlimited }
     }
 
     init() { load() }
@@ -70,25 +90,32 @@ final class AppSettings {
         var iCloudSync: Bool
         var showInMenuBar: Bool
         var soundName: String
+        var soundEnabled: Bool
         var alwaysPastePlainText: Bool
         var historyStepIndex: Int
+        var maxItemsMode: MaxItemsMode
+        var maxItemsCount: Int
         var ignoredApps: [IgnoredApp]
         var invokeShortcut: Shortcut
         var boardSwitchShortcut: Shortcut
         var hasCompletedOnboarding: Bool
 
         init(panelPosition: PanelPosition, openAtLogin: Bool, iCloudSync: Bool,
-             showInMenuBar: Bool, soundName: String, alwaysPastePlainText: Bool,
-             historyStepIndex: Int, ignoredApps: [IgnoredApp],
-             invokeShortcut: Shortcut, boardSwitchShortcut: Shortcut,
-             hasCompletedOnboarding: Bool) {
+             showInMenuBar: Bool, soundName: String, soundEnabled: Bool,
+             alwaysPastePlainText: Bool, historyStepIndex: Int,
+             maxItemsMode: MaxItemsMode, maxItemsCount: Int,
+             ignoredApps: [IgnoredApp], invokeShortcut: Shortcut,
+             boardSwitchShortcut: Shortcut, hasCompletedOnboarding: Bool) {
             self.panelPosition = panelPosition
             self.openAtLogin = openAtLogin
             self.iCloudSync = iCloudSync
             self.showInMenuBar = showInMenuBar
             self.soundName = soundName
+            self.soundEnabled = soundEnabled
             self.alwaysPastePlainText = alwaysPastePlainText
             self.historyStepIndex = historyStepIndex
+            self.maxItemsMode = maxItemsMode
+            self.maxItemsCount = maxItemsCount
             self.ignoredApps = ignoredApps
             self.invokeShortcut = invokeShortcut
             self.boardSwitchShortcut = boardSwitchShortcut
@@ -102,8 +129,11 @@ final class AppSettings {
             iCloudSync = try c.decode(Bool.self, forKey: .iCloudSync)
             showInMenuBar = try c.decode(Bool.self, forKey: .showInMenuBar)
             soundName = try c.decode(String.self, forKey: .soundName)
+            soundEnabled = try c.decodeIfPresent(Bool.self, forKey: .soundEnabled) ?? true
             alwaysPastePlainText = try c.decode(Bool.self, forKey: .alwaysPastePlainText)
             historyStepIndex = try c.decode(Int.self, forKey: .historyStepIndex)
+            maxItemsMode = try c.decodeIfPresent(MaxItemsMode.self, forKey: .maxItemsMode) ?? .limited
+            maxItemsCount = try c.decodeIfPresent(Int.self, forKey: .maxItemsCount) ?? 2000
             ignoredApps = try c.decode([IgnoredApp].self, forKey: .ignoredApps)
             invokeShortcut = try c.decode(Shortcut.self, forKey: .invokeShortcut)
             boardSwitchShortcut = try c.decode(Shortcut.self, forKey: .boardSwitchShortcut)
@@ -119,8 +149,11 @@ final class AppSettings {
         iCloudSync = snapshot.iCloudSync
         showInMenuBar = snapshot.showInMenuBar
         soundName = snapshot.soundName
+        soundEnabled = snapshot.soundEnabled
         alwaysPastePlainText = snapshot.alwaysPastePlainText
         historyStepIndex = snapshot.historyStepIndex
+        maxItemsMode = snapshot.maxItemsMode
+        maxItemsCount = snapshot.maxItemsCount
         ignoredApps = snapshot.ignoredApps
         invokeShortcut = snapshot.invokeShortcut
         boardSwitchShortcut = snapshot.boardSwitchShortcut
@@ -129,8 +162,9 @@ final class AppSettings {
 
     func save() {
         let snapshot = Snapshot(panelPosition: panelPosition, openAtLogin: openAtLogin, iCloudSync: iCloudSync,
-                                showInMenuBar: showInMenuBar, soundName: soundName,
+                                showInMenuBar: showInMenuBar, soundName: soundName, soundEnabled: soundEnabled,
                                 alwaysPastePlainText: alwaysPastePlainText, historyStepIndex: historyStepIndex,
+                                maxItemsMode: maxItemsMode, maxItemsCount: maxItemsCount,
                                 ignoredApps: ignoredApps, invokeShortcut: invokeShortcut,
                                 boardSwitchShortcut: boardSwitchShortcut,
                                 hasCompletedOnboarding: hasCompletedOnboarding)

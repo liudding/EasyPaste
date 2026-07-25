@@ -5,13 +5,31 @@
 	<!-- 允许访问剪贴板 -->
 	<key>com.apple.security.device.clipboard</key>
 	<true/>
-	
+
 	<!-- 允许读取/写入用户数据目录 -->
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
-	
+
 	<!-- 允许代码签名验证放宽（ad-hoc 签名需要） -->
 	<key>com.apple.security.cs.disable-library-validation</key>
 	<false/>
+
+	<!-- 
+		iCloud ubiquity 文件级备份（阶段一持久层迁移）。
+		注意：容器 ID 需要使用你 Apple Developer 账号中配置的真实 iCloud Container ID。
+		
+		当前状态：已注释，避免签名失败。
+		
+		启用步骤：
+		1. 前往 https://developer.apple.com/account -> Identifiers -> + 创建 iCloud Container
+		2. 记录 Container ID（格式如: iCloud.com.easypaste.app 或带前缀的格式）
+		3. 取消下方注释并替换为真实的 Container ID
+		4. 必须以 Developer ID Application 证书签名才能使用 iCloud 能力
+		
+		<key>com.apple.developer.ubiquity-container-identifiers</key>
+		<array>
+			<string>iCloud.com.yourbundle.EasyPaste</string>
+		</array>
+	-->
 </dict>
 </plist>

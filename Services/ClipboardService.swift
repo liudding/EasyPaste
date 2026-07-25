@@ -291,8 +291,7 @@ final class ClipboardService {
         up?.flags = .maskCommand
         down?.post(tap: .cghidEventTap)
         up?.post(tap: .cghidEventTap)
-        if let name = settings?.soundName, !name.isEmpty {
-            NSSound(named: NSSound.Name(name))?.play()
-        }
+        guard let settings, settings.soundEnabled, !settings.soundName.isEmpty else { return }
+        NSSound(named: NSSound.Name(settings.soundName))?.play()
     }
 }

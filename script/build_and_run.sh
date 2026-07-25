@@ -58,19 +58,14 @@ cat >"$APP_BUNDLE/Contents/Info.plist" <<PLIST
 </dict></plist>
 PLIST
 
-# ── Setup Sparkle.framework (download if not present) ──
-if [ ! -d "$ROOT_DIR/Frameworks/Sparkle.framework" ]; then
-    echo "[build] Setting up Sparkle.framework..."
-    bash "$ROOT_DIR/script/setup_sparkle.sh" 2>/dev/null || echo "[build] ⚠️  Sparkle setup skipped (requires network)"
-fi
+# ── Copy Sparkle.framework into app bundle (from SPM build) ──
+SPARKLE_SRC="$ROOT_DIR/.build/arm64-apple-macosx/debug/Sparkle.framework"
 
-# ── Copy Sparkle.framework into app bundle ──
-SPARKLE_SRC="$ROOT_DIR/Frameworks/Sparkle.framework"
 if [ -d "$SPARKLE_SRC" ]; then
     mkdir -p "$APP_BUNDLE/Contents/Frameworks"
     cp -R "$SPARKLE_SRC" "$APP_BUNDLE/Contents/Frameworks/"
     
-    # 重新签名 Sparkle 嵌套组件（必须与主 app 用同一身份，否则 library validation 会拒绝加载）
+    # Sign nested framework components
     SPARKLE_FRAMEWORK="$APP_BUNDLE/Contents/Frameworks/Sparkle.framework"
     if [ -n "$SIGN_IDENTITY" ]; then
         find "$SPARKLE_FRAMEWORK" -type f -name "*.dylib" -exec codesign --force --sign "$SIGN_IDENTITY" {} \; 2>/dev/null || true
@@ -80,12 +75,18 @@ if [ -d "$SPARKLE_SRC" ]; then
         codesign --force --sign - --timestamp=none "$SPARKLE_FRAMEWORK" 2>/dev/null || true
     fi
     
+    # Add rpath so @rpath/Sparkle.framework resolves to Contents/Frameworks/
+    /usr/bin/install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP_BINARY" 2>/dev/null || true
+    
     echo "[build] ✓ Sparkle.framework copied and signed"
 else
-    echo "[build] ⚠️  Sparkle.framework not found — run: bash script/setup_sparkle.sh"
+    echo "[build] ⚠️  Sparkle.framework not found at $SPARKLE_SRC — run: swift build first"
 fi
 
 # ── Sign ──
+# 注意：iCloud ubiquity 文件级备份（阶段一持久层迁移）要求使用 Developer ID Application
+# 证书 + EasyPaste.entitlements（含 com.apple.developer.ubiquity-container-identifiers）。
+# 纯 ad-hoc 签名无 iCloud 能力，运行时会拿不到 ubiquity 容器、同步不生效。
 if [ -n "$SIGN_IDENTITY" ]; then
     /usr/bin/codesign --force --sign "$SIGN_IDENTITY" --entitlements "$ROOT_DIR/EasyPaste.entitlements" "$APP_BUNDLE"
 else

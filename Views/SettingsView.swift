@@ -43,6 +43,19 @@ struct SettingsView: View {
                     HStack { Text("保留时长"); Spacer(); Text(settings.historyLimitLabel).foregroundStyle(.secondary) }
                     Slider(value: historyIndexBinding, in: 0...Double(AppSettings.historySteps.count - 1), step: 1)
                 }
+                Divider()
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack { Text("最大保留条数"); Spacer(); Text(settings.maxItemsLabel).foregroundStyle(.secondary) }
+                    Picker("最大保留条数", selection: $settings.maxItemsMode) {
+                        ForEach(AppSettings.MaxItemsMode.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    if settings.maxItemsMode == .limited {
+                        Stepper(value: $settings.maxItemsCount, in: 100...10000, step: 100) {
+                            Text("\(settings.maxItemsCount) 条")
+                        }
+                    }
+                }
                 Button("清除全部历史…", role: .destructive) { showClearConfirm = true }
                     .alert("清除全部剪贴板历史？", isPresented: $showClearConfirm) {
                         Button("清除", role: .destructive) { store.clearAll() }

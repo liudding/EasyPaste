@@ -52,7 +52,7 @@ final class AppServices {
     var openSettingsAction: (() -> Void)?
 
     init() {
-        store = ClipboardStore(iCloud: false)
+        store = ClipboardStore()
     }
 
     func boot() {
@@ -63,6 +63,7 @@ final class AppServices {
 
         store.setICloudSyncEnabled(settings.iCloudSync)
         store.historyLimitDays = settings.historyLimitDays
+        store.maxItems = settings.maxItems
         store.pruneExpired()
 
         panel = PanelController(store: store, clipboard: clipboard, settings: settings, panelState: panelState)
@@ -74,6 +75,11 @@ final class AppServices {
         settings.onHistoryLimitChanged = { [weak self] in
             guard let self else { return }
             self.store.historyLimitDays = self.settings.historyLimitDays
+            self.store.pruneExpired()
+        }
+        settings.onMaxItemsChanged = { [weak self] in
+            guard let self else { return }
+            self.store.maxItems = self.settings.maxItems
             self.store.pruneExpired()
         }
 
@@ -107,6 +113,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 初始化 Sparkle 更新服务（在 AppKit 启动阶段）
         _ = SparkleBridge.shared
         services?.boot()
+    }
+
+    func applicationWillResignActive(_ notification: Notification) {
+        // 应用进后台前立即触发一次 iCloud ubiquity 备份（见 PersistenceTests / BackupService）。
+        services?.store.triggerCloudBackup()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

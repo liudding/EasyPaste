@@ -12,6 +12,7 @@
 - **clip list 按需滚动**（PanelView `scrollSelectedClipIntoView`）：Preference 采集卡片 frame 到**非观察** `ClipFrameStore`（绝不能放 @State——滚动中逐帧更新会把整个面板打入重渲染循环；Lazy 卡片销毁后条目自动从聚合消失，无需失效校验）；完全可见不动，单侧被裁则用 UnitPoint 对齐语义反解 anchor 滚到"刚好可见 + 露出相邻卡 36pt"，位置未知退化为 `scrollTo(id)`（anchor nil = 最小滚动）。
 - **图片卡片性能**：列表缩略图走 `ImageSizeCache.thumbnail(for:)`（@Observable，未命中后台 ImageIO 340px 降采样再触发刷新），全尺寸图只给预览浮层；尺寸描述读 CGImageSource 元数据不解码。面板 onAppear 用 `AppIconCache.warm` 后台预热图标。
 - 跨应用粘贴在 `ClipboardService.paste`：目标解析（前台非本 app 优先，否则 `AppDelegate.invokingApplication`）→ hide + activate → 轮询前台 → hidSystemState + cghidEventTap 发 ⌘V。不要用 `postToPid`（不可靠）。
+- **`ClipboardStore.filteredItems` 禁止做"命中即跳过读源"的缓存**：曾被手动缓存（`@ObservationIgnored` 的 `_filteredCache`）导致命中时 getter 不读 `items`，SwiftUI 丢失对 `items` 的 Observation 依赖 → 增删剪贴项偶发不刷新（需点其他 item 才刷新）。已改为每次直接 `items.filter{...}`。任何被 SwiftUI 直接读取的派生属性若要缓存，必须保证每次读取仍触碰被观察的源属性。
 - 全局快捷键：Carbon RegisterEventHotKey（⌘⇧V）在 `GlobalShortcutService`。
 - 权限：辅助功能未授权时绝不静默失败——系统提示 + NSAlert 引导去设置。
 - **设置窗口打开**：PanelView 在独立 NSHostingView 中，无法直接访问 `@Environment(\.openSettings)`。通过 `SettingsActionCapture` 视图在场景层次（MenuBarExtra/Settings scene）内捕获 openSettings 动作，存入 `AppServices.openSettingsAction` 传给 PanelController。`sendAction(Selector(("showSettingsWindow:")))` 在 macOS 15 上不可靠，仅作兜底。打开设置时需等面板隐藏动画完成（0.2s 延迟），否则 `.floating` 层级面板会遮挡设置窗口。
