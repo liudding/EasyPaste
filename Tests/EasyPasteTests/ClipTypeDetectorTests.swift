@@ -1,6 +1,5 @@
 import Testing
 import Foundation
-import GRDB
 @testable import EasyPaste
 
 /// ClipTypeDetector 单元测试：覆盖 isRichText / isJSON / isEmail / detect /
@@ -326,9 +325,9 @@ struct ClipboardStoreDedupTests {
         let store = ClipboardStore(databaseURL: url)
 
         let entry = UTIEntry(uti: "public.plain-text", data: Data("same-content".utf8))
-        var c1 = Clip(kind: .text, text: "first", allPasteboardData: [entry])
+        let c1 = Clip(kind: .text, text: "first", allPasteboardData: [entry])
         c1.contentHash = ClipTypeDetector.computeContentHash([entry])
-        var c2 = Clip(kind: .text, text: "second", allPasteboardData: [entry])
+        let c2 = Clip(kind: .text, text: "second", allPasteboardData: [entry])
         c2.contentHash = ClipTypeDetector.computeContentHash([entry])
 
         store.add(c1)
@@ -355,9 +354,9 @@ struct ClipboardStoreDedupTests {
 
         let entryA = UTIEntry(uti: "public.plain-text", data: Data("content-a".utf8))
         let entryB = UTIEntry(uti: "public.plain-text", data: Data("content-b".utf8))
-        var c1 = Clip(kind: .text, text: "first", allPasteboardData: [entryA])
+        let c1 = Clip(kind: .text, text: "first", allPasteboardData: [entryA])
         c1.contentHash = ClipTypeDetector.computeContentHash([entryA])
-        var c2 = Clip(kind: .text, text: "second", allPasteboardData: [entryB])
+        let c2 = Clip(kind: .text, text: "second", allPasteboardData: [entryB])
         c2.contentHash = ClipTypeDetector.computeContentHash([entryB])
 
         store.add(c1)
@@ -381,9 +380,9 @@ struct ClipboardStoreDedupTests {
 
         let entry1 = UTIEntry(uti: "public.plain-text", data: Data("content-1".utf8))
         let entry2 = UTIEntry(uti: "public.plain-text", data: Data("content-2".utf8))
-        var c1 = Clip(kind: .text, text: "first", allPasteboardData: [entry1])
+        let c1 = Clip(kind: .text, text: "first", allPasteboardData: [entry1])
         c1.contentHash = ClipTypeDetector.computeContentHash([entry1])
-        var c2 = Clip(kind: .text, text: "second", allPasteboardData: [entry2])
+        let c2 = Clip(kind: .text, text: "second", allPasteboardData: [entry2])
         c2.contentHash = ClipTypeDetector.computeContentHash([entry2])
 
         store.add(c1)
@@ -416,9 +415,9 @@ struct ClipboardStoreDedupTests {
 
         // 相同 allPasteboardData 但不同 kind 不应去重
         let entry = UTIEntry(uti: "public.plain-text", data: Data("dup".utf8))
-        var c1 = Clip(kind: .text, text: "a", allPasteboardData: [entry])
+        let c1 = Clip(kind: .text, text: "a", allPasteboardData: [entry])
         c1.contentHash = ClipTypeDetector.computeContentHash([entry])
-        var c2 = Clip(kind: .link, text: "a", allPasteboardData: [entry])
+        let c2 = Clip(kind: .link, text: "a", allPasteboardData: [entry])
         c2.contentHash = ClipTypeDetector.computeContentHash([entry])
 
         store.add(c1)
@@ -434,9 +433,9 @@ struct ClipboardStoreDedupTests {
         let store = ClipboardStore(databaseURL: url)
 
         let entry = UTIEntry(uti: "public.plain-text", data: Data("persist-dup".utf8))
-        var c1 = Clip(kind: .text, text: "first", allPasteboardData: [entry])
+        let c1 = Clip(kind: .text, text: "first", allPasteboardData: [entry])
         c1.contentHash = ClipTypeDetector.computeContentHash([entry])
-        var c2 = Clip(kind: .text, text: "second", allPasteboardData: [entry])
+        let c2 = Clip(kind: .text, text: "second", allPasteboardData: [entry])
         c2.contentHash = ClipTypeDetector.computeContentHash([entry])
 
         store.add(c1)

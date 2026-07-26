@@ -10,7 +10,7 @@
 		3561E5DD301393CA007951AD /* ClipFramesPreference.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3561E5DB301393CA007951AD /* ClipFramesPreference.swift */; };
 		3561E5DE301393CA007951AD /* AttributedTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3561E5D9301393CA007951AD /* AttributedTextView.swift */; };
 		3561E5DF301393CA007951AD /* ClipCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3561E5DA301393CA007951AD /* ClipCardView.swift */; };
-		3561E5E93013A7DB007951AD /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 3561E5E83013A7DB007951AD /* GRDB */; };
+
 		44924C42BA2D1420CF2DAD56 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04E44FD7971E1ED305EBADF2 /* OnboardingView.swift */; };
 		461741E9907F811F09D08867 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 6B944661976A565B89F25974 /* AppIcon.icns */; };
 		597546999391AA43210334BA /* OnboardingWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BEF44BAA5F0AEF38FED003D /* OnboardingWindowController.swift */; };
@@ -79,7 +79,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3561E5E93013A7DB007951AD /* GRDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -493,24 +492,6 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		3561E5E73013A7DB007951AD /* XCRemoteSwiftPackageReference "GRDB" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/groue/GRDB.swift";
-			requirement = {
-				kind = exactVersion;
-				version = 7.11.1;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		3561E5E83013A7DB007951AD /* GRDB */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 3561E5E73013A7DB007951AD /* XCRemoteSwiftPackageReference "GRDB" */;
-			productName = GRDB;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A0000A01 /* Project object */;
 }

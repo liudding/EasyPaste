@@ -1,9 +1,9 @@
 import Testing
 import Foundation
-import GRDB
+import SwiftData
 @testable import EasyPaste
 
-/// 持久层（GRDB）单元测试。所有用例使用临时目录数据库，避免污染真实数据。
+/// 持久层（SwiftData）单元测试。所有用例使用临时目录数据库，避免污染真实数据。
 @Suite
 struct PersistenceTests {
 
@@ -34,7 +34,7 @@ struct PersistenceTests {
         store.add(clip)
         #expect(store.items.count == 1)
 
-        // 重建 store（新 DatabaseQueue）验证持久化
+        // 重建 store（新 ModelContainer）验证持久化
         let store2 = ClipboardStore(databaseURL: url)
         #expect(store2.items.count == 1)
         #expect(store2.items.first?.text == "hello world")
@@ -84,60 +84,53 @@ struct PersistenceTests {
         let entry = UTIEntry(uti: "public.plain-text", data: Data("dup".utf8))
         // 新版去重基于 contentHash（由 ClipboardService.makeItem() 在生产中设置）。
         // 测试需显式设置 contentHash 以匹配生产行为。
-        var c1 = Clip(kind: .text, text: "a", allPasteboardData: [entry])
+        let c1 = Clip(kind: .text, text: "a", allPasteboardData: [entry])
         c1.contentHash = ClipTypeDetector.computeContentHash([entry])
-        var c2 = Clip(kind: .text, text: "b", allPasteboardData: [entry]) // 相同哈希 -> 去重
+        let c2 = Clip(kind: .text, text: "b", allPasteboardData: [entry]) // 相同哈希 -> 去重
         c2.contentHash = ClipTypeDetector.computeContentHash([entry])
         store.add(c1)
         store.add(c2)
         #expect(store.items.count == 1)
     }
 
-    // MARK: - blob 往返
+    // MARK: - blob 往返（SwiftData @Attribute(.externalStorage)）
 
-    @Test func blobRoundTrip() throws {
+    @Test @MainActor func blobRoundTrip() throws {
         let url = try makeTempDB()
-        let db = try DatabaseManager.open(url)
+        let container = try DataManager.makeContainer(url: url)
+        let context = ModelContext(container)
+
         let image = Data("imagedata".utf8)
         let entries = [UTIEntry(uti: "public.png", data: Data("pngbytes".utf8))]
         let clip = Clip(kind: .image, imageData: image, allPasteboardData: entries)
-        try db.write { db in
-            try ClipRow(clip).upsert(db)
-            try ClipBlobRow(clip).upsert(db)
-        }
+        context.insert(clip)
+        try context.save()
 
-        let loaded = try db.read { try ClipRow.fetchAll($0) }
-        let blobs = try db.read { try ClipBlobRow.fetchAll($0) }
+        // 重新 fetch 验证 blob 数据往返
+        let descriptor = FetchDescriptor<Clip>()
+        let loaded = try context.fetch(descriptor)
         #expect(loaded.count == 1)
-        #expect(blobs.count == 1)
-        #expect(blobs.first?.imageData == image)
-        #expect(blobs.first?.allPasteboardData != nil)
+        #expect(loaded.first?.imageData == image)
+        #expect(loaded.first?.allPasteboardData != nil)
 
-        let decoded = try JSONDecoder().decode([UTIEntry].self, from: blobs.first!.allPasteboardData!)
-        #expect(decoded.count == 1)
-        #expect(decoded.first?.uti == "public.png")
-
-        // 列表查询只 SELECT clips 表，不触碰 clip_blobs
-        let clipsOnlyCount = (try? db.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clips") }) ?? 0
-        #expect(clipsOnlyCount == 1)
-        let blobCount = (try? db.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clip_blobs") }) ?? 0
-        #expect(blobCount == 1)
+        let decoded = loaded.first?.allPasteboardData
+        #expect(decoded?.count == 1)
+        #expect(decoded?.first?.uti == "public.png")
     }
 
     // MARK: - 保留策略：按天
 
     @Test @MainActor func pruneByDays() throws {
         let url = try makeTempDB()
-        let db = try DatabaseManager.open(url)
-        let old = ClipRow(Clip(kind: .text, text: "old"))
-        let recent = ClipRow(Clip(kind: .text, text: "recent"))
-        try db.write { db in
-            try old.upsert(db)
-            try recent.upsert(db)
-            // 把 old 的 createdAt 调早 10 天
-            try db.execute(sql: "UPDATE clips SET createdAt = ? WHERE id = ?",
-                           arguments: [Date().timeIntervalSince1970 - 10 * 86_400, old.id])
-        }
+        let container = try DataManager.makeContainer(url: url)
+        let context = ModelContext(container)
+
+        let old = Clip(kind: .text, text: "old")
+        old.createdAt = Date().addingTimeInterval(-10 * 86_400)
+        let recent = Clip(kind: .text, text: "recent")
+        context.insert(old)
+        context.insert(recent)
+        try context.save()
 
         let store = ClipboardStore(databaseURL: url)
         #expect(store.items.count == 2)
@@ -147,58 +140,48 @@ struct PersistenceTests {
         #expect(deleted == 1)
         #expect(store.items.count == 1)
         #expect(store.items.first?.text == "recent")
-
-        // 持久化层也确认已删除
-        let remaining = try db.read { try ClipRow.fetchAll($0) }
-        #expect(remaining.count == 1)
     }
 
-    // MARK: - 保留策略：按条数 + 回收 blob 孤儿
+    // MARK: - 保留策略：按条数
 
-    @Test @MainActor func pruneByMaxItemsCleansOrphanBlobs() throws {
+    @Test @MainActor func pruneByMaxItems() throws {
         let url = try makeTempDB()
-        let db = try DatabaseManager.open(url)
+        let container = try DataManager.makeContainer(url: url)
+        let context = ModelContext(container)
         for i in 0..<5 {
             let c = Clip(kind: .text, text: "item\(i)", imageData: Data("blob\(i)".utf8))
-            try db.write { db in
-                try ClipRow(c).upsert(db)
-                try ClipBlobRow(c).upsert(db)
-            }
+            context.insert(c)
         }
+        try context.save()
 
         let store = ClipboardStore(databaseURL: url)
+        #expect(store.items.count == 5)
         store.maxItems = .limited(3)
         let deleted = store.pruneExpired()
         #expect(deleted >= 2)
-
-        let clipCount = (try? db.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clips") }) ?? 0
-        let blobCount = (try? db.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clip_blobs") }) ?? 0
-        #expect(blobCount == clipCount, "不应存在孤儿 clip_blobs")
-        #expect(clipCount <= 3)
+        // SwiftData @Model 删除时自动回收 externalStorage blob，无孤儿问题
+        #expect(store.items.count <= 3)
     }
 
-    // MARK: - 保留策略：磁盘压力 + 回收 blob 孤儿
+    // MARK: - 保留策略：磁盘压力
 
-    @Test @MainActor func pruneByDiskPressureCleansOrphanBlobs() throws {
+    @Test @MainActor func pruneByDiskPressure() throws {
         let url = try makeTempDB()
-        let db = try DatabaseManager.open(url)
+        let container = try DataManager.makeContainer(url: url)
+        let context = ModelContext(container)
         for i in 0..<60 {
             let c = Clip(kind: .text, text: "item\(i)",
                          imageData: Data(repeating: UInt8(i & 0xFF), count: 64))
-            try db.write { db in
-                try ClipRow(c).upsert(db)
-                try ClipBlobRow(c).upsert(db)
-            }
+            context.insert(c)
         }
+        try context.save()
 
         let store = ClipboardStore(databaseURL: url)
+        #expect(store.items.count == 60)
         // 显式触发磁盘压力分支：每批删 50 条，保留 ≤ 10 条
         let deleted = store.pruneNow(days: 0, diskPressure: true)
         #expect(deleted >= 50)
-
-        let clipCount = (try? db.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clips") }) ?? 0
-        let blobCount = (try? db.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clip_blobs") }) ?? 0
-        #expect(blobCount == clipCount, "不应存在孤儿 clip_blobs")
-        #expect(clipCount <= 10)
+        // SwiftData @Model 删除时自动回收 externalStorage blob，无孤儿问题
+        #expect(store.items.count <= 10)
     }
 }

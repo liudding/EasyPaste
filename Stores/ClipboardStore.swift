@@ -1,6 +1,7 @@
+import CommonCrypto
 import Foundation
 import Observation
-import GRDB
+import SwiftData
 import SwiftUI
 
 @Observable @MainActor
@@ -26,25 +27,22 @@ final class ClipboardStore {
     }
     var maxItems: MaxItems = .limited(2000)
 
-    private let dbQueue: DatabaseQueue
+    private let context: ModelContext
     private let dbURL: URL
     private let backupService: BackupService
 
     /// - Parameter databaseURL: 数据库文件路径。传 nil 使用本地实时库默认路径
     ///   （`Application Support/EasyPaste/db.sqlite`）；测试可传入临时目录。
     init(databaseURL: URL? = nil) {
-        let url = databaseURL ?? DatabaseManager.databaseFileURL
+        let url = databaseURL ?? DataManager.databaseFileURL
         self.dbURL = url
-        try? FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
         do {
-            self.dbQueue = try DatabaseManager.open(url)
+            let container = try DataManager.makeContainer(url: url)
+            self.context = ModelContext(container)
         } catch {
             fatalError("EasyPaste: 无法打开本地数据库: \(error)")
         }
-        self.backupService = BackupService(dbQueue: dbQueue, localURL: url)
+        self.backupService = BackupService(dbURL: url, context: context)
         load()
     }
 
@@ -108,46 +106,38 @@ final class ClipboardStore {
         selectedBoardID = nil
     }
 
-    // MARK: - 读取（从 GRDB 全量填充内存，保持 UI 门面不变）
+    // MARK: - 读取（从 SwiftData 全量填充内存，保持 UI 门面不变）
 
     private func load() {
         reloadItems()
         // 看板：空库时播种默认看板（应用默认数据，非旧历史导入）。
-        do {
-            let rows = try dbQueue.read { try PasteboardRow.fetchAll($0, sql: "SELECT * FROM pasteboards ORDER BY sortIndex IS NULL, sortIndex, rowid") }
-            boards = rows.map { $0.toPasteboard() }
-        } catch {
-            boards = []
-        }
+        let boardDescriptor = FetchDescriptor<Pasteboard>(
+            sortBy: [SortDescriptor(\.sortIndex, order: .forward), SortDescriptor(\.id, order: .forward)]
+        )
+        boards = (try? context.fetch(boardDescriptor)) ?? []
         if boards.isEmpty {
-            let defaults = [Pasteboard(name: L10n.defaultBoardIdeas, color: "orange"), Pasteboard(name: L10n.defaultBoardWork, color: "blue")]
+            let defaults = [
+                Pasteboard(name: L10n.defaultBoardIdeas, color: "orange", sortIndex: 0),
+                Pasteboard(name: L10n.defaultBoardWork, color: "blue", sortIndex: 1)
+            ]
             boards = defaults
-            _ = try? dbQueue.write { db in
-                for b in defaults { try PasteboardRow(b).insert(db) }
-            }
+            for b in defaults { context.insert(b) }
+            try? context.save()
         }
         // 规则
-        do {
-            let rows = try dbQueue.read { try AutomationRuleRow.fetchAll($0) }
-            rules = rows.map { $0.toAutomationRule() }
-        } catch {
-            rules = []
-        }
+        let ruleDescriptor = FetchDescriptor<AutomationRule>()
+        rules = (try? context.fetch(ruleDescriptor)) ?? []
     }
 
-    /// 从 `clips` + `clip_blobs` 重新加载内存 items（列表按 createdAt 倒序，最新在前）。
+    /// 从 SwiftData 重新加载内存 items（列表按 createdAt 倒序，最新在前）。
     private func reloadItems() {
-        do {
-            let clips = try dbQueue.read { try ClipRow.fetchAll($0, sql: "SELECT * FROM clips ORDER BY createdAt DESC") }
-            let blobs = try dbQueue.read { try ClipBlobRow.fetchAll($0) }
-            let blobByID = Dictionary(uniqueKeysWithValues: blobs.map { ($0.clipID, $0) })
-            items = clips.map { $0.toClip(blob: blobByID[$0.id]) }
-        } catch {
-            // 读取失败保持内存现状，不破坏 UI。
-        }
+        let descriptor = FetchDescriptor<Clip>(
+            sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
+        )
+        items = (try? context.fetch(descriptor)) ?? []
     }
 
-    // MARK: - 写入（更新内存 + 写穿 GRDB）
+    // MARK: - 写入（更新内存 + 写穿 SwiftData）
 
     func add(_ item: Clip) {
         // 基于 contentHash 去重：重复时更新 createdAt 并置顶，而非跳过
@@ -171,10 +161,13 @@ final class ClipboardStore {
                 return
             }
         }
-        var classified = item
-        if let match = rules.first(where: { $0.matches(item) }) { classified.boardID = match.targetBoardID }
-        items.insert(classified, at: 0)
-        writeClip(classified)
+        // 应用自动化规则
+        if let match = rules.first(where: { $0.matches(item) }) {
+            item.boardID = match.targetBoardID
+        }
+        context.insert(item)
+        try? context.save()
+        items.insert(item, at: 0)
         pruneExpired()
         backupService.scheduleBackupOnIdle()
     }
@@ -184,7 +177,7 @@ final class ClipboardStore {
         items[index].createdAt = .now
         let promoted = items.remove(at: index)
         items.insert(promoted, at: 0)
-        writeClip(promoted)
+        try? context.save()
         backupService.scheduleBackupOnIdle()
     }
 
@@ -193,28 +186,28 @@ final class ClipboardStore {
     func rename(_ id: UUID, title: String?) { update(id) { $0.title = (title?.isEmpty == true) ? nil : title } }
 
     func delete(_ ids: Set<UUID>) {
-        items.removeAll { ids.contains($0.id) }
-        let keys = ids.map { $0.uuidString }
-        _ = try? dbQueue.write { db in
-            try ClipRow.deleteAll(db, keys: keys)
-            try db.execute(literal: "DELETE FROM clip_blobs WHERE clipID NOT IN (SELECT id FROM clips)")
+        for clip in items where ids.contains(clip.id) {
+            context.delete(clip)
         }
+        items.removeAll { ids.contains($0.id) }
+        try? context.save()
         backupService.scheduleBackupOnIdle()
     }
 
     func clearAll() {
-        items.removeAll()
-        _ = try? dbQueue.write { db in
-            try ClipRow.deleteAll(db)
-            try ClipBlobRow.deleteAll(db)
+        for clip in items {
+            context.delete(clip)
         }
+        items.removeAll()
+        try? context.save()
         backupService.scheduleBackupOnIdle()
     }
 
     func addBoard(named name: String, color: String = "purple") {
-        let board = Pasteboard(name: name, color: color)
+        let board = Pasteboard(name: name, color: color, sortIndex: boards.count)
+        context.insert(board)
+        try? context.save()
         boards.append(board)
-        _ = try? dbQueue.write { db in try PasteboardRow(board, sortIndex: boards.count - 1).insert(db) }
         backupService.scheduleBackupOnIdle()
     }
 
@@ -224,7 +217,7 @@ final class ClipboardStore {
         guard !trimmed.isEmpty,
               let i = boards.firstIndex(where: { $0.id == id }) else { return }
         boards[i].name = trimmed
-        _ = try? dbQueue.write { db in try PasteboardRow(boards[i], sortIndex: i).upsert(db) }
+        try? context.save()
         backupService.scheduleBackupOnIdle()
     }
 
@@ -232,39 +225,38 @@ final class ClipboardStore {
     func updateBoardColor(_ id: UUID, color: String) {
         guard let i = boards.firstIndex(where: { $0.id == id }) else { return }
         boards[i].color = color
-        _ = try? dbQueue.write { db in try PasteboardRow(boards[i], sortIndex: i).upsert(db) }
+        try? context.save()
         backupService.scheduleBackupOnIdle()
     }
 
     /// 删除看板：移除看板行，并将该看板上的所有剪贴项解绑（boardID 置 nil）。
     func deleteBoard(_ id: UUID) {
-        let boardKey = id.uuidString
-        boards.removeAll { $0.id == id }
-        for i in items.indices where items[i].boardID == id {
-            items[i].boardID = nil
+        if let i = boards.firstIndex(where: { $0.id == id }) {
+            let board = boards[i]
+            context.delete(board)
+            boards.remove(at: i)
         }
-        _ = try? dbQueue.write { db in
-            try PasteboardRow.deleteOne(db, key: boardKey)
-            try db.execute(sql: "UPDATE clips SET boardID = NULL WHERE boardID = ?", arguments: [boardKey])
+        for clip in items where clip.boardID == id {
+            clip.boardID = nil
         }
+        try? context.save()
         if selectedBoardID == id { selectedBoardID = nil }
         backupService.scheduleBackupOnIdle()
     }
 
     /// 删除看板及其所有剪贴项。
     func deleteBoardAndClips(_ id: UUID) {
-        let boardKey = id.uuidString
-        let clipIDs = items.filter { $0.boardID == id }.map(\.id)
-        let clipKeys = clipIDs.map(\.uuidString)
-        boards.removeAll { $0.id == id }
-        items.removeAll { $0.boardID == id }
-        _ = try? dbQueue.write { db in
-            try PasteboardRow.deleteOne(db, key: boardKey)
-            if !clipKeys.isEmpty {
-                try ClipRow.deleteAll(db, keys: clipKeys)
-                try db.execute(literal: "DELETE FROM clip_blobs WHERE clipID NOT IN (SELECT id FROM clips)")
-            }
+        let clipsToDelete = items.filter { $0.boardID == id }
+        for clip in clipsToDelete {
+            context.delete(clip)
         }
+        items.removeAll { $0.boardID == id }
+        if let i = boards.firstIndex(where: { $0.id == id }) {
+            let board = boards[i]
+            context.delete(board)
+            boards.remove(at: i)
+        }
+        try? context.save()
         if selectedBoardID == id { selectedBoardID = nil }
         backupService.scheduleBackupOnIdle()
     }
@@ -307,65 +299,49 @@ final class ClipboardStore {
 
     /// 将当前内存中的看板顺序写穿到 DB（sortIndex 列），供重排后持久化。
     func persistBoardOrder() {
-        _ = try? dbQueue.write { db in
-            for (index, board) in boards.enumerated() {
-                try PasteboardRow(board, sortIndex: index).upsert(db)
-            }
+        for (index, board) in boards.enumerated() {
+            board.sortIndex = index
         }
+        try? context.save()
         backupService.scheduleBackupOnIdle()
     }
 
     func addRule(_ rule: AutomationRule) {
+        context.insert(rule)
+        try? context.save()
         rules.append(rule)
-        _ = try? dbQueue.write { db in try AutomationRuleRow(rule).insert(db) }
         backupService.scheduleBackupOnIdle()
     }
 
     func deleteRules(_ ids: Set<UUID>) {
+        for rule in rules where ids.contains(rule.id) {
+            context.delete(rule)
+        }
         rules.removeAll { ids.contains($0.id) }
-        let keys = ids.map { $0.uuidString }
-        _ = try? dbQueue.write { db in try AutomationRuleRow.deleteAll(db, keys: keys) }
+        try? context.save()
         backupService.scheduleBackupOnIdle()
     }
 
     func toggleRule(_ id: UUID) {
         guard let index = rules.firstIndex(where: { $0.id == id }) else { return }
         rules[index].enabled.toggle()
-        let rule = rules[index]
-        _ = try? dbQueue.write { db in try AutomationRuleRow(rule).upsert(db) }
+        try? context.save()
         backupService.scheduleBackupOnIdle()
     }
 
-    /// 单条更新：改内存 + 写穿 GRDB（upsert）。
+    /// 单条更新：改对象属性 + 写穿 SwiftData + 刷新内存以触发 Observation。
     private func update(_ id: UUID, _ change: (inout Clip) -> Void) {
         guard let i = items.firstIndex(where: { $0.id == id }) else { return }
         change(&items[i])
-        let clip = items[i]
-        writeClip(clip)
+        try? context.save()
+        reloadItems()
         backupService.scheduleBackupOnIdle()
-    }
-
-    /// 将 Clip（含 blob）写穿到 GRDB，与 `clip_blobs` 在同一事务内同步。
-    private func writeClip(_ clip: Clip) {
-        let clipRow = ClipRow(clip)
-        let hasBlob = clip.imageData != nil
-            || clip.utiData != nil
-            || (clip.allPasteboardData?.isEmpty == false)
-        _ = try? dbQueue.write { db in
-            try clipRow.upsert(db)
-            if hasBlob {
-                try ClipBlobRow(clip).upsert(db)
-            } else {
-                // 无 blob 数据时确保清理可能残留的旧 blob 行。
-                try ClipBlobRow.deleteAll(db, keys: [clipRow.id])
-            }
-        }
     }
 
     // MARK: - 保留策略（按天 + 按条数 + 磁盘压力）
 
     /// 删除超过保留时长的历史；days <= 0 表示不限制。返回删除条数。
-    /// 同时执行可配置条数上限与磁盘压力淘汰，并回收孤立的 `clip_blobs`。
+    /// 同时执行可配置条数上限与磁盘压力淘汰。
     @discardableResult
     func pruneExpired(limitDays: Int? = nil) -> Int {
         pruneNow(days: limitDays ?? historyLimitDays, diskPressure: shouldEvictByDiskPressure())
@@ -375,39 +351,57 @@ final class ClipboardStore {
     func pruneNow(days: Int, diskPressure: Bool) -> Int {
         let max = maxItems
         var deleted = 0
-        _ = try? dbQueue.write { db in
-            // 1) 按天保留
-            if days > 0 {
-                let cutoff = Date().timeIntervalSince1970 - Double(days) * 86_400
-                try db.execute(sql: "DELETE FROM clips WHERE createdAt < ?", arguments: [cutoff])
-                deleted += (try? Int.fetchOne(db, sql: "SELECT changes()")) ?? 0
-            }
-            // 2) 按条数上限（去掉原 600 硬上限）
-            if case let .limited(limit) = max {
-                let count = (try? Int.fetchOne(db, sql: "SELECT COUNT(*) FROM clips")) ?? 0
-                let over = count - limit
-                if over > 0 {
-                try db.execute(
-                    sql: "DELETE FROM clips WHERE id IN (SELECT id FROM clips ORDER BY createdAt ASC LIMIT ?)",
-                    arguments: [over]
-                )
-                    deleted += (try? Int.fetchOne(db, sql: "SELECT changes()")) ?? 0
+
+        // 1) 按天保留
+        if days > 0 {
+            let cutoff = Date().addingTimeInterval(-Double(days) * 86_400)
+            let descriptor = FetchDescriptor<Clip>(
+                predicate: #Predicate { $0.createdAt < cutoff }
+            )
+            if let oldClips = try? context.fetch(descriptor) {
+                for clip in oldClips {
+                    context.delete(clip)
+                    deleted += 1
                 }
             }
-            // 3) 磁盘压力淘汰
-            if diskPressure {
-                try db.execute(
-                    sql: "DELETE FROM clips WHERE id IN (SELECT id FROM clips ORDER BY createdAt ASC LIMIT ?)",
-                    arguments: [BackupService.diskPressureBatch]
+        }
+
+        // 2) 按条数上限
+        if case let .limited(limit) = max {
+            let count = (try? context.fetchCount(FetchDescriptor<Clip>())) ?? 0
+            let over = count - limit
+            if over > 0 {
+                var descriptor = FetchDescriptor<Clip>(
+                    sortBy: [SortDescriptor(\.createdAt, order: .forward)]
                 )
-                deleted += (try? Int.fetchOne(db, sql: "SELECT changes()")) ?? 0
-            }
-            // 统一回收 clip_blobs 孤儿（单 SQL，原子）
-            if deleted > 0 {
-                try db.execute(literal: "DELETE FROM clip_blobs WHERE clipID NOT IN (SELECT id FROM clips)")
+                descriptor.fetchLimit = over
+                if let excessClips = try? context.fetch(descriptor) {
+                    for clip in excessClips {
+                        context.delete(clip)
+                        deleted += 1
+                    }
+                }
             }
         }
-        if deleted > 0 { reloadItems() }
+
+        // 3) 磁盘压力淘汰
+        if diskPressure {
+            var descriptor = FetchDescriptor<Clip>(
+                sortBy: [SortDescriptor(\.createdAt, order: .forward)]
+            )
+            descriptor.fetchLimit = BackupService.diskPressureBatch
+            if let oldClips = try? context.fetch(descriptor) {
+                for clip in oldClips {
+                    context.delete(clip)
+                    deleted += 1
+                }
+            }
+        }
+
+        if deleted > 0 {
+            try? context.save()
+            reloadItems()
+        }
         return deleted
     }
 
@@ -429,7 +423,6 @@ final class ClipboardStore {
     // MARK: - iCloud ubiquity 备份
 
     /// 控制 ubiquity 备份开关（启用/停用 BackupService 的定时备份）。
-    /// 原语义为切换 history.json 路径，现改为控制 ubiquity 文件级备份。
     func setICloudSyncEnabled(_ enabled: Bool) {
         backupService.setEnabled(enabled)
     }
@@ -445,13 +438,7 @@ final class ClipboardStore {
     }
 }
 
-/// 计算 Clip 的内容 hash，用于去重。
-/// 基于 allPasteboardData 实际内容计算 SHA-256，回退到 displayTitle + detail。
-private func clipHash(_ clip: Clip) -> String {
-    ClipTypeDetector.computeContentHash(clip.allPasteboardData)
-        ?? ClipTypeDetector.computeFallbackHash(
-            kind: clip.kind, title: clip.displayTitle, detail: clip.detail)
-}
+// MARK: - SHA-256 Helper
 
 extension Data {
     var sha256Hex: String {
@@ -462,4 +449,3 @@ extension Data {
         return hash.map { String(format: "%02x", $0) }.joined()
     }
 }
-import CommonCrypto

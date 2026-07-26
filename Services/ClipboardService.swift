@@ -30,7 +30,7 @@ final class ClipboardService {
            settings?.ignoredApps.contains(where: { $0.bundleID == bundleID }) == true {
             return
         }
-        guard var item = makeItem() else { return }
+        guard let item = makeItem() else { return }
         item.sourceApplication = frontmost?.localizedName
         item.sourceApplicationBundleID = frontmost?.bundleIdentifier
         // 创建时即计算并持久化来源 app 主色调，避免渲染时重复计算

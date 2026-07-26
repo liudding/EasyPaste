@@ -1,18 +1,19 @@
 import Foundation
-import GRDB
+import SwiftData
 
 /// iCloud ubiquity 文件级备份调度器。
 ///
-/// 策略（架构评审 §10.A）：本地实时库在 `Application Support` 高频读写；后台定时
-/// （进后台 / 每约 5 分钟 / 空闲 debounce）对本地库做一致性快照（GRDB `backup`），
-/// 再用 `FileManager.replaceItemAt` **原子替换** ubiquity 容器内的 `db.sqlite` 触发上传。
+/// 策略（架构评审 §10.A，SwiftData 迁移后）：本地实时库在 `Application Support` 高频读写；
+/// 后台定时（进后台 / 每约 5 分钟 / 空闲 debounce）对本地库做文件级快照——先 `context.save()`
+/// 刷新所有待写变更，再拷贝 SQLite 文件（`.sqlite` / `.sqlite-wal` / `.sqlite-shm`）到
+/// ubiquity 容器，用 `FileManager.replaceItemAt` **原子替换**主库文件触发上传。
 ///
 /// - 单写者假设：绝不在 ubiquity 内开库高频读写。
 /// - ubiquity 同步需真实 iCloud 账号 + Developer ID 签名，沙箱内无法验证。
 @MainActor
 final class BackupService {
-    private let dbQueue: DatabaseQueue
-    private let localURL: URL
+    private let dbURL: URL
+    private let context: ModelContext
     private var enabled = false
     private var periodicTask: Task<Void, Never>?
     private var idleTask: Task<Void, Never>?
@@ -24,9 +25,9 @@ final class BackupService {
     /// 磁盘压力淘汰每批删除条数。
     static let diskPressureBatch = 50
 
-    init(dbQueue: DatabaseQueue, localURL: URL) {
-        self.dbQueue = dbQueue
-        self.localURL = localURL
+    init(dbURL: URL, context: ModelContext) {
+        self.dbURL = dbURL
+        self.context = context
     }
 
     var isEnabled: Bool { enabled }
@@ -43,43 +44,47 @@ final class BackupService {
         }
     }
 
-    /// 立即执行一次备份（原子替换 ubiquity 内的 db.sqlite）。
+    /// 立即执行一次备份（拷贝 SQLite 文件到 ubiquity 容器）。
     /// 无 iCloud 账号 / ubiquity 容器不可用时静默跳过，不影响本地使用。
     func backupNow() async {
         guard enabled else { return }
         guard let container = FileManager.default.url(forUbiquityContainerIdentifier: nil) else {
             return
         }
-        let destination = container.appending(path: "EasyPaste/db.sqlite")
+        let destDir = container.appending(path: "EasyPaste")
         do {
             try FileManager.default.createDirectory(
-                at: destination.deletingLastPathComponent(),
+                at: destDir,
                 withIntermediateDirectories: true
             )
-            // 先落到临时一致副本，再原子替换，避免上传半文件。
-            let temp = FileManager.default.temporaryDirectory
-                .appending(path: "easypaste_backup_\(UUID().uuidString).sqlite")
-            try? FileManager.default.removeItem(at: temp)
-            do {
-                let destQueue = try DatabaseQueue(path: temp.path)
-                // 用 GRDB 的 backup API 做一致快照（不能用 VACUUM INTO——它不能在事务内执行）。
-                // 目标用 barrierWriteWithoutTransaction 避免嵌套事务；源在 read 事务内读取即可。
-                try await destQueue.barrierWriteWithoutTransaction { destDb in
-                    try dbQueue.read { sourceDb in
-                        try sourceDb.backup(to: destDb)
-                    }
-                }
-                // destQueue 离开作用域即关闭，确保文件刷盘后再替换。
-            }
-            _ = try FileManager.default.replaceItemAt(
-                destination,
-                withItemAt: temp,
-                backupItemName: nil,
-                options: []
-            )
         } catch {
-            // ubiquity 备份失败不应中断本地使用；需在真实 macOS + 开发者账号手动验收。
-            print("[BackupService] iCloud 备份失败（可忽略，需真实 macOS + 开发者账号验收）: \(error)")
+            print("[BackupService] 无法创建 ubiquity 目录: \(error)")
+            return
+        }
+
+        // 刷新所有待写变更到持久存储，确保文件级快照一致。
+        try? context.save()
+
+        // 拷贝 SQLite 文件（.sqlite / .sqlite-wal / .sqlite-shm）保证 WAL 模式一致性。
+        let destMain = destDir.appending(path: "db.sqlite")
+        for suffix in ["", "-wal", "-shm"] {
+            let srcURL = URL(fileURLWithPath: dbURL.path + suffix)
+            let destURL = URL(fileURLWithPath: destMain.path + suffix)
+            guard FileManager.default.fileExists(atPath: srcURL.path) else { continue }
+            // 主库文件用原子替换；WAL/SHM 用删除+拷贝（replaceItemAt 仅替换单个文件）。
+            if suffix.isEmpty {
+                _ = try? FileManager.default.replaceItemAt(
+                    destURL,
+                    withItemAt: srcURL,
+                    backupItemName: nil,
+                    options: []
+                )
+            } else {
+                if FileManager.default.fileExists(atPath: destURL.path) {
+                    try? FileManager.default.removeItem(at: destURL)
+                }
+                try? FileManager.default.copyItem(at: srcURL, to: destURL)
+            }
         }
     }
 

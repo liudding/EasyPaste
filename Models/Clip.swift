@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import SwiftUI
+import SwiftData
 import UniformTypeIdentifiers
 
 /// 可编码的 sRGB 颜色分量，用于把来源 app icon 主色调随剪贴项一起持久化，
@@ -58,59 +59,67 @@ enum ClipSubkind: String, Codable {
     case json         // JSON 格式文本
 }
 
-struct Clip: Codable, Identifiable, Hashable {
+// MARK: - SwiftData Models
+
+/// 剪贴板历史条目（SwiftData @Model）。
+///
+/// 大 blob（imageData / utiData / allPasteboardDataRaw）使用 `@Attribute(.externalStorage)`
+/// 存储在辅助文件中，列表查询不会加载这些字段，等价于原 GRDB 的 `clip_blobs` 分离设计。
+@Model
+final class Clip {
     var id: UUID
     var kind: ClipKind
-    var boardID: UUID?
-    /// 自定义的标题
-    var title: String?
-
     var createdAt: Date
-
     var text: String?
-
     var url: URL?
-    /// 从 link 所对应的网页中提取的 title / description，用于卡片 body 显示。
-    var linkTitle: String?
-    var linkDescription: String?
-
     var fileURLs: [URL]?
+
+    @Attribute(.externalStorage)
     var imageData: Data?
 
+    var boardID: UUID?
     var isFavorite: Bool
+    var title: String?
     var sourceApplication: String?
     var sourceApplicationBundleID: String?
-    /// 创建时计算并持久化的来源 app icon 主色调（已编码为 sRGB 分量）。
-    /// 旧数据无此字段时回退到 AppIconCache 计算。
-    var sourceAppColor: CodableColor? = nil
-
-    /// 从复制的内容中提取的颜色
-    /// 如果是富文本，则这是富文本的背景色。
-    /// 如果是颜色值，则是颜色值的颜色。
-    var contentColor: CodableColor? = nil
-
-    /// 剪贴项在 macOS 剪贴板上的 Uniform Type Identifier（如 public.plain-text、public.html、public.png 等），用于标识原始数据类型。
     var uti: String?
-    /// 对应 uti 的原始二进制数据，用于粘贴时保真写回剪贴板。
+    var sourceAppColor: CodableColor?
+    var contentColor: CodableColor?
+
+    @Attribute(.externalStorage)
     var utiData: Data?
+
+    /// `[UTIEntry]` 编码为 JSON `Data` 存储，使用 externalStorage 避免列表查询加载大 blob。
+    @Attribute(.externalStorage)
+    var allPasteboardDataRaw: Data?
+
+    var contentHash: String?
+    var subkind: ClipSubkind?
+
+    /// 从 link 所对应的网页中提取的 title / description（运行时填充，不持久化）。
+    @Transient
+    var linkTitle: String? = nil
+    @Transient
+    var linkDescription: String? = nil
+
     /// 剪贴板上所有可用 UTI 类型及其原始数据，粘贴时全部写回以保真还原来源格式。
-    var allPasteboardData: [UTIEntry]?
-
-    /// text 类型的子类型（richText / email / json），nil = 普通纯文本。
-    /// 在 makeItem() 中由 ClipTypeDetector 检测并持久化。
-    var subkind: ClipSubkind? = nil
-
-    /// 基于实际内容的 SHA-256 hash，用于去重。
-    /// 由 ClipTypeDetector.computeContentHash() 在创建时计算。
-    var contentHash: String? = nil
+    /// 计算属性：在 `[UTIEntry]` 与 JSON `Data` 之间双向转换。
+    var allPasteboardData: [UTIEntry]? {
+        get { allPasteboardDataRaw.flatMap { try? JSONDecoder().decode([UTIEntry].self, from: $0) } }
+        set { allPasteboardDataRaw = newValue.flatMap { try? JSONEncoder().encode($0) } }
+    }
 
     init(kind: ClipKind, text: String? = nil, url: URL? = nil, fileURLs: [URL]? = nil, imageData: Data? = nil, uti: String? = nil, utiData: Data? = nil, allPasteboardData: [UTIEntry]? = nil, contentColor: CodableColor? = nil) {
         self.id = UUID(); self.kind = kind; self.createdAt = .now
         self.text = text; self.url = url; self.fileURLs = fileURLs; self.imageData = imageData
         self.boardID = nil; self.isFavorite = false
-        self.sourceApplication = nil; self.sourceApplicationBundleID = nil; self.uti = uti; self.utiData = utiData; self.allPasteboardData = allPasteboardData; self.title = nil; self.contentColor = contentColor
+        self.sourceApplication = nil; self.sourceApplicationBundleID = nil
+        self.uti = uti; self.utiData = utiData
+        self.allPasteboardDataRaw = allPasteboardData.flatMap { try? JSONEncoder().encode($0) }
+        self.title = nil; self.contentColor = contentColor
+        self.contentHash = nil; self.subkind = nil
     }
-    
+
     /// 默认是 kind 的名称
     var displayTitle: String {
         if let title: String, !title.isEmpty { return title }
@@ -266,7 +275,10 @@ extension Clip {
     }
 }
 
-struct AutomationRule: Codable, Identifiable, Hashable {
+// MARK: - AutomationRule Model
+
+@Model
+final class AutomationRule {
     var id: UUID
     var name: String
     var keyword: String
@@ -288,12 +300,21 @@ struct AutomationRule: Codable, Identifiable, Hashable {
     }
 }
 
-struct Pasteboard: Codable, Identifiable, Hashable {
+// MARK: - Pasteboard Model
+
+@Model
+final class Pasteboard {
     var id: UUID
     var name: String
     var color: String
-    init(name: String, color: String) { id = UUID(); self.name = name; self.color = color }
+    var sortIndex: Int?
+
+    init(name: String, color: String, sortIndex: Int? = nil) {
+        id = UUID(); self.name = name; self.color = color; self.sortIndex = sortIndex
+    }
 }
+
+// MARK: - Drag payload & UTType
 
 /// 拖拽卡片在 Pinboard 之间移动用的内部数据载体。
 struct ClipDragPayload: Codable, Transferable {
