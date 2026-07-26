@@ -53,7 +53,7 @@ enum ThemeAppearance: String, CaseIterable, Identifiable {
 /// 管理主题外观设置的 @Observable 存储。
 /// 与 L10nStore 模式一致：version 计数器驱动 SwiftUI 视图实时刷新，无需重启。
 /// 注意：appearance 写入始终发生在主线程（SwiftUI Picker onChange），故不加 @MainActor。
-@Observable
+@Observable @MainActor
 final class ThemeStore: @unchecked Sendable {
     static let shared = ThemeStore()
 
@@ -93,6 +93,7 @@ final class ThemeStore: @unchecked Sendable {
 
     /// 将主题应用到整个 App（影响所有窗口的标题栏等 AppKit chrome）。
     /// auto 模式设为 nil（跟随系统），light/dark 模式设为对应 NSAppearance。
+    @MainActor
     func applyToApp() {
         NSApp.appearance = effectiveNSAppearance
     }
