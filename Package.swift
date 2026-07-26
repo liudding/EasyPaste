@@ -26,6 +26,7 @@ let package = Package(
             dependencies: [
                 .product(name: "GRDB", package: "GRDB.swift"),
                 .product(name: "Sparkle", package: "Sparkle"),
+                .product(name: "Sentry", package: "sentry-cocoa"),
             ],
             path: ".",
             exclude: ["Tests", "script", ".codex", ".git", "dist"],
