@@ -79,15 +79,17 @@ struct ClipCardView: View {
     /// 系统语义色（.yellow/.green 等）会随当前外观变化；强制 aqua 解析可保证两种主题下 header 颜色一致。
     private func fixedRGB(_ color: Color) -> (r: Double, g: Double, b: Double) {
         let nsColor = NSColor(color)
-        let previous = NSAppearance.current
-        NSAppearance.current = NSAppearance(named: .aqua)
-        var r: Double = 0, g: Double = 0, b: Double = 0
-        if let rgb = nsColor.usingColorSpace(.sRGB) {
-            r = Double(rgb.redComponent)
-            g = Double(rgb.greenComponent)
-            b = Double(rgb.blueComponent)
+        guard let aqua = NSAppearance(named: .aqua) else {
+            return (0, 0, 0)
         }
-        NSAppearance.current = previous
+        var r: Double = 0, g: Double = 0, b: Double = 0
+        aqua.performAsCurrentDrawingAppearance {
+            if let rgb = nsColor.usingColorSpace(.sRGB) {
+                r = Double(rgb.redComponent)
+                g = Double(rgb.greenComponent)
+                b = Double(rgb.blueComponent)
+            }
+        }
         return (r, g, b)
     }
 
