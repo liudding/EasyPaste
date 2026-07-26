@@ -12,8 +12,6 @@ let package = Package(
         // Sparkle framework is added via Xcode SPM; this target does not depend on it directly.
     ],
     dependencies: [
-        // SwiftData（系统内置，macOS 15+）已替代 GRDB 做本地持久化，零第三方依赖。
-
         .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.4"),
 
         .package(url: "https://github.com/getsentry/sentry-cocoa", from: "9.23.0"),

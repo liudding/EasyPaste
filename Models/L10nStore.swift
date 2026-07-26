@@ -60,8 +60,8 @@ final class L10nStore: @unchecked Sendable {
         }
     }
 
-    /// 语言标签（用于系统 API）。
-    var languageTag: String {
+    /// 语言标签（用于查找 JSON 文件键名）。
+    var lookupTag: String {
         switch effectiveLocale {
         case .english: return "en"
         case .simplifiedChinese: return "zh-Hans"
@@ -87,40 +87,56 @@ final class L10nStore: @unchecked Sendable {
 
     /// 加载所有语言 JSON 文件。
     private func loadAllBundles() {
-        // 从 Bundle 中查找 L10n 目录
-        let possibleDirs: [URL?] = [
-            Bundle.main.resourceURL?.appendingPathComponent("L10n"),
-            Bundle.module.resourceURL?.appendingPathComponent("L10n"),
-            Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/L10n"),
-        ]
-
-        guard let l10nDir = possibleDirs.compactMap({ $0 }).first(where: {
-            (try? $0.checkResourceIsReachable()) ?? false
-        }) else {
-            loadFromFlatBundle()
-            return
+        // 1) Bundle.module — SPM 构建下资源在 bundle 根目录（如 en.json）
+        if let moduleURL = Bundle.module.resourceURL {
+            loadJSONFiles(from: moduleURL)
+            if !bundles.isEmpty { return }
         }
 
-        let fm = FileManager.default
-        guard let files = try? fm.contentsOfDirectory(at: l10nDir, includingPropertiesForKeys: nil) else {
-            loadFromFlatBundle()
-            return
+        // 2) Xcode 构建：查找 Contents/Resources/L10n/ 子目录
+        let contentsResources = Bundle.main.bundleURL.appendingPathComponent("Contents/Resources")
+        let l10nDir = contentsResources.appendingPathComponent("L10n")
+        if (try? l10nDir.checkResourceIsReachable()) ?? false {
+            loadJSONFiles(from: l10nDir)
+            if !bundles.isEmpty { return }
         }
+
+        // 3) Xcode 构建：查找 Contents/Resources/ 下的 L10n_*.json 文件
+        let l10nFlat = contentsResources
+        if (try? l10nFlat.checkResourceIsReachable()) ?? false {
+            loadFlatL10nFiles(from: l10nFlat)
+            if !bundles.isEmpty { return }
+        }
+
+        // 4) 最终回退：Bundle.main.resourceURL 下直接加载所有 *.json（Xcode 构建时文件平铺在 Resources/ 根目录）
+        if let resourceURL = Bundle.main.resourceURL {
+            loadJSONFiles(from: resourceURL)
+        }
+    }
+
+    /// 从指定目录加载所有 *.json 文件到 bundles 字典。
+    /// key 使用文件名去掉 .json 后的部分（如 "zh-Hans"、"en"）。
+    private func loadJSONFiles(from directory: URL) {
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: nil
+        ) else { return }
 
         for file in files where file.pathExtension == "json" {
-            let lang = file.deletingPathExtension().lastPathComponent
+            let fileName = file.deletingPathExtension().lastPathComponent
+            // 跳过 Info.plist 等非翻译文件
+            guard fileName != "Info" else { continue }
             if let data = try? Data(contentsOf: file),
                let dict = try? JSONSerialization.jsonObject(with: data) as? [String: String] {
-                bundles[lang] = dict
+                bundles[fileName] = dict
             }
         }
     }
 
-    /// 回退：从 Bundle 根目录查找 L10n_*.json 文件。
-    private func loadFromFlatBundle() {
-        guard let resourceURL = Bundle.main.resourceURL else { return }
-        let fm = FileManager.default
-        guard let files = try? fm.contentsOfDirectory(at: resourceURL, includingPropertiesForKeys: nil) else { return }
+    /// 从指定目录加载 L10n_*.json 格式的文件（旧版兼容）。
+    private func loadFlatL10nFiles(from directory: URL) {
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: nil
+        ) else { return }
 
         for file in files {
             let name = file.lastPathComponent
@@ -138,15 +154,43 @@ final class L10nStore: @unchecked Sendable {
 
     /// 获取翻译字符串。
     func tr(_ key: String) -> String {
-        let lang = effectiveLocale.languageTag
+        let lang = lookupTag
+
+        // 1) 精确匹配当前语言
         if let bundle = bundles[lang], let value = bundle[key] {
             return value
         }
-        // 回退到英语。
+
+        // 2) 中文区域回退：zh-Hans → zh-Hant（或反向）
+        if lang != "zh-Hans" && lang != "zh-Hant",
+           let fallback = fallbackLanguage(for: lang),
+           let fallbackBundle = bundles[fallback],
+           let value = fallbackBundle[key] {
+            return value
+        }
+        // 特判：zh-Hans 找不到时尝试 zh-Hant，反之亦然
+        if lang == "zh-Hans" || lang == "zh-Hant" {
+            let other = lang == "zh-Hans" ? "zh-Hant" : "zh-Hans"
+            if let otherBundle = bundles[other], let value = otherBundle[key] {
+                return value
+            }
+        }
+
+        // 3) 回退到英语。
         if lang != "en", let enBundle = bundles["en"], let value = enBundle[key] {
             return value
         }
-        // 最后回退��返回 key 自身。
+
+        // 4) 最后回退到返回 key 自身。
         return key
+    }
+
+    /// 为给定语言标签返回备用语言（如 "zh-CN" → "zh-Hans"）。
+    private func fallbackLanguage(for tag: String) -> String? {
+        // zh-CN / zh-SG → zh-Hans
+        if tag.hasPrefix("zh-Hans") || tag == "zh-CN" || tag == "zh-SG" { return "zh-Hans" }
+        // zh-TW / zh-HK / zh-MO → zh-Hant
+        if tag.hasPrefix("zh-Hant") || tag == "zh-TW" || tag == "zh-HK" || tag == "zh-MO" { return "zh-Hant" }
+        return nil
     }
 }

@@ -15,6 +15,16 @@
 		461741E9907F811F09D08867 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 6B944661976A565B89F25974 /* AppIcon.icns */; };
 		597546999391AA43210334BA /* OnboardingWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BEF44BAA5F0AEF38FED003D /* OnboardingWindowController.swift */; };
 		606A4A64AAB97E3C60B80DAB /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 6B944661976A565B89F25974 /* AppIcon.icns */; };
+		L10N001 /* de.json in Resources */ = {isa = PBXBuildFile; fileRef = L10N101 /* de.json */; };
+		L10N002 /* en.json in Resources */ = {isa = PBXBuildFile; fileRef = L10N102 /* en.json */; };
+		L10N003 /* es.json in Resources */ = {isa = PBXBuildFile; fileRef = L10N103 /* es.json */; };
+		L10N004 /* fr.json in Resources */ = {isa = PBXBuildFile; fileRef = L10N104 /* fr.json */; };
+		L10N005 /* ja.json in Resources */ = {isa = PBXBuildFile; fileRef = L10N105 /* ja.json */; };
+		L10N006 /* ko.json in Resources */ = {isa = PBXBuildFile; fileRef = L10N106 /* ko.json */; };
+		L10N007 /* pt.json in Resources */ = {isa = PBXBuildFile; fileRef = L10N107 /* pt.json */; };
+		L10N008 /* ru.json in Resources */ = {isa = PBXBuildFile; fileRef = L10N108 /* ru.json */; };
+		L10N009 /* zh-Hans.json in Resources */ = {isa = PBXBuildFile; fileRef = L10N109 /* zh-Hans.json */; };
+		L10N010 /* zh-Hant.json in Resources */ = {isa = PBXBuildFile; fileRef = L10N110 /* zh-Hant.json */; };
 		A0000001 /* EasyPasteApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000101 /* EasyPasteApp.swift */; };
 		A0000002 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000102 /* AppSettings.swift */; };
 		7E001001 /* ThemeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E001101 /* ThemeStore.swift */; };
@@ -72,6 +82,16 @@
 		A0000116 /* EasyPasteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EasyPasteTests.swift; sourceTree = "<group>"; };
 		A0000201 /* EasyPaste.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EasyPaste.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A0000202 /* EasyPasteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EasyPasteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		L10N101 /* de.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = de.json; sourceTree = "<group>"; };
+		L10N102 /* en.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = en.json; sourceTree = "<group>"; };
+		L10N103 /* es.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = es.json; sourceTree = "<group>"; };
+		L10N104 /* fr.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = fr.json; sourceTree = "<group>"; };
+		L10N105 /* ja.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = ja.json; sourceTree = "<group>"; };
+		L10N106 /* ko.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = ko.json; sourceTree = "<group>"; };
+		L10N107 /* pt.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = pt.json; sourceTree = "<group>"; };
+		L10N108 /* ru.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = ru.json; sourceTree = "<group>"; };
+		L10N109 /* zh-Hans.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "zh-Hans.json"; sourceTree = "<group>"; };
+		L10N110 /* zh-Hant.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "zh-Hant.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,7 +130,25 @@
 				A0000402 /* Tests */,
 				A0000403 /* Products */,
 				6B944661976A565B89F25974 /* AppIcon.icns */,
+				L10N000 /* L10n */,
 			);
+			sourceTree = "<group>";
+		};
+		L10N000 /* L10n */ = {
+			isa = PBXGroup;
+			children = (
+				L10N101 /* de.json */,
+				L10N102 /* en.json */,
+				L10N103 /* es.json */,
+				L10N104 /* fr.json */,
+				L10N105 /* ja.json */,
+				L10N106 /* ko.json */,
+				L10N107 /* pt.json */,
+				L10N108 /* ru.json */,
+				L10N109 /* zh-Hans.json */,
+				L10N110 /* zh-Hant.json */,
+			);
+			path = L10n;
 			sourceTree = "<group>";
 		};
 		A0000401 /* Sources */ = {
@@ -287,6 +325,16 @@
 			buildActionMask = 2147483647;
 			files = (
 				606A4A64AAB97E3C60B80DAB /* AppIcon.icns in Resources */,
+				L10N001 /* de.json in Resources */,
+				L10N002 /* en.json in Resources */,
+				L10N003 /* es.json in Resources */,
+				L10N004 /* fr.json in Resources */,
+				L10N005 /* ja.json in Resources */,
+				L10N006 /* ko.json in Resources */,
+				L10N007 /* pt.json in Resources */,
+				L10N008 /* ru.json in Resources */,
+				L10N009 /* zh-Hans.json in Resources */,
+				L10N010 /* zh-Hant.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
