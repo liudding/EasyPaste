@@ -22,6 +22,8 @@ final class PanelState {
     var jsonPreviewItem: Clip?
     /// 搜索栏筛选 grid 浮层是否展开（由 / 或 filter icon 触发）。
     var filterGridPresented = false
+    /// backspace 选中的 filter tag 索引（再次 backspace 删除）。需为 class 属性以供 NSEvent monitor 修改。
+    var selectedTagIndex: Int? = nil
     /// 由 PanelView 注入：控制器请求聚焦搜索框时调用。
     var focusSearch: () -> Void = {}
     /// 由 PanelController 注入：请求隐藏面板（粘贴/退出后）。

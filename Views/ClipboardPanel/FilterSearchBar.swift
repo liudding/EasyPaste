@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 // MARK: - FlowLayout
@@ -55,13 +56,27 @@ struct FilterSearchBar: View {
     @Bindable var store: ClipboardStore
     @Bindable var panelState: PanelState
     @FocusState.Binding var searchFocused: Bool
-    var isVertical: Bool
+    var panelPosition: AppSettings.PanelPosition
+
+    /// Popover 箭头方向：根据面板位置决定 popover 从搜索栏的哪一侧展开。
+    /// 底部面板 → 向上展开（arrowEdge: .bottom）
+    /// 顶部面板 → 向下展开（arrowEdge: .top）
+    /// 左侧面板 → 向右展开（arrowEdge: .leading）
+    /// 右侧面板 → 向左展开（arrowEdge: .trailing）
+    private var popoverArrowEdge: Edge {
+        switch panelPosition {
+        case .bottom: return .bottom
+        case .top:    return .top
+        case .left:   return .leading
+        case .right:  return .trailing
+        }
+    }
 
     @State private var l10nStore = L10nStore.shared
     /// suggestion 列表中当前高亮的索引。
     @State private var suggestionIndex: Int? = nil
-    /// backspace 选中的 tag 索引（再次 backspace 删除）。
-    @State private var selectedTagIndex: Int? = nil
+    /// NSEvent 本地监控（拦截 backspace 删除 tag）。
+    @State private var backspaceMonitor: Any?
 
     // MARK: - Display Tags
 
@@ -127,7 +142,7 @@ struct FilterSearchBar: View {
                 FilterTagView(
                     filter: tag,
                     boards: store.boards,
-                    isSelected: selectedTagIndex == idx,
+                    isSelected: panelState.selectedTagIndex == idx,
                     onRemove: { removeFilter(tag) }
                 )
                 .transition(.scale.combined(with: .opacity))
@@ -143,15 +158,29 @@ struct FilterSearchBar: View {
         .padding(.vertical, 6)
         .background(.primary.opacity(0.09), in: Capsule())
         .overlay(alignment: .topLeading) { suggestionOverlayLayer }
+        .popover(isPresented: $panelState.filterGridPresented, arrowEdge: popoverArrowEdge) {
+            FilterGridOverlay(
+                store: store,
+                onToggle: { store.toggleFilter($0) },
+                onClear: {
+                    store.query = ""
+                    store.clearAllFilters()
+                }
+            )
+            .frame(width: 340, height: 420)
+            .presentationCompactAdaptation(.popover)
+        }
+        .onAppear { installBackspaceMonitor() }
+        .onDisappear { removeBackspaceMonitor() }
         .onChange(of: store.query) { _, _ in
             suggestionIndex = nil
-            selectedTagIndex = nil
+            panelState.selectedTagIndex = nil
         }
         .onChange(of: store.activeFilters.count) { _, _ in
-            selectedTagIndex = nil
+            panelState.selectedTagIndex = nil
         }
         .onChange(of: store.selectedBoardID) { _, _ in
-            selectedTagIndex = nil
+            panelState.selectedTagIndex = nil
         }
     }
 
@@ -165,52 +194,44 @@ struct FilterSearchBar: View {
             .focused($searchFocused)
             .focusEffectDisabled()
             .frame(minWidth: 30)
-            .onKeyPress("/") {
-                withAnimation(.easeOut(duration: 0.2)) {
+            .onKeyPress(phases: .down) { keyPress in
+                switch keyPress.key {
+                case "/":
                     panelState.filterGridPresented.toggle()
-                }
-                return .handled
-            }
-            .onKeyPress(.delete) {
-                if store.query.isEmpty {
-                    handleBackspaceForTags()
                     return .handled
-                }
-                return .ignored
-            }
-            .onKeyPress(.upArrow) {
-                if !currentSuggestions.isEmpty {
-                    navigateSuggestion(direction: -1)
+                case .upArrow:
+                    if !currentSuggestions.isEmpty {
+                        navigateSuggestion(direction: -1)
+                        return .handled
+                    }
+                    return .ignored
+                case .downArrow:
+                    if !currentSuggestions.isEmpty {
+                        navigateSuggestion(direction: 1)
+                        return .handled
+                    }
+                    return .ignored
+                case .return:
+                    if let idx = clampedSuggestionIndex, idx < currentSuggestions.count {
+                        applyFilter(currentSuggestions[idx])
+                        store.query = ""
+                        return .handled
+                    }
+                    return .ignored
+                case .escape:
+                    if panelState.filterGridPresented {
+                        panelState.filterGridPresented = false
+                    } else if !store.query.isEmpty {
+                        store.query = ""
+                    } else if !store.activeFilters.isEmpty || store.selectedBoardID != nil {
+                        clearAll()
+                    } else {
+                        return .ignored
+                    }
                     return .handled
-                }
-                return .ignored
-            }
-            .onKeyPress(.downArrow) {
-                if !currentSuggestions.isEmpty {
-                    navigateSuggestion(direction: 1)
-                    return .handled
-                }
-                return .ignored
-            }
-            .onKeyPress(.return) {
-                if let idx = clampedSuggestionIndex, idx < currentSuggestions.count {
-                    applyFilter(currentSuggestions[idx])
-                    store.query = ""
-                    return .handled
-                }
-                return .ignored
-            }
-            .onKeyPress(.escape) {
-                if panelState.filterGridPresented {
-                    panelState.filterGridPresented = false
-                } else if !store.query.isEmpty {
-                    store.query = ""
-                } else if !store.activeFilters.isEmpty || store.selectedBoardID != nil {
-                    clearAll()
-                } else {
+                default:
                     return .ignored
                 }
-                return .handled
             }
     }
 
@@ -232,9 +253,7 @@ struct FilterSearchBar: View {
     @ViewBuilder
     private var filterIconButton: some View {
         Button {
-            withAnimation(.easeOut(duration: 0.2)) {
-                panelState.filterGridPresented.toggle()
-            }
+            panelState.filterGridPresented.toggle()
         } label: {
             Image(systemName: panelState.filterGridPresented
                    ? "line.3.horizontal.decrease.circle.fill"
@@ -277,29 +296,29 @@ struct FilterSearchBar: View {
                 store.activeFilters.append(filter)
             }
         }
-        selectedTagIndex = nil
+        panelState.selectedTagIndex = nil
     }
 
     private func removeFilter(_ filter: SearchFilter) {
         store.removeFilter(filter)
-        selectedTagIndex = nil
+        panelState.selectedTagIndex = nil
     }
 
     private func clearAll() {
         store.query = ""
         store.clearAllFilters()
-        selectedTagIndex = nil
+        panelState.selectedTagIndex = nil
     }
 
     /// 文本为空时按 backspace：首次选中最后一个 tag，再次删除。
     private func handleBackspaceForTags() {
-        if let idx = selectedTagIndex, idx < displayTags.count {
+        if let idx = panelState.selectedTagIndex, idx < displayTags.count {
             let tag = displayTags[idx]
             removeFilter(tag)
-            selectedTagIndex = nil
+            panelState.selectedTagIndex = nil
         } else if !displayTags.isEmpty {
             withAnimation(.easeOut(duration: 0.12)) {
-                selectedTagIndex = displayTags.count - 1
+                panelState.selectedTagIndex = displayTags.count - 1
             }
         }
     }
@@ -311,6 +330,45 @@ struct FilterSearchBar: View {
             suggestionIndex = (idx + direction + count) % count
         } else {
             suggestionIndex = direction > 0 ? 0 : count - 1
+        }
+    }
+
+    // MARK: - Backspace Monitor
+
+    /// 安装 NSEvent 本地监控：在 TextField 的 NSTextField 处理之前拦截 backspace。
+    /// SwiftUI 的 .onKeyPress 无法可靠拦截 TextField 上的 backspace（被 AppKit 消费）。
+    private func installBackspaceMonitor() {
+        guard backspaceMonitor == nil else { return }
+        backspaceMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            // 仅拦截 backspace（keyCode 51 = Mac delete 键）
+            guard event.keyCode == 51 else { return event }
+            // 仅在搜索框有焦点时拦截
+            guard panelState.searchFocused else { return event }
+            // 仅在 query 为空时拦截（非空时让 TextField 正常删除字符）
+            guard store.query.isEmpty else { return event }
+            // 计算当前 tag 列表
+            var tags = store.activeFilters
+            if let boardID = store.selectedBoardID { tags.append(.board(boardID)) }
+            guard !tags.isEmpty else { return event }
+
+            // 首次 backspace：选中最后一个 tag；再次 backspace：删除选中的 tag
+            if let idx = panelState.selectedTagIndex, idx < tags.count {
+                let tag = tags[idx]
+                store.removeFilter(tag)
+                panelState.selectedTagIndex = nil
+            } else {
+                withAnimation(.easeOut(duration: 0.12)) {
+                    panelState.selectedTagIndex = tags.count - 1
+                }
+            }
+            return nil // 消费事件，阻止 TextField 处理
+        }
+    }
+
+    private func removeBackspaceMonitor() {
+        if let monitor = backspaceMonitor {
+            NSEvent.removeMonitor(monitor)
+            backspaceMonitor = nil
         }
     }
 }
@@ -496,10 +554,6 @@ struct FilterGridOverlay: View {
             }
             .padding(14)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(.primary.opacity(0.12)))
-        .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
     }
 }
 

@@ -39,15 +39,9 @@ struct PanelView: View {
                 PanelHeaderView(store: store, settings: settings, panelState: panelState, onOpenSettings: onOpenSettings, searchFocused: $searchFocused, boardFieldFocused: $boardFieldFocused)
                     .padding(.horizontal, 14).padding(.top, 14)
                     .zIndex(1)
-                Group {
-                    if panelState.filterGridPresented {
-                        filterGridContainer
-                    } else {
-                        clipStrip
-                    }
-                }
-                .padding(.top, 10)
-                .padding(.bottom, 14)
+                clipStrip
+                    .padding(.top, 10)
+                    .padding(.bottom, 14)
             }
             .background(.ultraThinMaterial)
             .background(panelOverlayColor)
@@ -78,32 +72,6 @@ struct PanelView: View {
         if panelState.selectedID == nil || !items.contains(where: { $0.id == panelState.selectedID }) {
             panelState.selectedID = items.first?.id
         }
-    }
-
-    // MARK: Filter grid container
-
-    /// `/` 或 filter icon 触发的分组筛选面板，替换 clip strip 区域展示。
-    @ViewBuilder private var filterGridContainer: some View {
-        ZStack {
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        panelState.filterGridPresented = false
-                    }
-                }
-            FilterGridOverlay(
-                store: store,
-                onToggle: { store.toggleFilter($0) },
-                onClear: {
-                    store.query = ""
-                    store.clearAllFilters()
-                }
-            )
-            .padding(.horizontal, 6)
-            .padding(.bottom, 2)
-        }
-        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
     // MARK: Clip strip

@@ -50,7 +50,7 @@ struct PanelHeaderView: View {
                 store: store,
                 panelState: panelState,
                 searchFocused: $searchFocused,
-                isVertical: false
+                panelPosition: settings.panelPosition
             )
             .frame(width: 240)
             .transition(.opacity.combined(with: .scale(scale: 0.6, anchor: .leading)))
@@ -73,7 +73,7 @@ struct PanelHeaderView: View {
             store: store,
             panelState: panelState,
             searchFocused: $searchFocused,
-            isVertical: true
+            panelPosition: settings.panelPosition
         )
     }
 

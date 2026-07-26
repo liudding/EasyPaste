@@ -124,6 +124,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         panelState.jsonPreviewItem = nil
         panelState.renamingID = nil
         panelState.addingBoard = false
+        panelState.filterGridPresented = false
         store.query = ""
         panelState.searchExpanded = false
     }
