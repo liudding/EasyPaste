@@ -45,19 +45,14 @@ struct PanelHeaderView: View {
     // MARK: Search
 
     @ViewBuilder private var searchControl: some View {
-        if panelState.searchExpanded {
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass").font(.system(size: 12)).foregroundStyle(.secondary)
-                TextField(L10n.searchPlaceholder, text: $store.query)
-                    .textFieldStyle(.plain).font(.system(size: 13))
-                    .focused($searchFocused).frame(width: 170)
-                    .focusEffectDisabled()
-                if !store.query.isEmpty {
-                    Button { store.query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }.buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 10).padding(.vertical, 6)
-            .background(.primary.opacity(0.09), in: Capsule())
+        if panelState.searchExpanded || !store.activeFilters.isEmpty {
+            FilterSearchBar(
+                store: store,
+                panelState: panelState,
+                searchFocused: $searchFocused,
+                isVertical: false
+            )
+            .frame(width: 240)
             .transition(.opacity.combined(with: .scale(scale: 0.6, anchor: .leading)))
         } else {
             Button {
@@ -74,18 +69,12 @@ struct PanelHeaderView: View {
 
     /// 竖直方向专用搜索栏：始终展开、填满可用宽度，无需折叠/展开切换。
     @ViewBuilder private var searchControlVertical: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass").font(.system(size: 12)).foregroundStyle(.secondary)
-            TextField(L10n.searchPlaceholder, text: $store.query)
-                .textFieldStyle(.plain).font(.system(size: 13))
-                .focused($searchFocused)
-                .focusEffectDisabled()
-            if !store.query.isEmpty {
-                Button { store.query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }.buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 10).padding(.vertical, 6)
-        .background(.primary.opacity(0.09), in: Capsule())
+        FilterSearchBar(
+            store: store,
+            panelState: panelState,
+            searchFocused: $searchFocused,
+            isVertical: true
+        )
     }
 
     // MARK: More Menu

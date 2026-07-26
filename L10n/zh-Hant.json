@@ -196,5 +196,16 @@
     "clip.preview.json_error": "JSON 解析失敗，顯示原始文字",
     "clip.preview.qr_too_long": "內容過長，QR 碼可能難以掃描",
     "settings.menu_bar_help": "啟用後，EasyPaste 將在選單列顯示圖示以便快速存取。",
-    "settings.hide_dock_icon_help": "從 Dock 隱藏應用程式圖示。僅能透過選單列圖示和快捷鍵存取。需要開啟「在選單列顯示」。"
+    "settings.hide_dock_icon_help": "從 Dock 隱藏應用程式圖示。僅能透過選單列圖示和快捷鍵存取。需要開啟「在選單列顯示」。",
+    "filter.group.type": "類型",
+    "filter.group.app": "應用",
+    "filter.group.pinboard": "看板",
+    "filter.group.date": "日期",
+    "filter.date.today": "今天",
+    "filter.date.yesterday": "昨天",
+    "filter.date.this_week": "本週",
+    "filter.date.last_week": "上週",
+    "filter.date.last_30_days": "最近 30 天",
+    "filter.date.last_90_days": "最近 90 天",
+    "filter.clear_all": "清除全部"
 }

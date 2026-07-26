@@ -213,5 +213,16 @@
   "clip.menu.shortcut.send_email": "发送邮件",
   "clip.menu.shortcut.json_preview": "JSON 预览",
   "clip.menu.shortcut.open_link": "打开链接",
-  "settings.shortcut_conflict_warning": "检测到快捷键冲突。请选择其他组合。"
+  "settings.shortcut_conflict_warning": "检测到快捷键冲突。请选择其他组合。",
+  "filter.group.type": "类型",
+  "filter.group.app": "应用",
+  "filter.group.pinboard": "看板",
+  "filter.group.date": "日期",
+  "filter.date.today": "今天",
+  "filter.date.yesterday": "昨天",
+  "filter.date.this_week": "本周",
+  "filter.date.last_week": "上周",
+  "filter.date.last_30_days": "最近 30 天",
+  "filter.date.last_90_days": "最近 90 天",
+  "filter.clear_all": "清除全部"
 }

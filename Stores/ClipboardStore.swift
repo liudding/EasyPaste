@@ -12,6 +12,8 @@ final class ClipboardStore {
     var selectedKind: ClipKind?
     var query = ""
     var isFavoritesOnly = false
+    /// 搜索栏激活的筛选 tag（类型 / 应用 / 日期）。board 维度通过 selectedBoardID 联动。
+    var activeFilters: [SearchFilter] = []
     /// 历史保留天数（0 = 无限）。由 AppServices 从设置同步。
     var historyLimitDays = 0
 
@@ -53,8 +55,57 @@ final class ClipboardStore {
         items.filter { item in
             (selectedBoardID == nil || item.boardID == selectedBoardID) &&
             (selectedKind == nil || item.kind == selectedKind) &&
-            (query.isEmpty || item.displayTitle.localizedCaseInsensitiveContains(query) || item.detail.localizedCaseInsensitiveContains(query))
+            (query.isEmpty || item.displayTitle.localizedCaseInsensitiveContains(query) || item.detail.localizedCaseInsensitiveContains(query)) &&
+            facetFilterPasses(item)
         }
+    }
+
+    /// 所有剪贴项中出现过的来源 app 名称（去重，按字母排序）。
+    var distinctSourceApps: [String] {
+        let apps = Set(items.compactMap { $0.sourceApplication }.filter { !$0.isEmpty })
+        return apps.sorted()
+    }
+
+    /// 分面筛选：同一维度内为 OR（任一匹配），不同维度间为 AND（全部满足）。
+    private func facetFilterPasses(_ item: Clip) -> Bool {
+        if activeFilters.isEmpty { return true }
+        let kindFilters = activeFilters.compactMap { if case .kind(let k) = $0 { return k } else { return nil } }
+        let appFilters = activeFilters.compactMap { if case .app(let a) = $0 { return a } else { return nil } }
+        let dateFilters = activeFilters.compactMap { if case .dateRange(let d) = $0 { return d } else { return nil } }
+        if !kindFilters.isEmpty && !kindFilters.contains(item.kind) { return false }
+        if !appFilters.isEmpty && !(item.sourceApplication.map { appFilters.contains($0) } ?? false) { return false }
+        if !dateFilters.isEmpty && !dateFilters.contains(where: { $0.contains(item.createdAt) }) { return false }
+        return true
+    }
+
+    /// 切换筛选 tag（已存在则移除，不存在则添加）。board 维度联动 selectedBoardID。
+    func toggleFilter(_ filter: SearchFilter) {
+        switch filter {
+        case .board(let id):
+            selectedBoardID = (selectedBoardID == id) ? nil : id
+        default:
+            if let idx = activeFilters.firstIndex(of: filter) {
+                activeFilters.remove(at: idx)
+            } else {
+                activeFilters.append(filter)
+            }
+        }
+    }
+
+    /// 移除指定筛选 tag。
+    func removeFilter(_ filter: SearchFilter) {
+        switch filter {
+        case .board:
+            selectedBoardID = nil
+        default:
+            activeFilters.removeAll { $0 == filter }
+        }
+    }
+
+    /// 清除所有筛选（activeFilters + selectedBoardID），但不清除 query。
+    func clearAllFilters() {
+        activeFilters.removeAll()
+        selectedBoardID = nil
     }
 
     // MARK: - 读取（从 GRDB 全量填充内存，保持 UI 门面不变）

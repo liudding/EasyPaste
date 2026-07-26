@@ -213,5 +213,16 @@
   "clip.menu.shortcut.send_email": "Send Email",
   "clip.menu.shortcut.json_preview": "JSON Preview",
   "clip.menu.shortcut.open_link": "Open Link",
-  "settings.shortcut_conflict_warning": "Shortcut conflict detected. Please choose a different combination."
+  "settings.shortcut_conflict_warning": "Shortcut conflict detected. Please choose a different combination.",
+  "filter.group.type": "Type",
+  "filter.group.app": "App",
+  "filter.group.pinboard": "Pinboard",
+  "filter.group.date": "Date",
+  "filter.date.today": "Today",
+  "filter.date.yesterday": "Yesterday",
+  "filter.date.this_week": "This Week",
+  "filter.date.last_week": "Last Week",
+  "filter.date.last_30_days": "Last 30 Days",
+  "filter.date.last_90_days": "Last 90 Days",
+  "filter.clear_all": "Clear All"
 }
