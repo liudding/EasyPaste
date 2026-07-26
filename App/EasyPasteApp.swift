@@ -106,7 +106,7 @@ final class AppServices {
                     object: win,
                     queue: .main
                 ) { [weak self] _ in
-                    self?.applyDockPolicy()
+                    DispatchQueue.main.async { self?.applyDockPolicy() }
                 }
             } else {
                 self.applyDockPolicy()
