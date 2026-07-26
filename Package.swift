@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.1
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -29,8 +29,8 @@ let package = Package(
                 .product(name: "Sentry", package: "sentry-cocoa"),
             ],
             path: ".",
-            exclude: ["Tests", "script", ".codex", ".git", "dist"],
-            sources: ["App", "Models", "Stores", "Services", "Support", "Views"],
+            exclude: ["Tests", "script"],
+            sources: ["App", "Models", "Stores", "Services", "Views"],
             resources: [.copy("L10n")]
         ),
         .testTarget(
