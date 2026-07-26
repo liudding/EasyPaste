@@ -20,6 +20,10 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     private var panel: KeyPanel?
     private var localKeyMonitor: Any?
+    /// 全局鼠标按下监控：捕获发生在「其他应用」窗口内的点击（见 startMonitors）。
+    private var globalMouseMonitor: Any?
+    /// 本地鼠标按下监控：捕获发生在本应用窗口内、面板 frame 之外的点击（见 startMonitors）。
+    private var localMouseMonitor: Any?
     private var isAnimating = false
     private var hiding = false
 
@@ -229,11 +233,41 @@ final class PanelController: NSObject, NSWindowDelegate {
             guard let self else { return event }
             return self.handleKeyDown(event)
         }
+        // 鼠标点击兜底隐藏：
+        // 面板的自动隐藏原本只依赖 windowDidResignKey——它仅在「面板由 key 变非 key」时触发。
+        // 当面板唤起后被其他应用立即抢占前台、面板失去 key 但仍以 .floating 浮动可见时，
+        // 之后点击面板外区域，面板并非 key window，resignKey 不会再触发，导致面板无法关闭。
+        // 此处用「全局 + 本地」鼠标按下监控兜底：面板可见且非 key、点击落在面板 frame 之外 → 隐藏。
+        // 面板仍为 key 时交给 windowDidResignKey 处理，保留右键菜单/系统菜单弹出时不隐藏的行为。
+        // 全局监控只观察事件、无法吞掉；本地监控始终原样返回事件，不阻断目标窗口接收点击。
+        let mouseMask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: mouseMask) { [weak self] _ in
+            self?.hideIfClickedOutside()
+        }
+        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: mouseMask) { [weak self] event in
+            self?.hideIfClickedOutside()
+            return event
+        }
     }
 
     private func stopMonitors() {
         if let m = localKeyMonitor { NSEvent.removeMonitor(m) }
         localKeyMonitor = nil
+        if let m = globalMouseMonitor { NSEvent.removeMonitor(m) }
+        globalMouseMonitor = nil
+        if let m = localMouseMonitor { NSEvent.removeMonitor(m) }
+        localMouseMonitor = nil
+    }
+
+    /// 面板「可见但非 key window」时，点击落在面板 frame 之外则兜底隐藏。
+    /// 仅处理 windowDidResignKey 覆盖不到的场景（面板失去 key 后仍浮动可见）；
+    /// 面板仍为 key 时不介入，由 windowDidResignKey 负责隐藏。
+    private func hideIfClickedOutside() {
+        guard let panel, panel.isVisible, !isAnimating else { return }
+        if panel.isKeyWindow { return }
+        // NSEvent.mouseLocation 与 panel.frame 同为屏幕坐标系（左下原点），可直接比较。
+        guard !panel.frame.contains(NSEvent.mouseLocation) else { return }
+        hide()
     }
 
     private func handleKeyDown(_ event: NSEvent) -> NSEvent? {
