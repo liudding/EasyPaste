@@ -5,6 +5,7 @@ import PackageDescription
 
 let package = Package(
     name: "EasyPaste",
+    defaultLocalization: "zh-Hans",
     platforms: [.macOS(.v15)],
     products: [
         .executable(name: "EasyPaste", targets: ["EasyPaste"]),
@@ -29,9 +30,9 @@ let package = Package(
                 .product(name: "Sentry", package: "sentry-cocoa"),
             ],
             path: ".",
-            exclude: ["Tests", "script"],
+            exclude: ["Tests", "script", ".build", "dist", "deliverables", "docs"],
             sources: ["App", "Models", "Stores", "Services", "Views"],
-            resources: [.copy("L10n")]
+            resources: [.process("L10n")]
         ),
         .testTarget(
             name: "EasyPasteTests",
