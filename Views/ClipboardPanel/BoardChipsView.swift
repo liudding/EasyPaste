@@ -472,24 +472,15 @@ private struct BoardContextMenuOverlay: NSViewRepresentable {
             return menu
         }
 
-        /// 横向排列的彩色圆点：点击切换颜色，当前选中色显示白色 ✓。
+        /// 横向排列的彩色圆点：点击切换颜色，当前选中色显示白色描边。样式与新增时一致。
         private func makeColorSwatches(for board: Pasteboard) -> NSView {
-            let stack = NSStackView()
-            stack.orientation = .horizontal
-            stack.spacing = 8
-            stack.edgeInsets = NSEdgeInsets(top: 4, left: 18, bottom: 6, right: 18)
-
-            for colorName in Pasteboard.palette {
-                let isSelected = board.color == colorName
-                let swatch = ColorSwatchView(colorName: colorName, isSelected: isSelected) { [weak self] in
-                    self?.onColorChange?(colorName)
-                    self?.currentMenu?.cancelTracking()
-                }
-                stack.addArrangedSubview(swatch)
-                swatch.widthAnchor.constraint(equalToConstant: 20).isActive = true
-                swatch.heightAnchor.constraint(equalToConstant: 20).isActive = true
+            let row = ColorSwatchRowView(frame: NSRect(x: 0, y: 0, width: 220, height: 22))
+            row.selectedColor = board.color
+            row.onSelect = { [weak self] colorName in
+                self?.onColorChange?(colorName)
+                self?.currentMenu?.cancelTracking()
             }
-            return stack
+            return row
         }
 
         @objc func editAction() { onEdit?() }
@@ -497,61 +488,70 @@ private struct BoardContextMenuOverlay: NSViewRepresentable {
     }
 }
 
-/// 彩色圆点视图：直接 draw 绘制填充圆 + 选中态白色 ✓，点击触发回调。
-final class ColorSwatchView: NSView {
-    private let colorName: String
-    private let isSelected: Bool
-    private var onClick: (() -> Void)?
-
-    init(colorName: String, isSelected: Bool, onClick: @escaping () -> Void) {
-        self.colorName = colorName
-        self.isSelected = isSelected
-        self.onClick = onClick
-        super.init(frame: NSRect(x: 0, y: 0, width: 20, height: 20))
+/// 横向彩色圆点行：在单个 NSView 内 draw 8 个色块 + 选中态描边，命中测试在 mouseDown 中处理。
+/// 使用单一视图而非 NSStackView，避免 NSMenuItem 上下文里 Auto Layout 尺寸为 0 导致不可见的问题。
+final class ColorSwatchRowView: NSView {
+    var selectedColor: String = "" {
+        didSet { needsDisplay = true }
     }
+    var onSelect: ((String) -> Void)?
 
-    required init?(coder: NSCoder) { fatalError() }
+    private let swatchSize: CGFloat = 14
+    private let spacing: CGFloat = 8
+    private let leftInset: CGFloat = 18
+    private let swatches = Pasteboard.palette
+    private var hitRects: [(String, NSRect)] = []
 
-    override var isFlipped: Bool { false }
-
-    private var nsColor: NSColor {
-        switch colorName {
-        case "blue": .systemBlue
-        case "purple": .systemPurple
-        case "green": .systemGreen
-        case "red": .systemRed
-        case "yellow": .systemYellow
-        case "pink": .systemPink
-        case "teal": .systemTeal
-        default: .systemOrange
-        }
-    }
+    override var isFlipped: Bool { true }
 
     override func draw(_ dirtyRect: NSRect) {
-        let circleRect = bounds.insetBy(dx: 3, dy: 3)
-        nsColor.setFill()
-        NSBezierPath(ovalIn: circleRect).fill()
+        hitRects.removeAll()
+        var x: CGFloat = leftInset
+        let y: CGFloat = (bounds.height - swatchSize) / 2
+        for colorName in swatches {
+            let rect = NSRect(x: x, y: y, width: swatchSize, height: swatchSize)
+            hitRects.append((colorName, rect))
 
-        if isSelected {
-            let check = NSBezierPath()
-            let cx = bounds.midX
-            let cy = bounds.midY
-            check.move(to: NSPoint(x: cx - 4, y: cy))
-            check.line(to: NSPoint(x: cx - 1, y: cy - 3))
-            check.line(to: NSPoint(x: cx + 4.5, y: cy + 4))
-            NSColor.white.setStroke()
-            check.lineWidth = 1.8
-            check.lineJoinStyle = .round
-            check.lineCapStyle = .round
-            check.stroke()
+            let color = nsColor(for: colorName)
+            color.setFill()
+            NSBezierPath(ovalIn: rect).fill()
+
+            if selectedColor == colorName {
+                NSColor.white.setStroke()
+                let ring = NSBezierPath(ovalIn: rect.insetBy(dx: -1.5, dy: -1.5))
+                ring.lineWidth = 1.5
+                ring.stroke()
+            }
+            x += swatchSize + spacing
         }
     }
 
     override func mouseDown(with event: NSEvent) {
-        onClick?()
+        let p = convert(event.locationInWindow, from: nil)
+        for (colorName, rect) in hitRects where rect.contains(p) {
+            onSelect?(colorName)
+            return
+        }
     }
 
-    override func mouseUp(with event: NSEvent) {
-        // 防止事件继续传播
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        // 扩展命中区到整个视图，让色块之间的间隙也能点击（不会穿透到菜单关闭）
+        for (_, rect) in hitRects where rect.insetBy(dx: -spacing / 2, dy: -2).contains(point) {
+            return self
+        }
+        return nil
+    }
+
+    private func nsColor(for name: String) -> NSColor {
+        switch name {
+        case "blue": return .systemBlue
+        case "purple": return .systemPurple
+        case "green": return .systemGreen
+        case "red": return .systemRed
+        case "yellow": return .systemYellow
+        case "pink": return .systemPink
+        case "teal": return .systemTeal
+        default: return .systemOrange
+        }
     }
 }
