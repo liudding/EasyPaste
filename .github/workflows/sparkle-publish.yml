@@ -264,10 +264,17 @@ jobs:
           SIZE: ${{ steps.version.outputs.size }}
           DMG_URL: "https://github.com/liudding/EasyPaste/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.version.outputs.version }}.dmg"
 
-      # ── 部署 appcast 到 GitHub Pages ──
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      # ── 上传 appcast.xml 到 GitHub Release ──
+      - name: Upload appcast.xml to GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./
-          keep_files: true
+          files: appcast.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 部署 appcast 到 GitHub Pages ──
+      # - name: Deploy to GitHub Pages
+      #   uses: peaceiris/actions-gh-pages@v4
+      #   with:
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     publish_dir: ./
+      #     keep_files: true
