@@ -9,6 +9,9 @@ final class ClipboardService {
     private let pasteboard = NSPasteboard.general
     var lastChangeCount = NSPasteboard.general.changeCount
     private var timer: Timer?
+    /// 首次启动的自动读取（lastChangeCount 置 -1 强制触发）会读取启动前就存在的剪贴板内容，
+    /// 这不算是用户的「复制」动作，因此跳过一次复制音效，避免启动时误响。
+    private var skipNextCopySound = false
     var onItem: ((Clip) -> Void)?
     var settings: AppSettings?
 
@@ -16,6 +19,7 @@ final class ClipboardService {
         // 修复首次启动读取：将 lastChangeCount 置为 -1，使首次 timer tick 的
         // readIfChanged() 必然触发读取（-1 != 当前 changeCount）。
         lastChangeCount = -1
+        skipNextCopySound = true
         timer = Timer.scheduledTimer(withTimeInterval: 0.45, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.readIfChanged() }
         }
@@ -50,6 +54,15 @@ final class ClipboardService {
             ?? ClipTypeDetector.computeFallbackHash(
                 kind: item.kind, title: item.displayTitle, detail: item.detail)
         onItem?(item)
+
+        // 复制反馈音效：仅在用户向系统剪贴板写入「新内容」时播放。
+        // 应用自身写入（如面板内的 copy / paste 操作）会在写回后同步 lastChangeCount，
+        // 使后续 timer tick 的 readIfChanged() 直接 return，因此不会误触发此音效。
+        if skipNextCopySound {
+            skipNextCopySound = false
+        } else if let settings, !settings.copySoundName.isEmpty {
+            NSSound(named: NSSound.Name(settings.copySoundName))?.play()
+        }
     }
 
     // MARK: - 内容颜色提取

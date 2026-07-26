@@ -180,6 +180,7 @@
   "settings.open_at_login": "Открывать при входе",
   "settings.panel_position": "Положение панели",
   "settings.paste_sound": "Звук вставки",
+  "settings.copy_sound": "Звук копирования",
   "settings.plain_text_paste_off": "Вставка обычного текста выключена",
   "settings.plain_text_paste_on": "Вставка обычного текста включена",
   "settings.position_bottom": "Снизу",

@@ -180,6 +180,7 @@
   "settings.open_at_login": "Ouvrir à la connexion",
   "settings.panel_position": "Position du panneau",
   "settings.paste_sound": "Son de collage",
+  "settings.copy_sound": "Son du copier",
   "settings.plain_text_paste_off": "Collage en texte brut désactivé",
   "settings.plain_text_paste_on": "Collage en texte brut activé",
   "settings.position_bottom": "Bas",

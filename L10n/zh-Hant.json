@@ -180,6 +180,7 @@
   "settings.open_at_login": "登入時啟動",
   "settings.panel_position": "面板位置",
   "settings.paste_sound": "貼上音效",
+  "settings.copy_sound": "複製音效",
   "settings.plain_text_paste_off": "已停用純文字貼上",
   "settings.plain_text_paste_on": "已啟用純文字貼上",
   "settings.position_bottom": "底部",

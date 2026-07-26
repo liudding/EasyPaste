@@ -37,6 +37,7 @@
   "settings.icloud_sync": "通过 iCloud 同步剪贴板历史",
   "settings.show_in_menu_bar": "在菜单栏显示",
   "settings.paste_sound": "粘贴音效",
+  "settings.copy_sound": "复制音效",
   "settings.sound_none": "无",
   "settings.always_paste_plain_text": "始终粘贴为纯文本",
   "settings.plain_text_paste_on": "已开启纯文本粘贴",

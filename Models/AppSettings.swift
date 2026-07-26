@@ -52,7 +52,34 @@ final class AppSettings {
         return L10n.tr(historyStepsRaw[clamped].labelKey)
     }
 
-    static let soundNames = ["Pop", "Ping", "Tink", "Glass", "Hero", "Submarine", "Blow", "Bottle", "Frog", "Funk", "Morse", "Purr", "Sosumi"]
+    /// 可用的系统音效名称（不含扩展名）。
+    /// 动态扫描标准 Sounds 目录得到，因此会自动包含：
+    /// 1. macOS 自带的 14 个系统音效（Basso / Blow / Bottle / Frog / Funk / Glass / Hero /
+    ///    Morse / Ping / Pop / Purr / Sosumi / Submarine / Tink）；
+    /// 2. 用户放到 ~/Library/Sounds（或 /Library/Sounds）的自定义音效文件（.aiff/.aif/.caf/.wav/.mp3/.m4a）。
+    /// 想增加音效，只需把音频文件丢进 ~/Library/Sounds，设置里的列表会自动出现，无需改代码。
+    static var soundNames: [String] {
+        let dirs = [
+            "/System/Library/Sounds",
+            "/Library/Sounds",
+            (NSHomeDirectory() as NSString).appendingPathComponent("Library/Sounds")
+        ]
+        let exts = Set(["aiff", "aif", "caf", "wav", "mp3", "m4a"])
+        var names = Set<String>()
+        for dir in dirs {
+            let url = URL(fileURLWithPath: dir)
+            guard let files = try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil) else { continue }
+            for file in files where exts.contains(file.pathExtension.lowercased()) {
+                names.insert(file.deletingPathExtension().lastPathComponent)
+            }
+        }
+        if names.isEmpty {
+            // 扫描失败（如沙箱禁止读系统目录）时的兜底，保证列表不为空。
+            return ["Pop", "Ping", "Tink", "Glass", "Hero", "Submarine", "Blow",
+                    "Bottle", "Frog", "Funk", "Morse", "Purr", "Sosumi", "Basso"]
+        }
+        return names.sorted()
+    }
 
     var panelPosition: PanelPosition = .bottom { didSet { save(); onPanelPositionChanged?() } }
     var openAtLogin = false { didSet { applyLoginItem(); save() } }
@@ -61,6 +88,8 @@ final class AppSettings {
     var soundName = "Pop" { didSet { save() } }
     /// 快捷面板声音开关：当 soundName != "" 时有效；"" 时音效始终关闭。
     var soundEnabled = true { didSet { save() } }
+    /// 复制反馈音效：用户向系统剪贴板写入新内容时播放。"" 表示关闭（与 paste sound 一致，用 None 选项禁用）。
+    var copySoundName = "Pop" { didSet { save() } }
     var alwaysPastePlainText = false { didSet { save() } }
     var historyStepIndex = AppSettings.historyStepsRaw.count - 1 { didSet { save(); onHistoryLimitChanged?() } }
     var maxItemsMode: MaxItemsMode = .limited { didSet { save(); onMaxItemsChanged?() } }
@@ -151,6 +180,7 @@ final class AppSettings {
         var showInMenuBar: Bool
         var soundName: String
         var soundEnabled: Bool
+        var copySoundName: String
         var alwaysPastePlainText: Bool
         var historyStepIndex: Int
         var maxItemsMode: MaxItemsMode
@@ -165,6 +195,7 @@ final class AppSettings {
 
         init(panelPosition: PanelPosition, openAtLogin: Bool, iCloudSync: Bool,
              showInMenuBar: Bool, soundName: String, soundEnabled: Bool,
+             copySoundName: String,
              alwaysPastePlainText: Bool, historyStepIndex: Int,
              maxItemsMode: MaxItemsMode, maxItemsCount: Int,
              ignoredApps: [IgnoredApp], invokeShortcut: Shortcut,
@@ -178,6 +209,7 @@ final class AppSettings {
             self.showInMenuBar = showInMenuBar
             self.soundName = soundName
             self.soundEnabled = soundEnabled
+            self.copySoundName = copySoundName
             self.alwaysPastePlainText = alwaysPastePlainText
             self.historyStepIndex = historyStepIndex
             self.maxItemsMode = maxItemsMode
@@ -199,6 +231,7 @@ final class AppSettings {
             showInMenuBar = try c.decode(Bool.self, forKey: .showInMenuBar)
             soundName = try c.decode(String.self, forKey: .soundName)
             soundEnabled = try c.decodeIfPresent(Bool.self, forKey: .soundEnabled) ?? true
+            copySoundName = try c.decodeIfPresent(String.self, forKey: .copySoundName) ?? "Pop"
             alwaysPastePlainText = try c.decode(Bool.self, forKey: .alwaysPastePlainText)
             historyStepIndex = try c.decode(Int.self, forKey: .historyStepIndex)
             maxItemsMode = try c.decodeIfPresent(MaxItemsMode.self, forKey: .maxItemsMode) ?? .limited
@@ -222,6 +255,7 @@ final class AppSettings {
         showInMenuBar = snapshot.showInMenuBar
         soundName = snapshot.soundName
         soundEnabled = snapshot.soundEnabled
+        copySoundName = snapshot.copySoundName
         alwaysPastePlainText = snapshot.alwaysPastePlainText
         historyStepIndex = snapshot.historyStepIndex
         maxItemsMode = snapshot.maxItemsMode
@@ -238,6 +272,7 @@ final class AppSettings {
     func save() {
         let snapshot = Snapshot(panelPosition: panelPosition, openAtLogin: openAtLogin, iCloudSync: iCloudSync,
                                 showInMenuBar: showInMenuBar, soundName: soundName, soundEnabled: soundEnabled,
+                                copySoundName: copySoundName,
                                 alwaysPastePlainText: alwaysPastePlainText, historyStepIndex: historyStepIndex,
                                 maxItemsMode: maxItemsMode, maxItemsCount: maxItemsCount,
                                 ignoredApps: ignoredApps, invokeShortcut: invokeShortcut,

@@ -37,6 +37,7 @@
   "settings.icloud_sync": "iCloud Sync Clipboard History",
   "settings.show_in_menu_bar": "Show in Menu Bar",
   "settings.paste_sound": "Paste Sound",
+  "settings.copy_sound": "Copy Sound",
   "settings.sound_none": "None",
   "settings.always_paste_plain_text": "Always Paste as Plain Text",
   "settings.plain_text_paste_on": "Plain text paste enabled",

@@ -115,6 +115,7 @@ enum L10n {
     static var showInMenuBar: String { tr("settings.show_in_menu_bar") }
     static var menuBarHelp: String { tr("settings.menu_bar_help") }
     static var pasteSound: String { tr("settings.paste_sound") }
+    static var copySound: String { tr("settings.copy_sound") }
     static var soundNone: String { tr("settings.sound_none") }
     static var alwaysPastePlainText: String { tr("settings.always_paste_plain_text") }
     static var plainTextPasteOn: String { tr("settings.plain_text_paste_on") }

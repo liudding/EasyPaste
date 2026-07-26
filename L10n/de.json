@@ -180,6 +180,7 @@
   "settings.open_at_login": "Beim Anmelden öffnen",
   "settings.panel_position": "Panel-Position",
   "settings.paste_sound": "Einfüge-Sound",
+  "settings.copy_sound": "Kopier-Sound",
   "settings.plain_text_paste_off": "Einfügen als reiner Text deaktiviert",
   "settings.plain_text_paste_on": "Einfügen als reiner Text aktiviert",
   "settings.position_bottom": "Unten",

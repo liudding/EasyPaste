@@ -180,6 +180,7 @@
   "settings.open_at_login": "ログイン時に起動",
   "settings.panel_position": "パネル位置",
   "settings.paste_sound": "貼り付けサウンド",
+  "settings.copy_sound": "コピー音",
   "settings.plain_text_paste_off": "プレーンテキスト貼り付け：オフ",
   "settings.plain_text_paste_on": "プレーンテキスト貼り付け：オン",
   "settings.position_bottom": "下",

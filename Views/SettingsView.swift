@@ -138,6 +138,20 @@ struct SettingsView: View {
                     Text(L10n.soundNone).tag("")
                     ForEach(AppSettings.soundNames, id: \.self) { Text($0).tag($0) }
                 }
+                .onChange(of: settings.soundName) { _, _ in
+                    // 在设置中选择某个声音后立即试听一次（选「无」时不播放）。
+                    guard !settings.soundName.isEmpty else { return }
+                    NSSound(named: NSSound.Name(settings.soundName))?.play()
+                }
+                Picker(L10n.copySound, selection: $settings.copySoundName) {
+                    Text(L10n.soundNone).tag("")
+                    ForEach(AppSettings.soundNames, id: \.self) { Text($0).tag($0) }
+                }
+                .onChange(of: settings.copySoundName) { _, _ in
+                    // 在设置中选择某个声音后立即试听一次（选「无」时不播放）。
+                    guard !settings.copySoundName.isEmpty else { return }
+                    NSSound(named: NSSound.Name(settings.copySoundName))?.play()
+                }
                 Toggle(L10n.alwaysPastePlainText, isOn: $settings.alwaysPastePlainText)
             }
             Section(L10n.sectionHistory) {

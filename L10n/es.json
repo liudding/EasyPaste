@@ -180,6 +180,7 @@
   "settings.open_at_login": "Abrir al iniciar sesión",
   "settings.panel_position": "Posición del panel",
   "settings.paste_sound": "Sonido al pegar",
+  "settings.copy_sound": "Sonido al copiar",
   "settings.plain_text_paste_off": "Pegado de texto plano desactivado",
   "settings.plain_text_paste_on": "Pegado de texto plano activado",
   "settings.position_bottom": "Abajo",

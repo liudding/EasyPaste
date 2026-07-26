@@ -180,6 +180,7 @@
   "settings.open_at_login": "Abrir ao iniciar sessão",
   "settings.panel_position": "Posição do painel",
   "settings.paste_sound": "Som ao colar",
+  "settings.copy_sound": "Som ao copiar",
   "settings.plain_text_paste_off": "Colagem de texto simples desativada",
   "settings.plain_text_paste_on": "Colagem de texto simples ativada",
   "settings.position_bottom": "Embaixo",

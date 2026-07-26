@@ -180,6 +180,7 @@
   "settings.open_at_login": "로그인 시 열기",
   "settings.panel_position": "패널 위치",
   "settings.paste_sound": "붙여넣기 사운드",
+  "settings.copy_sound": "복사 사운드",
   "settings.plain_text_paste_off": "일반 텍스트 붙여넣기 꺼짐",
   "settings.plain_text_paste_on": "일반 텍스트 붙여넣기 켜짐",
   "settings.position_bottom": "하단",
