@@ -94,11 +94,11 @@ jobs:
             echo "❌ Binary not found at $BIN_PATH"
             exit 1
           fi
-          APP_BUNDLE="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-arm64.app"
+          APP_BUNDLE="$GITHUB_WORKSPACE/dist/$APP_NAME-arm64.app"
           rm -rf "$APP_BUNDLE"
           mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Frameworks" "$APP_BUNDLE/Contents/Resources"
-          cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/{{ env.APP_NAME }}"
-          chmod +x "$APP_BUNDLE/Contents/MacOS/{{ env.APP_NAME }}"
+          cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
+          chmod +x "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
           if [ -f "$GITHUB_WORKSPACE/Info.plist" ]; then
             cp "$GITHUB_WORKSPACE/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
           fi
@@ -109,7 +109,7 @@ jobs:
             cp -R "${{ env.SPARKLE_FRAMEWORK }}" "$APP_BUNDLE/Contents/Frameworks/"
             codesign --force --sign - "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework" 2>/dev/null || true
           fi
-          VERSION="${{ github.ref_name#v }}"
+          VERSION="${{ substring(github.ref_name, 1) }}"
           BUILD_NUM="${{ github.run_number }}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$BUILD_NUM" >> "$GITHUB_OUTPUT"
@@ -117,7 +117,7 @@ jobs:
       - name: Code Sign App (arm64)
         run: |
           set -euo pipefail
-          APP="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-arm64.app"
+          APP="$GITHUB_WORKSPACE/dist/$APP_NAME-arm64.app"
           codesign --force --sign - --timestamp=none "$APP"
           echo "✓ App signed with ad-hoc signature"
 
@@ -125,13 +125,13 @@ jobs:
         id: package
         run: |
           set -euo pipefail
-          APP="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-arm64.app"
-          VERSION="${{ github.ref_name#v }}"
-          DMG_FILE="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-${VERSION}-arm64.dmg"
+          APP="$GITHUB_WORKSPACE/dist/$APP_NAME-arm64.app"
+          VERSION="${{ substring(github.ref_name, 1) }}"
+          DMG_FILE="$GITHUB_WORKSPACE/dist/$APP_NAME-${VERSION}-arm64.dmg"
           STAGING="$GITHUB_WORKSPACE/staging"
           rm -rf "$STAGING"
           mkdir -p "$STAGING"
-          cp -R "$APP" "$STAGING/{{ env.APP_NAME }}.app"
+          cp -R "$APP" "$STAGING/$APP_NAME.app"
           ln -s /Applications "$STAGING/Applications"
           printf '%s\n' "安装方法：" "1. 将 EasyPaste.app 拖到 Applications 文件夹" "2. 首次打开如遇安全警告：" "  → 打开'系统设置 → 隐私与安全性'" "  → 点击'仍要打开'" "  或右键点击应用 → 打开" "" "更新方式：" "EasyPaste 支持自动检查更新。" "菜单栏 → 检查更新…" > "$STAGING/README.txt"
           hdiutil create -srcfolder "$STAGING" -volname "$APP_NAME" -fs HFS+ -format UDZO "$DMG_FILE"
@@ -143,7 +143,7 @@ jobs:
         id: version
         run: |
           set -euo pipefail
-          VERSION="${{ github.ref_name#v }}"
+          VERSION="${{ substring(github.ref_name, 1) }}"
           BUILD_NUM="${{ github.run_number }}"
           SIZE=$(stat -f%z "${{ steps.package.outputs.dmg_path }}")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -215,11 +215,11 @@ jobs:
             echo "❌ Binary not found at $BIN_PATH"
             exit 1
           fi
-          APP_BUNDLE="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-x86_64.app"
+          APP_BUNDLE="$GITHUB_WORKSPACE/dist/$APP_NAME-x86_64.app"
           rm -rf "$APP_BUNDLE"
           mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Frameworks" "$APP_BUNDLE/Contents/Resources"
-          cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/{{ env.APP_NAME }}"
-          chmod +x "$APP_BUNDLE/Contents/MacOS/{{ env.APP_NAME }}"
+          cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
+          chmod +x "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
           if [ -f "$GITHUB_WORKSPACE/Info.plist" ]; then
             cp "$GITHUB_WORKSPACE/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
           fi
@@ -230,7 +230,7 @@ jobs:
             cp -R "${{ env.SPARKLE_FRAMEWORK }}" "$APP_BUNDLE/Contents/Frameworks/"
             codesign --force --sign - "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework" 2>/dev/null || true
           fi
-          VERSION="${{ github.ref_name#v }}"
+          VERSION="${{ substring(github.ref_name, 1) }}"
           BUILD_NUM="${{ github.run_number }}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$BUILD_NUM" >> "$GITHUB_OUTPUT"
@@ -238,7 +238,7 @@ jobs:
       - name: Code Sign App (x86_64)
         run: |
           set -euo pipefail
-          APP="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-x86_64.app"
+          APP="$GITHUB_WORKSPACE/dist/$APP_NAME-x86_64.app"
           codesign --force --sign - --timestamp=none "$APP"
           echo "✓ App signed with ad-hoc signature"
 
@@ -246,13 +246,13 @@ jobs:
         id: package
         run: |
           set -euo pipefail
-          APP="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-x86_64.app"
-          VERSION="${{ github.ref_name#v }}"
-          DMG_FILE="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-${VERSION}-x86_64.dmg"
+          APP="$GITHUB_WORKSPACE/dist/$APP_NAME-x86_64.app"
+          VERSION="${{ substring(github.ref_name, 1) }}"
+          DMG_FILE="$GITHUB_WORKSPACE/dist/$APP_NAME-${VERSION}-x86_64.dmg"
           STAGING="$GITHUB_WORKSPACE/staging"
           rm -rf "$STAGING"
           mkdir -p "$STAGING"
-          cp -R "$APP" "$STAGING/{{ env.APP_NAME }}.app"
+          cp -R "$APP" "$STAGING/$APP_NAME.app"
           ln -s /Applications "$STAGING/Applications"
           printf '%s\n' "安装方法：" "1. 将 EasyPaste.app 拖到 Applications 文件夹" "2. 首次打开如遇安全警告：" "  → 打开'系统设置 → 隐私与安全性'" "  → 点击'仍要打开'" "  或右键点击应用 → 打开" "" "更新方式：" "EasyPaste 支持自动检查更新。" "菜单栏 → 检查更新…" > "$STAGING/README.txt"
           hdiutil create -srcfolder "$STAGING" -volname "$APP_NAME" -fs HFS+ -format UDZO "$DMG_FILE"
@@ -316,7 +316,6 @@ jobs:
             RELEASE_BODY=""
           fi
           RELEASE_BODY=$(echo "$RELEASE_BODY" | python3 -c 'import sys,html; c=sys.stdin.read();c=c.replace("\r\n","\n").replace("\r","\n");c=c.replace("\n","<br />\n");print(html.escape(c,quote=False))' 2>/dev/null || echo "")
-          ')
           PUB_DATE=$(date -u +"%a, %d %b %Y %H:%M:%S +0000")
           GH_BASE_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/"
           cat > appcast.xml << 'ENDOFCAST'
