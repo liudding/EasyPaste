@@ -1,7 +1,7 @@
 # ============================================================================
 # EasyPaste — GitHub Actions 自动打包发布（ad-hoc 签名版）
 #
-# 无需 Apple Developer 账号，使用 ad-hoc 签名 + 手动安装引导
+# 支持两种架构独立打包：arm64（Apple Silicon）和 x86_64（Intel）
 # 触发条件：创建 tag v* 时自动运行，或手动触发
 # ============================================================================
 
@@ -18,6 +18,15 @@ on:
         type: boolean
         default: true
         required: false
+      build_arch:
+        description: '构建架构（arm64 或 x86_64，空表示两者都构建）'
+        type: choice
+        options:
+          - ""
+          - arm64
+          - x86_64
+          - ""
+        default: ""
 
 permissions:
   contents: write   # 创建 Release 和上传资产
@@ -27,14 +36,13 @@ env:
   BUNDLE_ID: com.easypaste.app
 
 jobs:
-  # ──────────────────────────────────────────────
-  # Job 1: 构建 DMG 并上传到 Release
-  # ──────────────────────────────────────────────
-  build:
-    name: Build DMG
+  build-arm64:
+    name: Build DMG (arm64)
     runs-on: macos-15
+    if: inputs.build_arch == "" || inputs.build_arch == "arm64"
     outputs:
       version: ${{ steps.version.outputs.version }}
+      build: ${{ steps.version.outputs.build }}
       dmg_path: ${{ steps.package.outputs.dmg_path }}
     steps:
       - name: Checkout
@@ -43,21 +51,18 @@ jobs:
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '16.4'
+          xcode-version: "16.4"
 
       - name: Install dependencies
         run: |
           brew install create-dmg jq python3
 
-      # ── 下载 Sparkle.framework ──
       - name: Setup Sparkle
         run: |
           SPARKLE_VERSION="2.8.1"
           SPARKLE_DIR="$HOME/.cache/sparkle-${SPARKLE_VERSION}"
-          
           if [ ! -d "$SPARKLE_DIR" ]; then
-            curl -L "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" \
-              -o /tmp/sparkle.tar.xz
+            curl -L "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" -o /tmp/sparkle.tar.xz
             tar -xJf /tmp/sparkle.tar.xz -C /tmp/
             for dir in /tmp/Sparkle-*/Sparkle.framework /tmp/Sparkle*/bin/Sparkle.framework; do
               if [ -d "$dir" ]; then
@@ -67,214 +72,292 @@ jobs:
             done
             rm -f /tmp/sparkle.tar.xz
           fi
-          
           echo "SPARKLE_FRAMEWORK=$SPARKLE_DIR" >> "$GITHUB_ENV"
 
-      # ── 构建 SPM 项目 ──
-      - name: Build with Swift Package Manager
-        run: |
-          swift build -c release
-          echo "✓ SPM build completed"
-
-      # ── 组装 .app Bundle ──
-      - name: Assemble App Bundle
-        id: assemble
+      - name: Build arm64 Binary
         run: |
           set -euo pipefail
-          # swift build -c release 输出到 .build/release/，不是 debug 路径
-          BIN_PATH="$GITHUB_WORKSPACE/.build/release/$APP_NAME"
+          echo "=== Building EasyPaste for arm64 ==="
+          rm -rf .build/release
+          swift build -c release -Xswiftc -arch -Xswiftc arm64 --target EasyPaste
+          echo "✓ arm64 build completed"
+          if [ -f .build/release/EasyPaste ]; then
+            file .build/release/EasyPaste
+          fi
+
+      - name: Assemble App Bundle (arm64)
+        id: assemble-arm64
+        run: |
+          set -euo pipefail
+          BIN_PATH=".build/release/EasyPaste"
           if [ ! -f "$BIN_PATH" ]; then
             echo "❌ Binary not found at $BIN_PATH"
-            echo "Available binaries:"
-            find "$GITHUB_WORKSPACE/.build" -name "$APP_NAME" -type f 2>/dev/null || true
             exit 1
           fi
-          APP_BUNDLE="$GITHUB_WORKSPACE/dist/$APP_NAME.app"
-          
+          APP_BUNDLE="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-arm64.app"
           rm -rf "$APP_BUNDLE"
-          mkdir -p "$APP_BUNDLE/Contents/MacOS"
-          mkdir -p "$APP_BUNDLE/Contents/Frameworks"
-          mkdir -p "$APP_BUNDLE/Contents/Resources"
-          
-          cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
-          chmod +x "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
-          
-          # 拷贝 Info.plist（含 CFBundleIconFile、CFBundleShortVersionString 等）
+          mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Frameworks" "$APP_BUNDLE/Contents/Resources"
+          cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/{{ env.APP_NAME }}"
+          chmod +x "$APP_BUNDLE/Contents/MacOS/{{ env.APP_NAME }}"
           if [ -f "$GITHUB_WORKSPACE/Info.plist" ]; then
             cp "$GITHUB_WORKSPACE/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
-            echo "✓ Info.plist copied"
           fi
-          
-          # 拷贝 AppIcon.icns
           if [ -f "$GITHUB_WORKSPACE/AppIcon.icns" ]; then
             cp "$GITHUB_WORKSPACE/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/"
-            echo "✓ AppIcon.icns copied"
-          else
-            echo "⚠️  AppIcon.icns not found — app will show generic icon"
           fi
-          
-          # 拷贝 Sparkle.framework
           if [ -d "${{ env.SPARKLE_FRAMEWORK }}" ]; then
             cp -R "${{ env.SPARKLE_FRAMEWORK }}" "$APP_BUNDLE/Contents/Frameworks/"
-            
-            # 重新签名 Sparkle 嵌套组件（ad-hoc 签名）
-            SPARKLE_FW="$APP_BUNDLE/Contents/Frameworks/Sparkle.framework"
-            find "$SPARKLE_FW" -type f -name "*.dylib" -exec codesign --force \
-              --sign - {} \; 2>/dev/null || true
-            codesign --force --sign - "$SPARKLE_FW" 2>/dev/null || true
-            
-            echo "✓ Sparkle.framework copied and signed"
+            codesign --force --sign - "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework" 2>/dev/null || true
           fi
-          
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ github.ref_name#v }}"
           BUILD_NUM="${{ github.run_number }}"
-          
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$BUILD_NUM" >> "$GITHUB_OUTPUT"
 
-      # ── ad-hoc 代码签名 ──
-      - name: Code Sign App
+      - name: Code Sign App (arm64)
         run: |
           set -euo pipefail
-          APP="$GITHUB_WORKSPACE/dist/$APP_NAME.app"
-          
-          # ad-hoc 签名（免费，无需 Developer ID）
+          APP="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-arm64.app"
           codesign --force --sign - --timestamp=none "$APP"
-          
           echo "✓ App signed with ad-hoc signature"
 
-      # ── 创建 DMG ──
-      - name: Create DMG
+      - name: Create DMG (arm64)
         id: package
         run: |
           set -euo pipefail
-          APP="$GITHUB_WORKSPACE/dist/$APP_NAME.app"
-          VERSION="${GITHUB_REF_NAME#v}"
-          DMG_FILE="$GITHUB_WORKSPACE/dist/${APP_NAME}-${VERSION}.dmg"
-          
-          # 准备 staging 目录
+          APP="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-arm64.app"
+          VERSION="${{ github.ref_name#v }}"
+          DMG_FILE="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-${VERSION}-arm64.dmg"
           STAGING="$GITHUB_WORKSPACE/staging"
           rm -rf "$STAGING"
           mkdir -p "$STAGING"
-          cp -R "$APP" "$STAGING/$APP_NAME.app"
+          cp -R "$APP" "$STAGING/{{ env.APP_NAME }}.app"
           ln -s /Applications "$STAGING/Applications"
-          
-          # 添加安装说明文件
-          printf '%s\n' \
-            "安装方法：" \
-            "1. 将 EasyPaste.app 拖到 Applications 文件夹" \
-            "2. 首次打开如遇安全警告：" \
-            "   → 打开'系统设置 → 隐私与安全性'" \
-            "   → 点击'仍要打开'" \
-            "   或右键点击应用 → 打开" \
-            "" \
-            "更新方式：" \
-            "EasyPaste 支持自动检查更新。" \
-            "菜单栏 → 检查更新…" \
-            > "$STAGING/README.txt"
-
-          # 创建 DMG
-          hdiutil create -srcfolder "$STAGING" -volname "$APP_NAME" \
-            -fs HFS+ -format UDZO \
-            "$DMG_FILE"
-          
+          printf '%s\n' "安装方法：" "1. 将 EasyPaste.app 拖到 Applications 文件夹" "2. 首次打开如遇安全警告：" "  → 打开'系统设置 → 隐私与安全性'" "  → 点击'仍要打开'" "  或右键点击应用 → 打开" "" "更新方式：" "EasyPaste 支持自动检查更新。" "菜单栏 → 检查更新…" > "$STAGING/README.txt"
+          hdiutil create -srcfolder "$STAGING" -volname "$APP_NAME" -fs HFS+ -format UDZO "$DMG_FILE"
           rm -rf "$STAGING"
-          
           echo "dmg_path=$DMG_FILE" >> "$GITHUB_OUTPUT"
           echo "✓ DMG created: $DMG_FILE"
 
-      # ── 提取版本信息 ──
-      - name: Extract version
+      - name: Extract version (arm64)
         id: version
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ github.ref_name#v }}"
           BUILD_NUM="${{ github.run_number }}"
           SIZE=$(stat -f%z "${{ steps.package.outputs.dmg_path }}")
-          
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$BUILD_NUM" >> "$GITHUB_OUTPUT"
           echo "size=$SIZE" >> "$GITHUB_OUTPUT"
 
-      # ── 上传 DMG 到 Release ──
-      - name: Upload Release Asset
+      - name: Upload Release Asset (DMG-arm64)
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.package.outputs.dmg_path }}
-          body: "Release ${{ github.ref_name }}"
-          draft: false
-          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── 生成 appcast.xml ──
-      - name: Generate appcast.xml
+  build-x86_64:
+    name: Build DMG (x86_64)
+    runs-on: macos-15
+    if: inputs.build_arch == "" || inputs.build_arch == "x86_64"
+    needs: [build-arm64]
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      build: ${{ steps.version.outputs.build }}
+      dmg_path: ${{ steps.package.outputs.dmg_path }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16.4"
+
+      - name: Install dependencies
+        run: |
+          brew install create-dmg jq python3
+
+      - name: Setup Sparkle
+        run: |
+          SPARKLE_VERSION="2.8.1"
+          SPARKLE_DIR="$HOME/.cache/sparkle-${SPARKLE_VERSION}"
+          if [ ! -d "$SPARKLE_DIR" ]; then
+            curl -L "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" -o /tmp/sparkle.tar.xz
+            tar -xJf /tmp/sparkle.tar.xz -C /tmp/
+            for dir in /tmp/Sparkle-*/Sparkle.framework /tmp/Sparkle*/bin/Sparkle.framework; do
+              if [ -d "$dir" ]; then
+                cp -R "$dir" "$SPARKLE_DIR"
+                break
+              fi
+            done
+            rm -f /tmp/sparkle.tar.xz
+          fi
+          echo "SPARKLE_FRAMEWORK=$SPARKLE_DIR" >> "$GITHUB_ENV"
+
+      - name: Build x86_64 Binary
         run: |
           set -euo pipefail
-          VERSION="${{ steps.version.outputs.version }}"
-          BUILD="${{ steps.version.outputs.build }}"
-          SIZE="${{ steps.version.outputs.size }}"
-          DMG_FILE="${{ env.APP_NAME }}-${VERSION}.dmg"
-          DMG_URL="https://github.com/liudding/EasyPaste/releases/download/${GITHUB_REF_NAME}/${DMG_FILE}"
-          
-          # 获取 Release body 作为 release notes
-          python3 << 'PYEOF'
-          import json, os, html
-          from datetime import datetime, timezone
-          
-          event = json.loads(open(os.environ["GITHUB_EVENT_PATH"]).read())
-          release = event.get("release", {})
-          raw_notes = release.get("body", "") or ""
-          
-          release_notes = html.escape(raw_notes, quote=False)
-          release_notes = release_notes.replace("\r\n", "\n").replace("\r", "\n")
-          release_notes = release_notes.replace("\n", "<br />\n")
-          
-          version = os.environ["VERSION"]
-          build = os.environ["BUILD"]
-          size = os.environ["SIZE"]
-          dmg_url = os.environ["DMG_URL"]
-          pub_date = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
-          
-          appcast = f"""<?xml version="1.0" encoding="utf-8"?>
-          <rss version="2.0" xmlns:sparkle="https://sparkle-project.org/schema/sparkle" xmlns:dc="https://purl.org/dc/elements/1.1/">
-            <channel>
-              <title>{html.escape(os.environ["APP_NAME"])} Updates</title>
-              <link>https://liudding.github.io/easypaste-updates/</link>
-              <description>Latest updates for {html.escape(os.environ["APP_NAME"])}</description>
-              <item>
-                <title>Version {html.escape(version)}</title>
-                <description><![CDATA[{release_notes}]]></description>
-                <pubDate>{pub_date}</pubDate>
-                <enclosure url="{dmg_url}"
-                           sparkle:version="{build}"
-                           sparkle:shortVersionString="{html.escape(version)}"
-                           length="{size}"
-                           type="application/octet-stream" />
-              </item>
-            </channel>
-          </rss>"""
-          
-          with open("appcast.xml", "w", encoding="utf-8") as f:
-              f.write(appcast)
-          print("✓ appcast.xml generated")
-          PYEOF
-        env:
-          APP_NAME: ${{ env.APP_NAME }}
-          VERSION: ${{ steps.version.outputs.version }}
-          BUILD: ${{ steps.version.outputs.build }}
-          SIZE: ${{ steps.version.outputs.size }}
-          DMG_URL: "https://github.com/liudding/EasyPaste/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.version.outputs.version }}.dmg"
+          echo "=== Building EasyPaste for x86_64 ==="
+          rm -rf .build/release
+          arch -x86_64 swift build -c release -Xswiftc -arch -Xswiftc x86_64 --target EasyPaste
+          echo "✓ x86_64 build completed"
+          if [ -f .build/release/EasyPaste ]; then
+            file .build/release/EasyPaste
+          fi
 
-      # ── 上传 appcast.xml 到 GitHub Release ──
-      - name: Upload appcast.xml to GitHub Release
+      - name: Assemble App Bundle (x86_64)
+        id: assemble-x86_64
+        run: |
+          set -euo pipefail
+          BIN_PATH=".build/release/EasyPaste"
+          if [ ! -f "$BIN_PATH" ]; then
+            echo "❌ Binary not found at $BIN_PATH"
+            exit 1
+          fi
+          APP_BUNDLE="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-x86_64.app"
+          rm -rf "$APP_BUNDLE"
+          mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Frameworks" "$APP_BUNDLE/Contents/Resources"
+          cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/{{ env.APP_NAME }}"
+          chmod +x "$APP_BUNDLE/Contents/MacOS/{{ env.APP_NAME }}"
+          if [ -f "$GITHUB_WORKSPACE/Info.plist" ]; then
+            cp "$GITHUB_WORKSPACE/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
+          fi
+          if [ -f "$GITHUB_WORKSPACE/AppIcon.icns" ]; then
+            cp "$GITHUB_WORKSPACE/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/"
+          fi
+          if [ -d "${{ env.SPARKLE_FRAMEWORK }}" ]; then
+            cp -R "${{ env.SPARKLE_FRAMEWORK }}" "$APP_BUNDLE/Contents/Frameworks/"
+            codesign --force --sign - "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework" 2>/dev/null || true
+          fi
+          VERSION="${{ github.ref_name#v }}"
+          BUILD_NUM="${{ github.run_number }}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD_NUM" >> "$GITHUB_OUTPUT"
+
+      - name: Code Sign App (x86_64)
+        run: |
+          set -euo pipefail
+          APP="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-x86_64.app"
+          codesign --force --sign - --timestamp=none "$APP"
+          echo "✓ App signed with ad-hoc signature"
+
+      - name: Create DMG (x86_64)
+        id: package
+        run: |
+          set -euo pipefail
+          APP="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-x86_64.app"
+          VERSION="${{ github.ref_name#v }}"
+          DMG_FILE="$GITHUB_WORKSPACE/dist/${{ env.APP_NAME }}-${VERSION}-x86_64.dmg"
+          STAGING="$GITHUB_WORKSPACE/staging"
+          rm -rf "$STAGING"
+          mkdir -p "$STAGING"
+          cp -R "$APP" "$STAGING/{{ env.APP_NAME }}.app"
+          ln -s /Applications "$STAGING/Applications"
+          printf '%s\n' "安装方法：" "1. 将 EasyPaste.app 拖到 Applications 文件夹" "2. 首次打开如遇安全警告：" "  → 打开'系统设置 → 隐私与安全性'" "  → 点击'仍要打开'" "  或右键点击应用 → 打开" "" "更新方式：" "EasyPaste 支持自动检查更新。" "菜单栏 → 检查更新…" > "$STAGING/README.txt"
+          hdiutil create -srcfolder "$STAGING" -volname "$APP_NAME" -fs HFS+ -format UDZO "$DMG_FILE"
+          rm -rf "$STAGING"
+          echo "dmg_path=$DMG_FILE" >> "$GITHUB_OUTPUT"
+          echo "✓ DMG created: $DMG_FILE"
+
+      - name: Extract version (x86_64)
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.build-arm64.outputs.version }}"
+          BUILD_NUM="${{ needs.build-arm64.outputs.build }}"
+          SIZE=$(stat -f%z "${{ steps.package.outputs.dmg_path }}")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD_NUM" >> "$GITHUB_OUTPUT"
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Release Asset (DMG-x86_64)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.package.outputs.dmg_path }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  generate-appcast:
+    name: Generate appcast.xml
+    runs-on: macos-15
+    needs: [build-arm64, build-x86_64]
+    if: needs.build-arm64.result == "success" && (needs.build-x86_64.result == "success" || needs.build-x86_64.result == "skipped")
+    outputs:
+      appcast_path: ${{ steps.generate.outputs.appcast_path }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install jq python3
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: EasyPaste-*-arm64.dmg
+          path: dist/
+          name: EasyPaste-*-x86_64.dmg
+          path: dist/
+
+      - name: Generate appcast.xml with both architectures
+        id: generate
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.build-arm64.outputs.version }}"
+          BUILD_ARM64="${{ needs.build-arm64.outputs.build }}"
+          SIZE_ARM64="${{ needs.build-arm64.outputs.size }}"
+          BUILD_X86_64="${{ needs.build-x86_64.outputs.build }}"
+          SIZE_X86_64="${{ needs.build-x86_64.outputs.size }}"
+          EVENT_FILE="${{ github.event_path }}"
+          if [ -f "$EVENT_FILE" ]; then
+            RELEASE_BODY=$(jq -r '.release.body // ""' "$EVENT_FILE")
+          else
+            RELEASE_BODY=""
+          fi
+          RELEASE_BODY=$(echo "$RELEASE_BODY" | python3 -c 'import sys,html; c=sys.stdin.read();c=c.replace("\r\n","\n").replace("\r","\n");c=c.replace("\n","<br />\n");print(html.escape(c,quote=False))' 2>/dev/null || echo "")
+          ')
+          PUB_DATE=$(date -u +"%a, %d %b %Y %H:%M:%S +0000")
+          GH_BASE_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/"
+          cat > appcast.xml << 'ENDOFCAST'
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="https://sparkle-project.org/schema/sparkle" xmlns:dc="https://purl.org/dc/elements/1.1/">
+          <channel>
+          <title>EasyPaste</title>
+          <link>https://github.com/${{ github.repository }}</link>
+          <description>Latest updates for EasyPaste</description>
+          <item>
+          <title>Version ${VERSION} (arm64)</title>
+          <description><![CDATA[${RELEASE_BODY}]]></description>
+          <pubDate>${PUB_DATE}</pubDate>
+          <enclosure url="${GH_BASE_URL}EasyPaste-${VERSION}-arm64.dmg"
+          sparkle:version="${BUILD_ARM64}"
+          sparkle:shortVersionString="${VERSION}"
+          length="${SIZE_ARM64}"
+          type="application/octet-stream" />
+          <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+          </item>
+          <item>
+          <title>Version ${VERSION} (x86_64)</title>
+          <description><![CDATA[${RELEASE_BODY}]]></description>
+          <pubDate>${PUB_DATE}</pubDate>
+          <enclosure url="${GH_BASE_URL}EasyPaste-${VERSION}-x86_64.dmg"
+          sparkle:version="${BUILD_X86_64}"
+          sparkle:shortVersionString="${VERSION}"
+          length="${SIZE_X86_64}"
+          type="application/octet-stream" />
+          <sparkle:minimumSystemVersion>10.15</sparkle:minimumSystemVersion>
+          </item>
+          </channel>
+          </rss>
+          ENDOFCAST
+          echo "✓ appcast.xml generated with both architectures"
+          echo "Contents:"
+          cat appcast.xml
+          echo "appcast_path=$(pwd)/appcast.xml" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Release Asset (appcast.xml)
         uses: softprops/action-gh-release@v2
         with:
           files: appcast.xml
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      # ── 部署 appcast 到 GitHub Pages ──
-      # - name: Deploy to GitHub Pages
-      #   uses: peaceiris/actions-gh-pages@v4
-      #   with:
-      #     github_token: ${{ secrets.GITHUB_TOKEN }}
-      #     publish_dir: ./
-      #     keep_files: true
