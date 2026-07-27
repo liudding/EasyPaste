@@ -179,15 +179,43 @@ final class PanelController: NSObject, NSWindowDelegate {
         }
     }
 
+    /// 计算面板滑入/滑出动画的「屏外起点」。
+    ///
+    /// 单屏、或弹出方向那一侧本就没有相邻屏（例如最上方屏从顶部弹出、最下方屏从底部弹出）时，
+    /// 理想起点沿弹出方向移动整整一个面板尺寸 + gap，面板完全在屏外，滑入效果最佳。
+    ///
+    /// 多屏且相邻屏紧贴弹出边缘时（例如 B 在 A 上方、B 为当前屏却从底部弹出；或 A 为当前屏却从顶部弹出），
+    /// 理想起点会落在「另一块屏」上而非屏外，导致面板先在错误屏幕上出现再滑入。
+    /// 此时把起点夹到 active 屏边缘之外一点（仅 gap 距离），使其直接从 active 屏的边缘进入。
     private func offscreenFrame(for frame: NSRect) -> NSRect {
-        var off = frame
+        let active = NSScreen.screens.first(where: { $0.frame.contains(frame) }) ?? currentScreen()
+        let gap: CGFloat = 40
+
+        // 理想起点：沿弹出方向移动整整一个面板尺寸 + gap，单屏时面板完全在屏外。
+        var ideal = frame
         switch settings.panelPosition {
-        case .bottom: off.origin.y = frame.minY - frame.height - 40
-        case .top: off.origin.y = frame.maxY + 40
-        case .left: off.origin.x = frame.minX - frame.width - 40
-        case .right: off.origin.x = frame.maxX + 40
+        case .bottom: ideal.origin.y = frame.minY - frame.height - gap
+        case .top:    ideal.origin.y = frame.maxY + gap
+        case .left:   ideal.origin.x = frame.minX - frame.width - gap
+        case .right:  ideal.origin.x = frame.maxX + gap
         }
-        return off
+
+        // 理想起点是否落在「另一块屏」上（而非真正的屏外）。
+        // 用面板中心点判断：若中心落在与 active 不同的屏内，说明被相邻屏占据了屏外空间。
+        let idealCenter = CGPoint(x: ideal.midX, y: ideal.midY)
+        let idealScreen = NSScreen.screens.first(where: { $0.frame.contains(idealCenter) })
+        if let idealScreen, idealScreen != active {
+            // 夹到 active 屏弹出边缘之外一点点，直接从 active 屏边缘进入。
+            var clamped = frame
+            switch settings.panelPosition {
+            case .bottom: clamped.origin.y = active.frame.minY - gap
+            case .top:    clamped.origin.y = active.frame.maxY + gap - frame.height
+            case .left:   clamped.origin.x = active.frame.minX - gap - frame.width
+            case .right:  clamped.origin.x = active.frame.maxX + gap
+            }
+            return clamped
+        }
+        return ideal
     }
 
     private func makePanel() -> KeyPanel {
