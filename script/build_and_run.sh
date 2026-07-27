@@ -43,7 +43,20 @@ chmod +x "$APP_BINARY"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 cp "$ROOT_DIR/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/"
 
+# ── Read metadata from canonical Info.plist (version + Sparkle config) ──
+PLIST_SRC="$ROOT_DIR/Info.plist"
+read_plist() { /usr/libexec/PlistBuddy -c "Print :$1" "$PLIST_SRC" 2>/dev/null || true; }
+APP_VERSION=$(read_plist CFBundleShortVersionString)
+APP_BUILD=$(read_plist CFBundleVersion)
+SPARKLE_ED_KEY=$(read_plist SUPublicEDKey)
+SPARKLE_FEED=$(read_plist SUFeedURL)
+SPARKLE_AUTO=$(read_plist SUEnableAutomaticChecks)
+
 # ── Generate Info.plist ──
+# 必须包含 CFBundleShortVersionString / CFBundleVersion，否则：
+#   1) 设置里“当前版本”显示 Unknown；
+#   2) Sparkle 无法读取本机版本，更新检查直接失败（点击“检查更新”没反应）。
+# 同时透传仓库 Info.plist 中的 Sparkle 配置（SUPublicEDKey 等）。
 cat >"$APP_BUNDLE/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -55,6 +68,13 @@ cat >"$APP_BUNDLE/Contents/Info.plist" <<PLIST
     <key>LSMinimumSystemVersion</key><string>15.0</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>NSPrincipalClass</key><string>NSApplication</string>
+    <key>CFBundleShortVersionString</key><string>${APP_VERSION:-0.0.0}</string>
+    <key>CFBundleVersion</key><string>${APP_BUILD:-1}</string>
+PLIST
+[ -n "$SPARKLE_ED_KEY" ] && printf '    <key>SUPublicEDKey</key><string>%s</string>\n' "$SPARKLE_ED_KEY" >>"$APP_BUNDLE/Contents/Info.plist"
+[ -n "$SPARKLE_FEED" ] && printf '    <key>SUFeedURL</key><string>%s</string>\n' "$SPARKLE_FEED" >>"$APP_BUNDLE/Contents/Info.plist"
+[ -n "$SPARKLE_AUTO" ] && printf '    <key>SUEnableAutomaticChecks</key><string>%s</string>\n' "$SPARKLE_AUTO" >>"$APP_BUNDLE/Contents/Info.plist"
+cat >>"$APP_BUNDLE/Contents/Info.plist" <<PLIST
 </dict></plist>
 PLIST
 

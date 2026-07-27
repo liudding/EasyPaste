@@ -118,6 +118,15 @@ final class AppServices {
             self?.panel?.reposition()
         }
 
+        // 用户发起「检查更新」或自动检查发现可用版本时，打开「设置 → 更新」分区，
+        // 以便内联展示检查 / 下载进度（替代 Sparkle 原生独立窗口）。
+        NotificationCenter.default.addObserver(
+            forName: .revealUpdatesTab, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.openSettingsWindow()
+            SettingsNavigation.shared.pendingSection = .updates
+        }
+
         registerShortcut()
 
         // 首次启动时展示引导（延迟以确保窗口已完全就绪）
@@ -151,8 +160,10 @@ final class AppServices {
         NSApp.activate(ignoringOtherApps: true)
 
         let window: NSWindow
+        let isNewWindow: Bool
         if let wc = settingsWC, let existing = wc.window {
             window = existing
+            isNewWindow = false
         } else {
             let root = SettingsView(
                 settings: settings,
@@ -173,25 +184,30 @@ final class AppServices {
             window.isReleasedWhenClosed = false
             window.contentMinSize = NSSize(width: 680, height: 460)
             settingsWC = NSWindowController(window: window)
+            isNewWindow = true
         }
 
-        // 定位屏幕：优先用调用方传入的（面板所在屏），否则用鼠标所在屏，再退主屏。
-        // 从面板「设置…」唤起时传的是面板 screen，所以设置窗口一定落在面板所在屏幕。
-        let targetScreen: NSScreen
-        if let s = screen {
-            targetScreen = s
-        } else {
-            let mouse = NSEvent.mouseLocation
-            targetScreen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) })
-                ?? NSScreen.main
-                ?? NSScreen.screens.first
-                ?? NSScreen()
+        // 仅在首次创建时定位（居中）。若窗口已存在（用户已拖到别处），不强行改位置，
+        // 否则每次「检查更新」触发 reveal 会把窗口拽回屏幕中央。
+        if isNewWindow {
+            // 定位屏幕：优先用调用方传入的（面板所在屏），否则用鼠标所在屏，再退主屏。
+            // 从面板「设置…」唤起时传的是面板 screen，所以设置窗口一定落在面板所在屏幕。
+            let targetScreen: NSScreen
+            if let s = screen {
+                targetScreen = s
+            } else {
+                let mouse = NSEvent.mouseLocation
+                targetScreen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) })
+                    ?? NSScreen.main
+                    ?? NSScreen.screens.first
+                    ?? NSScreen()
+            }
+            let size = NSSize(width: 780, height: 540)
+            var frame = NSRect(origin: .zero, size: size)
+            frame.origin.x = targetScreen.visibleFrame.midX - size.width / 2
+            frame.origin.y = targetScreen.visibleFrame.midY - size.height / 2
+            window.setFrame(frame, display: true)
         }
-        let size = NSSize(width: 780, height: 540)
-        var frame = NSRect(origin: .zero, size: size)
-        frame.origin.x = targetScreen.visibleFrame.midX - size.width / 2
-        frame.origin.y = targetScreen.visibleFrame.midY - size.height / 2
-        window.setFrame(frame, display: true)
 
         settingsWC?.showWindow(nil)
         window.makeKeyAndOrderFront(nil)
@@ -215,7 +231,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // 初始化 Sparkle 更新服务（在 AppKit 启动阶段）
-        _ = SparkleBridge.shared
+        SparkleBridge.shared.start()
         services?.boot()
     }
 

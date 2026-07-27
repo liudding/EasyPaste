@@ -176,6 +176,19 @@ enum L10n {
     static var updateConfigSection: String { tr("settings.update_config_section") }
     static var updateConfigText: String { tr("settings.update_config_text") }
 
+    // MARK: - Settings Updates (inline status)
+
+    static var checkingForUpdates: String { tr("settings.checking_for_updates") }
+    static var upToDate: String { tr("settings.up_to_date") }
+    static var updateAvailable: String { tr("settings.update_available") }
+    static var updateNow: String { tr("settings.update_now") }
+    static var skipThisVersion: String { tr("settings.skip_this_version") }
+    static var remindLater: String { tr("settings.remind_later") }
+    static var downloadingUpdate: String { tr("settings.downloading_update") }
+    static var installingUpdate: String { tr("settings.installing_update") }
+    static var updateError: String { tr("settings.update_error") }
+    static var ok: String { tr("settings.ok") }
+
     // MARK: - Panel Header
 
     static var clipboardTitle: String { tr("panel.clipboard_title") }

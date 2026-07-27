@@ -14,16 +14,6 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>0.1.2</string>
-	<key>CFBundleVersion</key>
-	<string>1</string>
-	<key>LSMinimumSystemVersion</key>
-	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>en</string>
@@ -37,6 +27,16 @@
 		<string>ru</string>
 		<string>de</string>
 	</array>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.2</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>NSAccessibilityUsageDescription</key>
 	<string>EasyPaste needs accessibility permission to simulate keyboard paste, allowing clipboard content to be pasted into the target application.</string>
 	<key>NSHumanReadableCopyright</key>
@@ -57,5 +57,7 @@
 			</dict>
 		</dict>
 	</array>
+	<key>SUPublicEDKey</key>
+	<string>jlED6oIY6bkrmxl4bLOhAKU5hacnHckznYYgYNLBilU=</string>
 </dict>
 </plist>
