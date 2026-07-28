@@ -123,22 +123,30 @@ final class AppServices {
         NotificationCenter.default.addObserver(
             forName: .revealUpdatesTab, object: nil, queue: .main
         ) { [weak self] _ in
-            self?.openSettingsWindow()
-            SettingsNavigation.shared.pendingSection = .updates
+            // queue: .main 只保证在主线程执行，不会让闭包获得 @MainActor 隔离；
+            // 这里显式 assumeIsolated 以便同步调用 @MainActor 成员（AppServices / SettingsNavigation）。
+            MainActor.assumeIsolated {
+                self?.openSettingsWindow()
+                SettingsNavigation.shared.pendingSection = .updates
+            }
         }
 
         // 快捷键录制期间挂起全局热键，防止 Carbon 层面提前触发。
         NotificationCenter.default.addObserver(
             forName: .shortcutRecorderDidStart, object: nil, queue: .main
         ) { [weak self] _ in
-            self?.shortcut.unregister()
+            MainActor.assumeIsolated {
+                self?.shortcut.unregister()
+            }
         }
 
         // 快捷键录制结束后恢复全局热键。
         NotificationCenter.default.addObserver(
             forName: .shortcutRecorderDidStop, object: nil, queue: .main
         ) { [weak self] _ in
-            self?.registerShortcut()
+            MainActor.assumeIsolated {
+                self?.registerShortcut()
+            }
         }
 
         registerShortcut()
