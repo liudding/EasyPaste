@@ -19,7 +19,8 @@ final class SparkleUIState: ObservableObject {
         case checking
         case updateAvailable(version: String)
         case downloading(Double)   // 0...1
-        case installing
+        case downloaded            // DMG 已下载，等待用户「重启并安装」
+        case installing            // 已退出、等待新实例接管
     }
 
     @Published var phase: Phase = .idle
@@ -31,7 +32,10 @@ final class SparkleUIState: ObservableObject {
     @Published var resultMessage: String?
 
     /// 当展示「有可用更新」时，由 user driver 注入的用户操作回调。
+    /// `install` = 开始下载 DMG（PasteMemo 风格：下载后再挂载复制，不再走 Sparkle 安装）。
+    /// `restartAndInstall` = DMG 下载完成后，执行「挂载 → 复制 → 重启 App」。
     var install: (() -> Void)?
+    var restartAndInstall: (() -> Void)?
     var skip: (() -> Void)?
     var dismiss: (() -> Void)?
 
@@ -39,6 +43,7 @@ final class SparkleUIState: ObservableObject {
     func reset() {
         phase = .idle
         install = nil
+        restartAndInstall = nil
         skip = nil
         dismiss = nil
     }
@@ -62,9 +67,6 @@ import Sparkle
 @MainActor
 final class UpdateUserDriver: NSObject, SPUUserDriver {
     private weak var state: SparkleUIState?
-
-    private var expectedLength: UInt64 = 0
-    private var receivedLength: UInt64 = 0
 
     init(state: SparkleUIState) {
         self.state = state
@@ -92,7 +94,18 @@ final class UpdateUserDriver: NSObject, SPUUserDriver {
                          reply: @escaping (SPUUserUpdateChoice) -> Void) {
         let version = appcastItem.displayVersionString
         self.state?.phase = .updateAvailable(version: version)
-        self.state?.install = { reply(.install) }
+
+        // enclosure 指向的 .dmg 地址（AppCast 只用于「检查更新」，安装我们自己来）。
+        let downloadURL = appcastItem.fileURL
+
+        self.state?.install = { [weak self] in
+            guard let self else { return }
+            // 释放 Sparkle 的更新会话：我们不再走 Sparkle 的「下载 → 安装」，
+            // 而是自己下载 DMG 后用「挂载 → 复制 → 重启」安装（PasteMemo 风格）。
+            reply(.dismiss)
+            self.state?.reset()
+            self.beginLocalDownload(downloadURL: downloadURL)
+        }
         self.state?.skip = {
             reply(.skip)
             self.state?.reset()
@@ -103,6 +116,33 @@ final class UpdateUserDriver: NSObject, SPUUserDriver {
         }
         // 确保「设置 → 更新」内联卡片可见（用户才能点击安装 / 跳过）。
         NotificationCenter.default.post(name: .revealUpdatesTab, object: nil)
+    }
+
+    // MARK: 本地下载 + 安装（替代 Sparkle 自带安装）
+
+    private func beginLocalDownload(downloadURL: URL?) {
+        guard let downloadURL else {
+            self.state?.errorMessage = L10n.updateDownloadFailed
+            return
+        }
+        let installer = AppcastInstaller.shared
+        self.state?.phase = .downloading(0)
+        installer.download(downloadURL) { [weak self] result in
+            guard let self else { return }
+            Task { @MainActor in
+                switch result {
+                case .success:
+                    // 下载完成：展示「重启并安装」按钮，由用户确认后再替换 + 重启。
+                    self.state?.phase = .downloaded
+                    self.state?.restartAndInstall = {
+                        AppcastInstaller.shared.installAndRestart()
+                    }
+                case .failure(let error):
+                    self.state?.reset()
+                    self.state?.errorMessage = error.localizedDescription
+                }
+            }
+        }
     }
 
     func showUpdateReleaseNotes(with downloadData: SPUDownloadData) {
@@ -129,46 +169,38 @@ final class UpdateUserDriver: NSObject, SPUUserDriver {
         state?.errorMessage = error.localizedDescription
     }
 
-    // MARK: 下载进度
+    // MARK: 下载进度（已由 AppcastInstaller 接管，这里忽略 Sparkle 自带的下载事件）
 
     func showDownloadInitiated(cancellation: @escaping () -> Void) {
-        expectedLength = 0
-        receivedLength = 0
-        state?.phase = .downloading(0)
+        // 本地下载由 AppcastInstaller 驱动，忽略 Sparkle 的下载回调。
     }
 
     func showDownloadDidReceiveExpectedContentLength(_ expectedContentLength: UInt64) {
-        expectedLength = expectedContentLength
+        // 忽略。
     }
 
     func showDownloadDidReceiveData(ofLength length: UInt64) {
-        receivedLength += length
-        let progress = expectedLength > 0 ? min(1.0, Double(receivedLength) / Double(expectedLength)) : 0
-        state?.phase = .downloading(progress)
+        // 忽略。
     }
 
     func showDownloadDidStartExtractingUpdate() {
-        state?.phase = .installing
+        // 忽略。
     }
 
     func showExtractionReceivedProgress(_ progress: Double) {
-        // 解压阶段，保持「正在安装」状态即可。
+        // 忽略。
     }
 
-    // MARK: 安装
+    // MARK: 安装（已由 AppcastInstaller.installAndRestart 接管）
 
     func showReady(toInstallAndRelaunch reply: @escaping (SPUUserUpdateChoice) -> Void) {
-        // 用户已在上一步选择安装，这里自动确认「安装并重启」，保持无感知体验。
-        reply(.install)
+        // 安装不再走 Sparkle：直接放行，避免 Sparkle 尝试下载/替换自身而失败。
+        reply(.dismiss)
     }
 
     func showInstallingUpdate(withApplicationTerminated applicationTerminated: Bool,
                               retryTerminatingApplication: @escaping () -> Void) {
-        state?.phase = .installing
-        if !applicationTerminated {
-            // 帮助 Sparkle 终止当前应用以完成替换。
-            retryTerminatingApplication()
-        }
+        // 忽略：真正的重启由 AppcastInstaller 完成。
     }
 
     func showUpdateInstalledAndRelaunched(_ relaunched: Bool) async {
@@ -176,6 +208,11 @@ final class UpdateUserDriver: NSObject, SPUUserDriver {
     }
 
     func dismissUpdateInstallation() {
+        // 若已转入本地下载 / 安装流程（PasteMemo 风格），不要清掉进度 UI，
+        // 否则 Sparkle 结束更新会话时会把「下载中」卡片误清掉。
+        if case .downloading = state?.phase { return }
+        if case .downloaded = state?.phase { return }
+        if case .installing = state?.phase { return }
         // 仅清瞬态 UI；终态的 errorMessage / resultMessage 保留（由用户关闭后才清除）。
         state?.reset()
     }

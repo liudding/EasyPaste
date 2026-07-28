@@ -185,8 +185,12 @@ enum L10n {
     static var skipThisVersion: String { tr("settings.skip_this_version") }
     static var remindLater: String { tr("settings.remind_later") }
     static var downloadingUpdate: String { tr("settings.downloading_update") }
+    static var downloadedUpdate: String { tr("settings.downloaded_update") }
+    static var restartAndInstall: String { tr("settings.restart_and_install") }
     static var installingUpdate: String { tr("settings.installing_update") }
     static var updateError: String { tr("settings.update_error") }
+    static var updateDmgError: String { tr("settings.update_dmg_error") }
+    static var updateDownloadFailed: String { tr("settings.update_download_failed") }
     static var ok: String { tr("settings.ok") }
 
     // MARK: - Panel Header

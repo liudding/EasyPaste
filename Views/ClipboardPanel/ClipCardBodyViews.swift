@@ -27,21 +27,38 @@ struct ImageCardBody: View {
     let item: Clip
 
     var body: some View {
-        VStack(spacing: 4) {
+        ZStack(alignment: .bottom) {
             if let image = ImageSizeCache.shared.thumbnail(for: item) {
-                Color.clear.overlay(
-                    Image(nsImage: image).resizable().scaledToFill()
-                )
-                .clipShape(.rect(cornerRadius: 6))
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipShape(.rect(cornerRadius: 6))
             } else {
-                Color.clear.overlay(
+                Color.clear
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipShape(.rect(cornerRadius: 6))
+                
+                // Placeholder icon in center for missing image
+                ZStack {
                     Image(systemName: "photo")
                         .font(.system(size: 28))
                         .foregroundStyle(.tertiary)
-                )
+                }
             }
+            
             if let sizeDesc = item.imageSizeDescription {
-                Text(sizeDesc).font(.system(size: 9)).foregroundStyle(.tertiary)
+                HStack(spacing: 8) {
+                    Text(sizeDesc)
+                        .font(.system(size: 9))
+                        .foregroundColor(.white)
+                        .padding(6)
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(10)  // Larger radius for pill shape
+                    
+                    Spacer()
+                }
+                .padding(8)
             }
         }
     }

@@ -102,6 +102,17 @@ struct SettingsUpdatesView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+        case .downloaded:
+            VStack(alignment: .leading, spacing: 10) {
+                Label(L10n.downloadedUpdate, systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                HStack(spacing: 8) {
+                    Button(L10n.restartAndInstall) { updateState.restartAndInstall?() }
+                        .controlSize(.small)
+                    Button(L10n.cancel) { AppcastInstaller.shared.cancelDownload(); updateState.reset() }
+                        .controlSize(.small)
+                }
+            }
         case .installing:
             HStack(spacing: 6) {
                 ProgressView().controlSize(.small)
