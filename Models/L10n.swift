@@ -140,10 +140,10 @@ enum L10n {
     // MARK: - Settings Shortcuts
 
     static var invokePanelLabel: String { tr("settings.invoke_panel_label") }
-    static var switchBoardShortcutLabel: String { tr("settings.switch_board_shortcut_label") }
-    static var tabSwitchBoardLabel: String { tr("settings.tab_switch_board_label") }
-    static var tabSwitchBoardHelp: String { tr("settings.tab_switch_board_help") }
+    static var switchBoardNextLabel: String { tr("settings.switch_board_next_label") }
+    static var switchBoardPrevLabel: String { tr("settings.switch_board_prev_label") }
     static var shortcutsFooter: String { tr("settings.shortcuts_footer") }
+    static var resetShortcuts: String { tr("settings.reset_shortcuts") }
     static var contextMenuShortcutsSection: String { tr("settings.context_menu_shortcuts_section") }
     static var contextMenuShortcutsUniversal: String { tr("settings.context_menu_shortcuts_universal") }
     static var contextMenuShortcutsTypeSpecific: String { tr("settings.context_menu_shortcuts_type_specific") }

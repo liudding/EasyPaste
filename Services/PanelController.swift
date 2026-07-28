@@ -337,8 +337,12 @@ final class PanelController: NSObject, NSWindowDelegate {
             return nil
         }
 
-        if matchesShortcut(event, settings.boardSwitchShortcut) {
+        if matchesShortcut(event, settings.boardSwitchNextShortcut) {
             cycleBoard(direction: 1)
+            return nil
+        }
+        if matchesShortcut(event, settings.boardSwitchPrevShortcut) {
+            cycleBoard(direction: -1)
             return nil
         }
         // Tab / Shift+Tab 切换看板（仅无 command/option/control 修饰键时拦截）
@@ -396,7 +400,9 @@ final class PanelController: NSObject, NSWindowDelegate {
         }
         
         // 跳过面板切换快捷键
-        if matchesShortcut(event, settings.invokeShortcut) || matchesShortcut(event, settings.boardSwitchShortcut) {
+        if matchesShortcut(event, settings.invokeShortcut)
+            || matchesShortcut(event, settings.boardSwitchNextShortcut)
+            || matchesShortcut(event, settings.boardSwitchPrevShortcut) {
             return false
         }
         

@@ -104,7 +104,6 @@ struct TextCardBody: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Spacer(minLength: 0)
             if let attr = item.attributedText {
                 AttributedTextView(attributedString: attr, maxLines: 4, isSelectable: false)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -113,8 +112,12 @@ struct TextCardBody: View {
             } else {
                 Text(L10n.cannotPreview).font(.system(size: 9)).foregroundStyle(.tertiary)
             }
-            Text("\(item.characterCount)\(L10n.characters)").font(.system(size: 9)).foregroundStyle(.tertiary)
-            Spacer(minLength: 0)
+            
+            Spacer()
+            
+            Text("\(item.characterCount)\(L10n.characters)")
+                .font(.system(size: 9))
+                .foregroundStyle(.tertiary)
         }
     }
 }

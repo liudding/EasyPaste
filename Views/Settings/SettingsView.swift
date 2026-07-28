@@ -95,7 +95,6 @@ struct SettingsView: View {
         .frame(height: titleBarInset)
         .background(Color(nsColor: .windowBackgroundColor))
         .overlay(alignment: .bottom) {
-            Divider()
         }
     }
 }

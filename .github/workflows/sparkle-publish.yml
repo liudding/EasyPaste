@@ -108,7 +108,7 @@ jobs:
             cp -R "${{ env.SPARKLE_FRAMEWORK }}" "$APP_BUNDLE/Contents/Frameworks/"
             codesign --force --sign - "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework" 2>/dev/null || true
           fi
-          VERSION="${{ replace(github.ref_name, 'v', '') }}"
+          VERSION=$(echo "${GITHUB_REF#refs/tags/}" | sed "s/^v//")
           BUILD_NUM="${{ github.run_number }}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$BUILD_NUM" >> "$GITHUB_OUTPUT"
@@ -125,7 +125,7 @@ jobs:
         run: |
           set -euo pipefail
           APP="$GITHUB_WORKSPACE/dist/$APP_NAME-arm64.app"
-          VERSION="${{ replace(github.ref_name, 'v', '') }}"
+          VERSION=$(echo "${GITHUB_REF#refs/tags/}" | sed "s/^v//")
           DMG_FILE="$GITHUB_WORKSPACE/dist/$APP_NAME-${VERSION}-arm64.dmg"
           STAGING="$GITHUB_WORKSPACE/staging"
           rm -rf "$STAGING"
@@ -142,7 +142,7 @@ jobs:
         id: version
         run: |
           set -euo pipefail
-          VERSION="${{ replace(github.ref_name, 'v', '') }}"
+          VERSION=$(echo "${GITHUB_REF#refs/tags/}" | sed "s/^v//")
           BUILD_NUM="${{ github.run_number }}"
           SIZE=$(stat -f%z "${{ steps.package.outputs.dmg_path }}")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -229,7 +229,7 @@ jobs:
             cp -R "${{ env.SPARKLE_FRAMEWORK }}" "$APP_BUNDLE/Contents/Frameworks/"
             codesign --force --sign - "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework" 2>/dev/null || true
           fi
-          VERSION="${{ replace(github.ref_name, 'v', '') }}"
+          VERSION=$(echo "${GITHUB_REF#refs/tags/}" | sed "s/^v//")
           BUILD_NUM="${{ github.run_number }}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$BUILD_NUM" >> "$GITHUB_OUTPUT"
@@ -246,7 +246,7 @@ jobs:
         run: |
           set -euo pipefail
           APP="$GITHUB_WORKSPACE/dist/$APP_NAME-x86_64.app"
-          VERSION="${{ replace(github.ref_name, 'v', '') }}"
+          VERSION=$(echo "${GITHUB_REF#refs/tags/}" | sed "s/^v//")
           DMG_FILE="$GITHUB_WORKSPACE/dist/$APP_NAME-${VERSION}-x86_64.dmg"
           STAGING="$GITHUB_WORKSPACE/staging"
           rm -rf "$STAGING"
@@ -280,7 +280,7 @@ jobs:
     name: Generate appcast.xml
     runs-on: macos-15
     needs: [build-arm64, build-x86_64]
-    if: needs.build-arm64.result == "success" && (needs.build-x86_64.result == "success" || needs.build-x86_64.result == "skipped")
+    if: needs.build-arm64.result == 'success' && (needs.build-x86_64.result == 'success' || needs.build-x86_64.result == 'skipped')
     outputs:
       appcast_path: ${{ steps.generate.outputs.appcast_path }}
     steps:
@@ -291,11 +291,15 @@ jobs:
         run: |
           brew install jq python3
 
-      - name: Download artifacts
+      - name: Download arm64 artifact
         uses: actions/download-artifact@v4
         with:
           name: EasyPaste-*-arm64.dmg
           path: dist/
+
+      - name: Download x86_64 artifact
+        uses: actions/download-artifact@v4
+        with:
           name: EasyPaste-*-x86_64.dmg
           path: dist/
 

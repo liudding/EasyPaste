@@ -99,7 +99,8 @@ final class AppSettings {
         IgnoredApp(bundleID: "com.apple.Passwords", name: "Passwords")
     ] { didSet { save() } }
     var invokeShortcut: Shortcut = .invokeDefault { didSet { save() } }
-    var boardSwitchShortcut: Shortcut = .boardSwitchDefault { didSet { save() } }
+    var boardSwitchNextShortcut: Shortcut = .boardSwitchNextDefault { didSet { save() } }
+    var boardSwitchPrevShortcut: Shortcut = .boardSwitchPrevDefault { didSet { save() } }
     /// 面板内 Tab / Shift+Tab 切换看板（正向/反向）。
     var tabSwitchBoardEnabled = true { didSet { save() } }
     var hasCompletedOnboarding = false { didSet { save() } }
@@ -187,7 +188,8 @@ final class AppSettings {
         var maxItemsCount: Int
         var ignoredApps: [IgnoredApp]
         var invokeShortcut: Shortcut
-        var boardSwitchShortcut: Shortcut
+        var boardSwitchNextShortcut: Shortcut
+        var boardSwitchPrevShortcut: Shortcut
         var tabSwitchBoardEnabled: Bool
         var hasCompletedOnboarding: Bool
         var hideDockIcon: Bool
@@ -199,7 +201,8 @@ final class AppSettings {
              alwaysPastePlainText: Bool, historyStepIndex: Int,
              maxItemsMode: MaxItemsMode, maxItemsCount: Int,
              ignoredApps: [IgnoredApp], invokeShortcut: Shortcut,
-             boardSwitchShortcut: Shortcut, tabSwitchBoardEnabled: Bool,
+             boardSwitchNextShortcut: Shortcut, boardSwitchPrevShortcut: Shortcut,
+             tabSwitchBoardEnabled: Bool,
              hasCompletedOnboarding: Bool,
              hideDockIcon: Bool = false,
              contextMenuShortcuts: [String: ContextMenuItemShortcut] = [:]) {
@@ -216,11 +219,21 @@ final class AppSettings {
             self.maxItemsCount = maxItemsCount
             self.ignoredApps = ignoredApps
             self.invokeShortcut = invokeShortcut
-            self.boardSwitchShortcut = boardSwitchShortcut
+            self.boardSwitchNextShortcut = boardSwitchNextShortcut
+            self.boardSwitchPrevShortcut = boardSwitchPrevShortcut
             self.tabSwitchBoardEnabled = tabSwitchBoardEnabled
             self.hasCompletedOnboarding = hasCompletedOnboarding
             self.hideDockIcon = hideDockIcon
             self.contextMenuShortcuts = contextMenuShortcuts
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case panelPosition, openAtLogin, iCloudSync, showInMenuBar, soundName, soundEnabled
+            case copySoundName, alwaysPastePlainText, historyStepIndex, maxItemsMode, maxItemsCount
+            case ignoredApps, invokeShortcut, boardSwitchNextShortcut, boardSwitchPrevShortcut
+            case tabSwitchBoardEnabled, hasCompletedOnboarding, hideDockIcon, contextMenuShortcuts
+            // 旧版兼容 key
+            case boardSwitchShortcut
         }
 
         init(from decoder: Decoder) throws {
@@ -238,11 +251,36 @@ final class AppSettings {
             maxItemsCount = try c.decodeIfPresent(Int.self, forKey: .maxItemsCount) ?? 2000
             ignoredApps = try c.decode([IgnoredApp].self, forKey: .ignoredApps)
             invokeShortcut = try c.decode(Shortcut.self, forKey: .invokeShortcut)
-            boardSwitchShortcut = try c.decode(Shortcut.self, forKey: .boardSwitchShortcut)
+            boardSwitchNextShortcut = try c.decodeIfPresent(Shortcut.self, forKey: .boardSwitchNextShortcut)
+                ?? (try c.decodeIfPresent(Shortcut.self, forKey: .boardSwitchShortcut) ?? .boardSwitchNextDefault)
+            boardSwitchPrevShortcut = try c.decodeIfPresent(Shortcut.self, forKey: .boardSwitchPrevShortcut) ?? .boardSwitchPrevDefault
             tabSwitchBoardEnabled = try c.decodeIfPresent(Bool.self, forKey: .tabSwitchBoardEnabled) ?? true
             hasCompletedOnboarding = try c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
             hideDockIcon = try c.decodeIfPresent(Bool.self, forKey: .hideDockIcon) ?? false
             contextMenuShortcuts = try c.decodeIfPresent([String: ContextMenuItemShortcut].self, forKey: .contextMenuShortcuts) ?? [:]
+        }
+
+        func encode(to encoder: any Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(panelPosition, forKey: .panelPosition)
+            try c.encode(openAtLogin, forKey: .openAtLogin)
+            try c.encode(iCloudSync, forKey: .iCloudSync)
+            try c.encode(showInMenuBar, forKey: .showInMenuBar)
+            try c.encode(soundName, forKey: .soundName)
+            try c.encode(soundEnabled, forKey: .soundEnabled)
+            try c.encode(copySoundName, forKey: .copySoundName)
+            try c.encode(alwaysPastePlainText, forKey: .alwaysPastePlainText)
+            try c.encode(historyStepIndex, forKey: .historyStepIndex)
+            try c.encode(maxItemsMode, forKey: .maxItemsMode)
+            try c.encode(maxItemsCount, forKey: .maxItemsCount)
+            try c.encode(ignoredApps, forKey: .ignoredApps)
+            try c.encode(invokeShortcut, forKey: .invokeShortcut)
+            try c.encode(boardSwitchNextShortcut, forKey: .boardSwitchNextShortcut)
+            try c.encode(boardSwitchPrevShortcut, forKey: .boardSwitchPrevShortcut)
+            try c.encode(tabSwitchBoardEnabled, forKey: .tabSwitchBoardEnabled)
+            try c.encode(hasCompletedOnboarding, forKey: .hasCompletedOnboarding)
+            try c.encode(hideDockIcon, forKey: .hideDockIcon)
+            try c.encode(contextMenuShortcuts, forKey: .contextMenuShortcuts)
         }
     }
 
@@ -262,7 +300,8 @@ final class AppSettings {
         maxItemsCount = snapshot.maxItemsCount
         ignoredApps = snapshot.ignoredApps
         invokeShortcut = snapshot.invokeShortcut
-        boardSwitchShortcut = snapshot.boardSwitchShortcut
+        boardSwitchNextShortcut = snapshot.boardSwitchNextShortcut
+        boardSwitchPrevShortcut = snapshot.boardSwitchPrevShortcut
         tabSwitchBoardEnabled = snapshot.tabSwitchBoardEnabled
         hasCompletedOnboarding = snapshot.hasCompletedOnboarding
         hideDockIcon = snapshot.hideDockIcon
@@ -276,7 +315,8 @@ final class AppSettings {
                                 alwaysPastePlainText: alwaysPastePlainText, historyStepIndex: historyStepIndex,
                                 maxItemsMode: maxItemsMode, maxItemsCount: maxItemsCount,
                                 ignoredApps: ignoredApps, invokeShortcut: invokeShortcut,
-                                boardSwitchShortcut: boardSwitchShortcut,
+                                boardSwitchNextShortcut: boardSwitchNextShortcut,
+                                boardSwitchPrevShortcut: boardSwitchPrevShortcut,
                                 tabSwitchBoardEnabled: tabSwitchBoardEnabled,
                                 hasCompletedOnboarding: hasCompletedOnboarding,
                                 hideDockIcon: hideDockIcon,

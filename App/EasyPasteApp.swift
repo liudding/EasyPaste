@@ -127,6 +127,20 @@ final class AppServices {
             SettingsNavigation.shared.pendingSection = .updates
         }
 
+        // 快捷键录制期间挂起全局热键，防止 Carbon 层面提前触发。
+        NotificationCenter.default.addObserver(
+            forName: .shortcutRecorderDidStart, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.shortcut.unregister()
+        }
+
+        // 快捷键录制结束后恢复全局热键。
+        NotificationCenter.default.addObserver(
+            forName: .shortcutRecorderDidStop, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.registerShortcut()
+        }
+
         registerShortcut()
 
         // 首次启动时展示引导（延迟以确保窗口已完全就绪）

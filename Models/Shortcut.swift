@@ -9,8 +9,10 @@ struct Shortcut: Codable, Equatable {
 
     static let invokeDefault = Shortcut(keyCode: UInt16(kVK_ANSI_V),
                                         modifierFlags: NSEvent.ModifierFlags([.command, .shift]).rawValue)
-    static let boardSwitchDefault = Shortcut(keyCode: UInt16(kVK_ANSI_RightBracket),
-                                             modifierFlags: NSEvent.ModifierFlags.command.rawValue)
+    static let boardSwitchNextDefault = Shortcut(keyCode: UInt16(kVK_ANSI_RightBracket),
+                                                  modifierFlags: NSEvent.ModifierFlags.command.rawValue)
+    static let boardSwitchPrevDefault = Shortcut(keyCode: UInt16(kVK_ANSI_LeftBracket),
+                                                  modifierFlags: NSEvent.ModifierFlags.command.rawValue)
 
     var modifiers: NSEvent.ModifierFlags { NSEvent.ModifierFlags(rawValue: modifierFlags) }
 
