@@ -10,7 +10,7 @@ extension Notification.Name {
     static let shortcutRecorderDidStop = Notification.Name("shortcutRecorderDidStop")
 }
 
-/// 快捷键录入控件：点击进入录制态，捕获下一个带修饰键的按键；Esc 取消。
+/// 快捷键录入控件：点击进入录制态，捕获下一个按键（允许无修饰键的单键，如 Tab/回车/字母/F 键等）；Esc 取消。
 /// 录制期间会通过 local monitor 拦截所有 keyDown 事件并消费（返回 nil），
 /// 同时禁用窗口 Tab 键盘导航并挂起全局热键，确保快捷键不会触发其他 app 功能。
 struct ShortcutRecorderView: View {
@@ -19,6 +19,16 @@ struct ShortcutRecorderView: View {
     @State private var monitor: Any?
     @State private var previousResponder: NSResponder?
     @State private var l10nStore = L10nStore.shared
+
+    /// 纯修饰键的键码：单独按下它们时不作为快捷键录入（真正的组合键会跟随字符键的 keyDown 到达）。
+    private static let modifierKeyCodes: Set<UInt16> = [
+        54, 55, // Command (右/左)
+        56, 60, // Shift (右/左)
+        58, 61, // Option (右/左)
+        59, 62, // Control (右/左)
+        57,      // Caps Lock
+        63       // Fn
+    ]
 
     var body: some View {
         let _ = l10nStore.version
@@ -46,9 +56,15 @@ struct ShortcutRecorderView: View {
         NotificationCenter.default.post(name: .shortcutRecorderDidStart, object: nil)
 
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            // Esc 取消录制
             if event.keyCode == 53 { stop(); return nil }
+
+            // 仅修饰键本身不作为快捷键录入，避免「只按了 Command/Shift 等」被误录。
+            // 真正的组合键（如 ⌘F）会由字符键的 keyDown 携带修饰标志到达，从而被正确记录。
+            guard !Self.modifierKeyCodes.contains(event.keyCode) else { return nil }
+
+            // 允许无修饰键的单键（Tab/回车/字母/F 键等）；modifierFlags 为 0 时即为单键快捷键。
             let flags = event.modifierFlags.intersection([.command, .shift, .option, .control])
-            guard !flags.isEmpty else { NSSound.beep(); return nil }
             shortcut = Shortcut(keyCode: event.keyCode, modifierFlags: flags.rawValue)
             stop()
             return nil
