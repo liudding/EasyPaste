@@ -2,12 +2,11 @@ import AppKit
 import CryptoKit
 import Foundation
 
-// MARK: - Appcast Installer（PasteMemo 风格的安装方式）
+// MARK: - Appcast Installer
 
 /// 替代 Sparkle 自带的「下载 → 解压 → 安装 → 重启」流程。
 ///
 /// 我们保留 Sparkle / AppCast 只用于「检查更新」（拿 enclosure 里的 .dmg 地址），
-/// 真正的安装改用 PasteMemo 同款方案：
 ///   1. 自己下载 .dmg（带进度 / 可选 SHA-256 校验）；
 ///   2. 用 `hdiutil attach` 挂载；
 ///   3. 把新 .app 的 `Contents/{MacOS,Resources}`、`Info.plist`、所有 `*.bundle`

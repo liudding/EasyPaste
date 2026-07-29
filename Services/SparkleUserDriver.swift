@@ -32,7 +32,7 @@ final class SparkleUIState: ObservableObject {
     @Published var resultMessage: String?
 
     /// 当展示「有可用更新」时，由 user driver 注入的用户操作回调。
-    /// `install` = 开始下载 DMG（PasteMemo 风格：下载后再挂载复制，不再走 Sparkle 安装）。
+    /// `install` = 开始下载 DMG。
     /// `restartAndInstall` = DMG 下载完成后，执行「挂载 → 复制 → 重启 App」。
     var install: (() -> Void)?
     var restartAndInstall: (() -> Void)?
@@ -101,7 +101,7 @@ final class UpdateUserDriver: NSObject, SPUUserDriver {
         self.state?.install = { [weak self] in
             guard let self else { return }
             // 释放 Sparkle 的更新会话：我们不再走 Sparkle 的「下载 → 安装」，
-            // 而是自己下载 DMG 后用「挂载 → 复制 → 重启」安装（PasteMemo 风格）。
+            // 而是自己下载 DMG 后用「挂载 → 复制 → 重启」安装。
             reply(.dismiss)
             self.state?.reset()
             self.beginLocalDownload(downloadURL: downloadURL)
@@ -208,7 +208,7 @@ final class UpdateUserDriver: NSObject, SPUUserDriver {
     }
 
     func dismissUpdateInstallation() {
-        // 若已转入本地下载 / 安装流程（PasteMemo 风格），不要清掉进度 UI，
+        // 若已转入本地下载 / 安装流程，不要清掉进度 UI，
         // 否则 Sparkle 结束更新会话时会把「下载中」卡片误清掉。
         if case .downloading = state?.phase { return }
         if case .downloaded = state?.phase { return }
