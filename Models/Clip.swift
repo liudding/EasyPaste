@@ -96,6 +96,30 @@ final class Clip {
     var contentHash: String?
     var subkind: ClipSubkind?
 
+    /// 搜索索引：text/url/文件名/title 归一化（小写）后的全文副本。
+    /// 列表过滤热路径只做 `contains`，避免每次按键逐条拼装 detail/previewPlainText。
+    /// 新条目在 init 构建；rename 时重建；存量数据由 Store.backfillSearchIndexIfNeeded 懒回填。
+    var searchText: String?
+
+    func buildSearchText() {
+        var parts: [String] = []
+        if let text, !text.isEmpty { parts.append(text) }
+        if let url { parts.append(url.absoluteString) }
+        if let fileURLs { parts.append(contentsOf: fileURLs.map(\.lastPathComponent)) }
+        if let linkTitle, !linkTitle.isEmpty { parts.append(linkTitle) }
+        if let title, !title.isEmpty { parts.append(title) }
+        parts.append(kind.title)
+        // 富文本（text 为空，全文在 HTML 里）：解析出全量可见文本进索引，
+        // 保证 previewPlainText 200 字符截断之外的词仍可检索。
+        if text?.isEmpty ?? true,
+           let htmlData = allPasteboardData?.first(where: { $0.uti == "public.html" })?.data,
+           let parsed = try? NSAttributedString(data: htmlData, options: [.documentType: NSAttributedString.DocumentType.html], documentAttributes: nil),
+           !parsed.string.isEmpty {
+            parts.append(parsed.string)
+        }
+        searchText = parts.joined(separator: " ").lowercased()
+    }
+
     /// 从 link 所对应的网页中提取的 title / description（运行时填充，不持久化）。
     @Transient
     var linkTitle: String? = nil
@@ -118,6 +142,7 @@ final class Clip {
         self.allPasteboardDataRaw = allPasteboardData.flatMap { try? JSONEncoder().encode($0) }
         self.title = nil; self.contentColor = contentColor
         self.contentHash = nil; self.subkind = nil
+        buildSearchText()
     }
 
     /// 默认是 kind 的名称

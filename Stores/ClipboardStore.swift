@@ -6,13 +6,32 @@ import SwiftUI
 
 @Observable @MainActor
 final class ClipboardStore {
-    private(set) var items: [Clip] = []
+    private(set) var items: [Clip] = [] {
+        didSet { sourceAppsCache = nil; filteredCache = nil }
+    }
     private(set) var boards: [Pasteboard] = [Pasteboard(name: L10n.defaultBoardIdeas, color: "orange"), Pasteboard(name: L10n.defaultBoardWork, color: "blue")]
     private(set) var rules: [AutomationRule] = []
-    var selectedBoardID: UUID?
-    var selectedKind: ClipKind?
-    var query = ""
-    var isFavoritesOnly = false
+    var selectedBoardID: UUID? { didSet { filteredCache = nil } }
+    var selectedKind: ClipKind? { didSet { filteredCache = nil } }
+    /// TextField 实时绑定的原始 query（用于输入与 suggestion，过滤由 `effectiveQuery` 驱动）。
+    var query = "" { didSet { scheduleQueryDebounce() } }
+    /// 防抖后的过滤 query（150ms 窗口），驱动 `filteredItems`。
+    private(set) var effectiveQuery = "" {
+        didSet {
+            filteredCache = nil
+            filterKeyword = effectiveQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
+    }
+    /// 预归一化的过滤关键词（小写），供热路径逐条 contains。
+    private var filterKeyword = ""
+    private var queryDebounceTask: Task<Void, Never>?
+    /// 过滤结果缓存：同一组过滤条件内多次读取（ForEach / isEmpty / validateSelection）只算一次。
+    private var filteredCache: [Clip]?
+    /// `distinctSourceApps` 缓存，items 变化时失效。
+    private var sourceAppsCache: [String]?
+    /// 存量数据 searchText 索引懒回填标记（进程内只执行一次）。
+    private var didBackfillSearchIndex = false
+    var isFavoritesOnly = false { didSet { filteredCache = nil } }
     /// 搜索栏激活的筛选 tag（类型 / 应用 / 日期）。board 维度通过 selectedBoardID 联动。
     var activeFilters: [SearchFilter] = []
     /// 历史保留天数（0 = 无限）。由 AppServices 从设置同步。
@@ -46,22 +65,45 @@ final class ClipboardStore {
         load()
     }
 
-    /// 过滤结果：每次访问都直接基于 items 与过滤条件计算。
-    /// 必须始终读取 items（而非返回缓存），否则 SwiftUI 的 Observation 不会在本次渲染中登记对
-    /// items 的依赖，导致增删剪贴项后列表不刷新（需点击其他 item 才刷新的 bug）。
+    /// 过滤结果：基于内存 items + 预构建 searchText 索引计算，带结果缓存。
+    /// 热路径只做小写 `contains`（索引在写入时归一化一次），不再逐条计算 detail/previewPlainText。
+    /// 必须显式读取参与过滤的源状态（items / effectiveQuery / selectedBoardID / selectedKind / activeFilters），
+    /// 确保 SwiftUI 的 Observation 在本次渲染中登记依赖；缓存命中时同样需要这些读取以保持依赖注册。
     var filteredItems: [Clip] {
-        items.filter { item in
+        _ = items
+        _ = effectiveQuery
+        _ = selectedBoardID
+        _ = selectedKind
+        _ = activeFilters
+        if let cached = filteredCache { return cached }
+        let result = items.filter { item in
             (selectedBoardID == nil || item.boardID == selectedBoardID) &&
             (selectedKind == nil || item.kind == selectedKind) &&
-            (query.isEmpty || item.displayTitle.localizedCaseInsensitiveContains(query) || item.detail.localizedCaseInsensitiveContains(query)) &&
+            (filterKeyword.isEmpty || item.searchText?.contains(filterKeyword) == true) &&
             facetFilterPasses(item)
         }
+        filteredCache = result
+        return result
     }
 
-    /// 所有剪贴项中出现过的来源 app 名称（去重，按字母排序）。
+    /// 所有剪贴项中出现过的来源 app 名称（去重，按字母排序）。带缓存，items 变化时失效。
     var distinctSourceApps: [String] {
+        if let cached = sourceAppsCache { return cached }
         let apps = Set(items.compactMap { $0.sourceApplication }.filter { !$0.isEmpty })
-        return apps.sorted()
+        let sorted = apps.sorted()
+        sourceAppsCache = sorted
+        return sorted
+    }
+
+    /// query 防抖：150ms 窗口内连续输入只触发一次过滤（取消前序任务）。
+    private func scheduleQueryDebounce() {
+        queryDebounceTask?.cancel()
+        let snapshot = query
+        queryDebounceTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            effectiveQuery = snapshot
+        }
     }
 
     /// 分面筛选：同一维度内为 OR（任一匹配），不同维度间为 AND（全部满足）。
@@ -135,6 +177,19 @@ final class ClipboardStore {
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
         )
         items = (try? context.fetch(descriptor)) ?? []
+        backfillSearchIndexIfNeeded()
+    }
+
+    /// 存量数据迁移：对 searchText 为 nil 的条目构建一次全文索引并持久化（进程内只跑一次）。
+    private func backfillSearchIndexIfNeeded() {
+        guard !didBackfillSearchIndex else { return }
+        didBackfillSearchIndex = true
+        var changed = false
+        for item in items where item.searchText == nil {
+            item.buildSearchText()
+            changed = true
+        }
+        if changed { try? context.save() }
     }
 
     // MARK: - 写入（更新内存 + 写穿 SwiftData）
@@ -183,7 +238,12 @@ final class ClipboardStore {
 
     func toggleFavorite(_ id: UUID) { update(id) { $0.isFavorite.toggle() } }
     func move(_ id: UUID, to board: UUID?) { update(id) { $0.boardID = board } }
-    func rename(_ id: UUID, title: String?) { update(id) { $0.title = (title?.isEmpty == true) ? nil : title } }
+    func rename(_ id: UUID, title: String?) {
+        update(id) {
+            $0.title = (title?.isEmpty == true) ? nil : title
+            $0.buildSearchText()
+        }
+    }
 
     func delete(_ ids: Set<UUID>) {
         for clip in items where ids.contains(clip.id) {
