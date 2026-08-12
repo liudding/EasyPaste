@@ -71,6 +71,7 @@ dist
 .workbuddy
 .qcoder
 .claude
+.omo
 
 # Sparkle EdDSA 私钥（绝不可提交；仅本地用于 sign_update 签名 appcast）
 script/keys/ed25519_private.key
