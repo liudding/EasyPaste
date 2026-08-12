@@ -164,7 +164,11 @@ struct PanelView: View {
             onCopy: { clipboard.copy($0) },
             onRename: { panelState.renamingID = $0.id },
             onRenameCommit: { id, title in store.rename(id, title: title); panelState.renamingID = nil },
-            onDelete: { store.delete([$0.id]) },
+            onDelete: { item in
+                let next = store.nextSelectionID(afterDeleting: item.id)
+                store.delete([item.id])
+                panelState.selectedID = next
+            },
             onPin: { store.move($0.id, to: $1) },
             onPreview: { item in withAnimation { panelState.previewItem = item } },
             onShowQRCode: { content in withAnimation { panelState.qrCodeContent = content } },

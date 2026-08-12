@@ -60,6 +60,69 @@ struct PersistenceTests {
         #expect(store2.items.isEmpty)
     }
 
+    // MARK: - 删除后自动选择下一条
+
+    @Test @MainActor func nextSelectionAfterDeletingMiddle() throws {
+        let url = try makeTempDB()
+        let store = ClipboardStore(databaseURL: url)
+        // add 会置顶：列表为 [c3, c2, c1]（c3 最新在前）
+        let c1 = Clip(kind: .text, text: "first")
+        let c2 = Clip(kind: .text, text: "middle")
+        let c3 = Clip(kind: .text, text: "last")
+        store.add(c1); store.add(c2); store.add(c3)
+        #expect(store.filteredItems.map(\.text) == ["last", "middle", "first"])
+
+        // 删除中间项（c2，index 1）→ 选中原位置下一条（c1）
+        let next = store.nextSelectionID(afterDeleting: c2.id)
+        #expect(next == c1.id)
+        store.delete([c2.id])
+        #expect(store.items.count == 2)
+        #expect(store.items.map(\.id) == [c3.id, c1.id])
+        #expect(store.items.contains(where: { $0.id == next }))
+    }
+
+    @Test @MainActor func nextSelectionAfterDeletingFirst() throws {
+        let url = try makeTempDB()
+        let store = ClipboardStore(databaseURL: url)
+        let c1 = Clip(kind: .text, text: "first")
+        let c2 = Clip(kind: .text, text: "middle")
+        let c3 = Clip(kind: .text, text: "last")
+        store.add(c1); store.add(c2); store.add(c3)
+        // 删除最新一条（c3，index 0）→ 选中原位置下一条（c2）
+        let next = store.nextSelectionID(afterDeleting: c3.id)
+        #expect(next == c2.id)
+        store.delete([c3.id])
+        #expect(store.items.map(\.id) == [c2.id, c1.id])
+        #expect(store.items.contains(where: { $0.id == next }))
+    }
+
+    @Test @MainActor func nextSelectionAfterDeletingLast() throws {
+        let url = try makeTempDB()
+        let store = ClipboardStore(databaseURL: url)
+        let c1 = Clip(kind: .text, text: "first")
+        let c2 = Clip(kind: .text, text: "middle")
+        let c3 = Clip(kind: .text, text: "last")
+        store.add(c1); store.add(c2); store.add(c3)
+        // 删除最旧一条（c1，index 2）→ 选中新的最后一条（c2）
+        let next = store.nextSelectionID(afterDeleting: c1.id)
+        #expect(next == c2.id)
+        store.delete([c1.id])
+        #expect(store.items.map(\.id) == [c3.id, c2.id])
+        #expect(store.items.contains(where: { $0.id == next }))
+    }
+
+    @Test @MainActor func nextSelectionDeletingOnlyItemReturnsNil() throws {
+        let url = try makeTempDB()
+        let store = ClipboardStore(databaseURL: url)
+        let clip = Clip(kind: .text, text: "solo")
+        store.add(clip)
+        #expect(store.nextSelectionID(afterDeleting: clip.id) == nil)
+
+        store.delete([clip.id])
+        #expect(store.items.isEmpty)
+        #expect(store.nextSelectionID(afterDeleting: clip.id) == nil)
+    }
+
     @Test @MainActor func boardsAndRulesRoundTrip() throws {
         let url = try makeTempDB()
         let store = ClipboardStore(databaseURL: url)

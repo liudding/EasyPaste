@@ -254,6 +254,20 @@ final class ClipboardStore {
         backupService.scheduleBackupOnIdle()
     }
 
+    /// 计算删除 `id` 后应自动选中的 clip id（基于当前过滤列表）：
+    /// - 优先选中原位置的下一条（删除后前移填补空位的那条，即删除前 index+1 处）；
+    /// - 被删的是最后一条 → 选中新的最后一条（删除前 index-1 处）；
+    /// - 列表删空 → nil；`id` 不在列表中 → 兜底选第一条。
+    func nextSelectionID(afterDeleting id: UUID) -> UUID? {
+        let items = filteredItems
+        guard let index = items.firstIndex(where: { $0.id == id }) else {
+            return items.first?.id
+        }
+        guard items.count > 1 else { return nil }
+        let nextIndex = (index < items.count - 1) ? index + 1 : index - 1
+        return items[nextIndex].id
+    }
+
     func clearAll() {
         for clip in items {
             context.delete(clip)

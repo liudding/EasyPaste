@@ -433,7 +433,9 @@ final class PanelController: NSObject, NSWindowDelegate {
         case "preview":
             withAnimation { panelState.previewItem = item }
         case "delete":
+            let next = store.nextSelectionID(afterDeleting: item.id)
             store.delete([item.id])
+            panelState.selectedID = next
         case "export_txt":
             clipAction.exportAsText(item)
         case "export_rtf":
