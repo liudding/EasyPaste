@@ -324,7 +324,12 @@ final class AppSettings {
         UserDefaults.standard.set(try? JSONEncoder().encode(snapshot), forKey: defaultsKey)
     }
 
+    private var isApplyingLoginItem = false
+
     private func applyLoginItem() {
+        guard !isApplyingLoginItem else { return }
+        isApplyingLoginItem = true
+        defer { isApplyingLoginItem = false }
         do {
             if openAtLogin { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
         } catch {

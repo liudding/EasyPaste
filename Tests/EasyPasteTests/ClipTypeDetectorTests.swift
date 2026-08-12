@@ -504,14 +504,32 @@ struct AppSettingsHideDockTests {
         let loaded = AppSettings()
         #expect(loaded.hideDockIcon == true)
     }
-
     @Test @MainActor func hideDockIconPersistsFalseValue() {
         UserDefaults.standard.removeObject(forKey: "EasyPasteSettings")
         let settings = AppSettings()
+
         settings.hideDockIcon = false
 
         let loaded = AppSettings()
         #expect(loaded.hideDockIcon == false)
+    }
+
+    // MARK: - openAtLogin 递归防护
+
+    /// @Observable 宏展开后 didSet 在同值赋值时也会执行 → applyLoginItem。
+    /// 旧代码：unregister() 在未注册时抛错 → catch 里 `openAtLogin = false`（同值）再次触发
+    /// didSet → applyLoginItem → 无限递归 → 栈溢出 SIGSEGV。
+    /// 用连续同值赋值触发该路径，修复后应不崩溃且终值正确。
+    @Test @MainActor func openAtLoginSameValueAssignmentDoesNotRecurse() {
+        UserDefaults.standard.removeObject(forKey: "EasyPasteSettings")
+        let settings = AppSettings()
+        settings.openAtLogin = false
+        settings.openAtLogin = false
+        settings.openAtLogin = true
+        settings.openAtLogin = true
+        settings.openAtLogin = false
+        settings.openAtLogin = false
+        #expect(settings.openAtLogin == false)
     }
 
     // MARK: - 旧存档兼容性（decodeIfPresent）
