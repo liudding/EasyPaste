@@ -185,6 +185,54 @@ struct SearchOptimizationTests {
         #expect(store.filteredItems.count == 1) // "granu" 命中该文本
     }
 
+    // MARK: - 分词检索
+
+    /// 多关键词 AND：所有 token 都命中才显示（顺序不限）。
+    @Test @MainActor func multiKeywordQueryRequiresAllTokens() async throws {
+        let url = try makeTempDB()
+        let store = ClipboardStore(databaseURL: url)
+        store.add(Clip(kind: .text, text: "foo bar baz"))
+        store.add(Clip(kind: .text, text: "foo only"))
+        store.add(Clip(kind: .text, text: "bar only"))
+        // 反序 query：baz 在 foo 之前，旧 contains("baz foo") 连续子串必然不命中，
+        // 只有分词 AND 匹配才能命中 "foo bar baz"（两词被 bar 隔开，顺序不限）。
+        store.query = "baz foo"
+        try await waitForQueryApplied(store, "baz foo")
+        #expect(store.filteredItems.map(\.text) == ["foo bar baz"])
+    }
+
+    /// 标点拆分："foo,bar" 等价于 "foo bar"。
+    @Test @MainActor func punctuationSeparatesTokens() async throws {
+        let url = try makeTempDB()
+        let store = ClipboardStore(databaseURL: url)
+        store.add(Clip(kind: .text, text: "hello world"))
+        store.add(Clip(kind: .text, text: "hello"))
+        store.query = "hello,world"
+        try await waitForQueryApplied(store, "hello,world")
+        #expect(store.filteredItems.map(\.text) == ["hello world"])
+    }
+
+    /// 中文整句（无空格）保持子串匹配。
+    @Test @MainActor func chinesePhraseStillMatchesSubstring() async throws {
+        let url = try makeTempDB()
+        let store = ClipboardStore(databaseURL: url)
+        store.add(Clip(kind: .text, text: "你好世界"))
+        store.query = "世界"
+        try await waitForQueryApplied(store, "世界")
+        #expect(store.filteredItems.map(\.text) == ["你好世界"])
+    }
+
+    /// 纯标点/空白查询：tokens 为空 → 显示全部。
+    @Test @MainActor func punctuationOnlyQueryShowsAll() async throws {
+        let url = try makeTempDB()
+        let store = ClipboardStore(databaseURL: url)
+        store.add(Clip(kind: .text, text: "aaa"))
+        store.add(Clip(kind: .text, text: "bbb"))
+        store.query = " ,."
+        try await waitForQueryApplied(store, " ,.")
+        #expect(store.filteredItems.count == 2)
+    }
+
     // MARK: - Helpers
 
     /// 轮询等待防抖后的 `effectiveQuery` 更新为期望值（超时 3s）。

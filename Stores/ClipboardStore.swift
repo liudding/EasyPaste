@@ -19,11 +19,11 @@ final class ClipboardStore {
     private(set) var effectiveQuery = "" {
         didSet {
             filteredCache = nil
-            filterKeyword = effectiveQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            filterTokens = Self.tokenize(effectiveQuery)
         }
     }
-    /// 预归一化的过滤关键词（小写），供热路径逐条 contains。
-    private var filterKeyword = ""
+    /// 查询输入分词后的 tokens（小写），供热路径逐条 contains（AND 匹配）。
+    private var filterTokens: [String] = []
     private var queryDebounceTask: Task<Void, Never>?
     /// 过滤结果缓存：同一组过滤条件内多次读取（ForEach / isEmpty / validateSelection）只算一次。
     private var filteredCache: [Clip]?
@@ -79,11 +79,19 @@ final class ClipboardStore {
         let result = items.filter { item in
             (selectedBoardID == nil || item.boardID == selectedBoardID) &&
             (selectedKind == nil || item.kind == selectedKind) &&
-            (filterKeyword.isEmpty || item.searchText?.contains(filterKeyword) == true) &&
+            (filterTokens.isEmpty || filterTokens.allSatisfy { item.searchText?.contains($0) == true }) &&
             facetFilterPasses(item)
         }
         filteredCache = result
         return result
+    }
+
+    /// 按空白+标点拆分查询为小写 tokens（中文整句无分隔符时保持单 token 子串匹配）。
+    private static func tokenize(_ query: String) -> [String] {
+        let separators = CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters)
+        return query.lowercased()
+            .components(separatedBy: separators)
+            .filter { !$0.isEmpty }
     }
 
     /// 所有剪贴项中出现过的来源 app 名称（去重，按字母排序）。带缓存，items 变化时失效。
