@@ -215,9 +215,21 @@ final class Clip {
 
     // MARK: - 原始格式渲染
 
+    /// 富文本解析结果缓存：卡片 body / 预览浮层每次重渲染都会访问 `attributedText`，
+    /// 不缓存则含 public.html 的条目每次渲染全量解析 HTML（毫秒级）→ 输入检索时卡顿。
+    @Transient
+    private var attributedTextCache: NSAttributedString?
+
     /// 从 allPasteboardData 中按优先级提取 RTF / HTML 数据，解析为 NSAttributedString。
     /// 用于卡片 body 和预览浮层中展示原始富文本格式。
     var attributedText: NSAttributedString? {
+        if let cache = attributedTextCache { return cache }
+        let result = computeAttributedText()
+        attributedTextCache = result
+        return result
+    }
+
+    private func computeAttributedText() -> NSAttributedString? {
         guard kind == .text || kind == .link else { return nil }
         guard let entries = allPasteboardData, !entries.isEmpty else { return nil }
         
@@ -242,9 +254,20 @@ final class Clip {
         return nil
     }
 
+    /// 纯文本摘要缓存：多次访问返回同一结果，避免重复解析 HTML。
+    @Transient
+    private var previewPlainTextCache: String?
+
     /// 从 allPasteboardData 中提取一个纯文本摘要用于卡片预览。
     /// 优先级：plain-text > RTF 纯文本 > HTML 中的可见文本 > 第一个非空数据字符串化。
     var previewPlainText: String? {
+        if let cache = previewPlainTextCache { return cache }
+        let result = computePreviewPlainText()
+        previewPlainTextCache = result
+        return result
+    }
+
+    private func computePreviewPlainText() -> String? {
         guard let entries = allPasteboardData, !entries.isEmpty else { return text }
         
         // 1. 优先用已有的 text 字段
