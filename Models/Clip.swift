@@ -74,8 +74,11 @@ final class Clip {
     var url: URL?
     var fileURLs: [URL]?
 
-    @Attribute(.externalStorage)
-    var imageData: Data?
+    /// 原始图片数据（文件系统存储，按 clip.id 命名；列表查询不再触碰大文件）。
+    var imageData: Data? {
+        get { BlobStore.shared.read(id: id, kind: .image) }
+        set { BlobStore.shared.write(newValue, for: id, kind: .image) }
+    }
 
     var boardID: UUID?
     var isFavorite: Bool
@@ -86,12 +89,17 @@ final class Clip {
     var sourceAppColor: CodableColor?
     var contentColor: CodableColor?
 
-    @Attribute(.externalStorage)
-    var utiData: Data?
+    /// UTI 元数据（文件系统存储，按 clip.id 命名）。
+    var utiData: Data? {
+        get { BlobStore.shared.read(id: id, kind: .uti) }
+        set { BlobStore.shared.write(newValue, for: id, kind: .uti) }
+    }
 
-    /// `[UTIEntry]` 编码为 JSON `Data` 存储，使用 externalStorage 避免列表查询加载大 blob。
-    @Attribute(.externalStorage)
-    var allPasteboardDataRaw: Data?
+    /// `[UTIEntry]` 编码为 JSON `Data` 存储（文件系统，按 clip.id 命名）。
+    var allPasteboardDataRaw: Data? {
+        get { BlobStore.shared.read(id: id, kind: .pasteboard) }
+        set { BlobStore.shared.write(newValue, for: id, kind: .pasteboard) }
+    }
 
     var contentHash: String?
     var subkind: ClipSubkind?
@@ -135,13 +143,16 @@ final class Clip {
 
     init(kind: ClipKind, text: String? = nil, url: URL? = nil, fileURLs: [URL]? = nil, imageData: Data? = nil, uti: String? = nil, utiData: Data? = nil, allPasteboardData: [UTIEntry]? = nil, contentColor: CodableColor? = nil) {
         self.id = UUID(); self.kind = kind; self.createdAt = .now
-        self.text = text; self.url = url; self.fileURLs = fileURLs; self.imageData = imageData
+        self.text = text; self.url = url; self.fileURLs = fileURLs
         self.boardID = nil; self.isFavorite = false
         self.sourceApplication = nil; self.sourceApplicationBundleID = nil
-        self.uti = uti; self.utiData = utiData
-        self.allPasteboardDataRaw = allPasteboardData.flatMap { try? JSONEncoder().encode($0) }
+        self.uti = uti
         self.title = nil; self.contentColor = contentColor
         self.contentHash = nil; self.subkind = nil
+        // blob 写文件系统需在 id 就绪后；此处所有存储属性已初始化，self 可用。
+        self.imageData = imageData
+        self.utiData = utiData
+        self.allPasteboardDataRaw = allPasteboardData.flatMap { try? JSONEncoder().encode($0) }
         buildSearchText()
     }
 
