@@ -76,8 +76,8 @@ final class Clip {
 
     /// 原始图片数据（文件系统存储，按 clip.id 命名；列表查询不再触碰大文件）。
     var imageData: Data? {
-        get { BlobStore.shared.read(id: id, kind: .image) }
-        set { BlobStore.shared.write(newValue, for: id, kind: .image) }
+        get { (blobStore ?? BlobStore.shared).read(id: id, kind: .image) }
+        set { (blobStore ?? BlobStore.shared).write(newValue, for: id, kind: .image) }
     }
 
     var boardID: UUID?
@@ -91,14 +91,14 @@ final class Clip {
 
     /// UTI 元数据（文件系统存储，按 clip.id 命名）。
     var utiData: Data? {
-        get { BlobStore.shared.read(id: id, kind: .uti) }
-        set { BlobStore.shared.write(newValue, for: id, kind: .uti) }
+        get { (blobStore ?? BlobStore.shared).read(id: id, kind: .uti) }
+        set { (blobStore ?? BlobStore.shared).write(newValue, for: id, kind: .uti) }
     }
 
     /// `[UTIEntry]` 编码为 JSON `Data` 存储（文件系统，按 clip.id 命名）。
     var allPasteboardDataRaw: Data? {
-        get { BlobStore.shared.read(id: id, kind: .pasteboard) }
-        set { BlobStore.shared.write(newValue, for: id, kind: .pasteboard) }
+        get { (blobStore ?? BlobStore.shared).read(id: id, kind: .pasteboard) }
+        set { (blobStore ?? BlobStore.shared).write(newValue, for: id, kind: .pasteboard) }
     }
 
     var contentHash: String?
@@ -134,6 +134,12 @@ final class Clip {
     @Transient
     var linkDescription: String? = nil
 
+    /// blob 读写使用的 BlobStore 注入点（测试用）。
+    /// 生产环境保持 nil，走 `BlobStore.shared`；测试传入临时目录实例，
+    /// 避免跨 suite 并行时交换全局 shared 引发的竞态。
+    @Transient
+    var blobStore: BlobStore? = nil
+
     /// 剪贴板上所有可用 UTI 类型及其原始数据，粘贴时全部写回以保真还原来源格式。
     /// 计算属性：在 `[UTIEntry]` 与 JSON `Data` 之间双向转换。
     var allPasteboardData: [UTIEntry]? {
@@ -141,7 +147,7 @@ final class Clip {
         set { allPasteboardDataRaw = newValue.flatMap { try? JSONEncoder().encode($0) } }
     }
 
-    init(kind: ClipKind, text: String? = nil, url: URL? = nil, fileURLs: [URL]? = nil, imageData: Data? = nil, uti: String? = nil, utiData: Data? = nil, allPasteboardData: [UTIEntry]? = nil, contentColor: CodableColor? = nil) {
+    init(kind: ClipKind, text: String? = nil, url: URL? = nil, fileURLs: [URL]? = nil, imageData: Data? = nil, uti: String? = nil, utiData: Data? = nil, allPasteboardData: [UTIEntry]? = nil, contentColor: CodableColor? = nil, blobStore: BlobStore? = nil) {
         self.id = UUID(); self.kind = kind; self.createdAt = .now
         self.text = text; self.url = url; self.fileURLs = fileURLs
         self.boardID = nil; self.isFavorite = false
@@ -149,6 +155,7 @@ final class Clip {
         self.uti = uti
         self.title = nil; self.contentColor = contentColor
         self.contentHash = nil; self.subkind = nil
+        self.blobStore = blobStore
         // blob 写文件系统需在 id 就绪后；此处所有存储属性已初始化，self 可用。
         self.imageData = imageData
         self.utiData = utiData

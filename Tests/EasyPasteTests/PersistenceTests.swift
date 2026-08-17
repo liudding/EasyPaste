@@ -4,7 +4,8 @@ import SwiftData
 @testable import EasyPaste
 
 /// 持久层（SwiftData）单元测试。所有用例使用临时目录数据库，避免污染真实数据。
-@Suite
+/// `.serialized`：blob 相关测试会替换全局 `BlobStore.shared`，并发跑有竞态。
+@Suite(.serialized)
 struct PersistenceTests {
 
     private func makeTempDB() throws -> URL {
@@ -12,6 +13,18 @@ struct PersistenceTests {
             .appending(path: "easypaste_tests/\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appending(path: "db.sqlite")
+    }
+
+    /// 把全局 `BlobStore.shared` 切换到临时目录执行 `body`，结束后恢复。
+    /// Clip 的 blob 计算属性读写全局 shared，不隔离会污染真实 Application Support 目录。
+    private func withTempBlobStore(_ body: () throws -> Void) throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appending(path: "easypaste_test_blobs/\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let original = BlobStore.shared
+        BlobStore.shared = BlobStore(directory: dir)
+        defer { BlobStore.shared = original }
+        try body()
     }
 
     // MARK: - 空库启动
@@ -142,43 +155,47 @@ struct PersistenceTests {
     // MARK: - 去重
 
     @Test @MainActor func deduplicationByAllPasteboardData() throws {
-        let url = try makeTempDB()
-        let store = ClipboardStore(databaseURL: url)
-        let entry = UTIEntry(uti: "public.plain-text", data: Data("dup".utf8))
-        // 新版去重基于 contentHash（由 ClipboardService.makeItem() 在生产中设置）。
-        // 测试需显式设置 contentHash 以匹配生产行为。
-        let c1 = Clip(kind: .text, text: "a", allPasteboardData: [entry])
-        c1.contentHash = ClipTypeDetector.computeContentHash([entry])
-        let c2 = Clip(kind: .text, text: "b", allPasteboardData: [entry]) // 相同哈希 -> 去重
-        c2.contentHash = ClipTypeDetector.computeContentHash([entry])
-        store.add(c1)
-        store.add(c2)
-        #expect(store.items.count == 1)
+        try withTempBlobStore {
+            let url = try makeTempDB()
+            let store = ClipboardStore(databaseURL: url)
+            let entry = UTIEntry(uti: "public.plain-text", data: Data("dup".utf8))
+            // 新版去重基于 contentHash（由 ClipboardService.makeItem() 在生产中设置）。
+            // 测试需显式设置 contentHash 以匹配生产行为。
+            let c1 = Clip(kind: .text, text: "a", allPasteboardData: [entry])
+            c1.contentHash = ClipTypeDetector.computeContentHash([entry])
+            let c2 = Clip(kind: .text, text: "b", allPasteboardData: [entry]) // 相同哈希 -> 去重
+            c2.contentHash = ClipTypeDetector.computeContentHash([entry])
+            store.add(c1)
+            store.add(c2)
+            #expect(store.items.count == 1)
+        }
     }
 
-    // MARK: - blob 往返（SwiftData @Attribute(.externalStorage)）
+    // MARK: - blob 往返（BlobStore 文件系统存储）
 
     @Test @MainActor func blobRoundTrip() throws {
-        let url = try makeTempDB()
-        let container = try DataManager.makeContainer(url: url)
-        let context = ModelContext(container)
+        try withTempBlobStore {
+            let url = try makeTempDB()
+            let container = try DataManager.makeContainer(url: url)
+            let context = ModelContext(container)
 
-        let image = Data("imagedata".utf8)
-        let entries = [UTIEntry(uti: "public.png", data: Data("pngbytes".utf8))]
-        let clip = Clip(kind: .image, imageData: image, allPasteboardData: entries)
-        context.insert(clip)
-        try context.save()
+            let image = Data("imagedata".utf8)
+            let entries = [UTIEntry(uti: "public.png", data: Data("pngbytes".utf8))]
+            let clip = Clip(kind: .image, imageData: image, allPasteboardData: entries)
+            context.insert(clip)
+            try context.save()
 
-        // 重新 fetch 验证 blob 数据往返
-        let descriptor = FetchDescriptor<Clip>()
-        let loaded = try context.fetch(descriptor)
-        #expect(loaded.count == 1)
-        #expect(loaded.first?.imageData == image)
-        #expect(loaded.first?.allPasteboardData != nil)
+            // 重新 fetch 验证 blob 数据往返
+            let descriptor = FetchDescriptor<Clip>()
+            let loaded = try context.fetch(descriptor)
+            #expect(loaded.count == 1)
+            #expect(loaded.first?.imageData == image)
+            #expect(loaded.first?.allPasteboardData != nil)
 
-        let decoded = loaded.first?.allPasteboardData
-        #expect(decoded?.count == 1)
-        #expect(decoded?.first?.uti == "public.png")
+            let decoded = loaded.first?.allPasteboardData
+            #expect(decoded?.count == 1)
+            #expect(decoded?.first?.uti == "public.png")
+        }
     }
 
     // MARK: - 保留策略：按天
@@ -208,43 +225,46 @@ struct PersistenceTests {
     // MARK: - 保留策略：按条数
 
     @Test @MainActor func pruneByMaxItems() throws {
-        let url = try makeTempDB()
-        let container = try DataManager.makeContainer(url: url)
-        let context = ModelContext(container)
-        for i in 0..<5 {
-            let c = Clip(kind: .text, text: "item\(i)", imageData: Data("blob\(i)".utf8))
-            context.insert(c)
-        }
-        try context.save()
+        try withTempBlobStore {
+            let url = try makeTempDB()
+            let container = try DataManager.makeContainer(url: url)
+            let context = ModelContext(container)
+            for i in 0..<5 {
+                let c = Clip(kind: .text, text: "item\(i)", imageData: Data("blob\(i)".utf8))
+                context.insert(c)
+            }
+            try context.save()
 
-        let store = ClipboardStore(databaseURL: url)
-        #expect(store.items.count == 5)
-        store.maxItems = .limited(3)
-        let deleted = store.pruneExpired()
-        #expect(deleted >= 2)
-        // SwiftData @Model 删除时自动回收 externalStorage blob，无孤儿问题
-        #expect(store.items.count <= 3)
+            let store = ClipboardStore(databaseURL: url)
+            #expect(store.items.count == 5)
+            store.maxItems = .limited(3)
+            let deleted = store.pruneExpired()
+            #expect(deleted >= 2)
+            // BlobStore 删除路径已配对清理 blob 文件，无孤儿文件
+            #expect(store.items.count <= 3)
+        }
     }
 
     // MARK: - 保留策略：磁盘压力
 
     @Test @MainActor func pruneByDiskPressure() throws {
-        let url = try makeTempDB()
-        let container = try DataManager.makeContainer(url: url)
-        let context = ModelContext(container)
-        for i in 0..<60 {
-            let c = Clip(kind: .text, text: "item\(i)",
-                         imageData: Data(repeating: UInt8(i & 0xFF), count: 64))
-            context.insert(c)
-        }
-        try context.save()
+        try withTempBlobStore {
+            let url = try makeTempDB()
+            let container = try DataManager.makeContainer(url: url)
+            let context = ModelContext(container)
+            for i in 0..<60 {
+                let c = Clip(kind: .text, text: "item\(i)",
+                             imageData: Data(repeating: UInt8(i & 0xFF), count: 64))
+                context.insert(c)
+            }
+            try context.save()
 
-        let store = ClipboardStore(databaseURL: url)
-        #expect(store.items.count == 60)
-        // 显式触发磁盘压力分支：每批删 50 条，保留 ≤ 10 条
-        let deleted = store.pruneNow(days: 0, diskPressure: true)
-        #expect(deleted >= 50)
-        // SwiftData @Model 删除时自动回收 externalStorage blob，无孤儿问题
-        #expect(store.items.count <= 10)
+            let store = ClipboardStore(databaseURL: url)
+            #expect(store.items.count == 60)
+            // 显式触发磁盘压力分支：每批删 50 条，保留 ≤ 10 条
+            let deleted = store.pruneNow(days: 0, diskPressure: true)
+            #expect(deleted >= 50)
+            #expect(store.items.count <= 10)
+        }
     }
 }
