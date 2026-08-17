@@ -278,7 +278,7 @@ struct ClipCardView: View {
             case nil: return hasContent
             default: return false
             }
-        case .image: return item.imageData != nil
+        case .image: return BlobStore.shared.exists(id: item.id, kind: .image)
         case .link: return !(item.url?.absoluteString.isEmpty ?? true)  // QR Code is trailing
         default: return false
         }
@@ -342,7 +342,7 @@ struct ClipCardView: View {
                 EmptyView()
             }
         case .image:
-            if item.imageData != nil {
+            if BlobStore.shared.exists(id: item.id, kind: .image) {
                 Button(L10n.menuSaveAs) { onExportImage(item) }.keyboardShortcut("s", modifiers: .command)
             }
         case .link:
