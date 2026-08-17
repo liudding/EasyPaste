@@ -86,6 +86,16 @@ final class BackupService {
                 try? FileManager.default.copyItem(at: srcURL, to: destURL)
             }
         }
+
+        // 拷贝 blobs 目录（blob 已从 DB 移到文件系统，必须一并备份，否则 iCloud 恢复缺图）。
+        let srcBlobs = BlobStore.shared.directory
+        let destBlobs = destDir.appending(path: "blobs")
+        if FileManager.default.fileExists(atPath: srcBlobs.path) {
+            if FileManager.default.fileExists(atPath: destBlobs.path) {
+                try? FileManager.default.removeItem(at: destBlobs)
+            }
+            try? FileManager.default.copyItem(at: srcBlobs, to: destBlobs)
+        }
     }
 
     /// 空闲 debounce 后触发一次备份（每次写入后调用）。

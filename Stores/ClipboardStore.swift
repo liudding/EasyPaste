@@ -256,6 +256,8 @@ final class ClipboardStore {
     func delete(_ ids: Set<UUID>) {
         for clip in items where ids.contains(clip.id) {
             context.delete(clip)
+            ImageSizeCache.shared.remove(for: clip.id)
+            BlobStore.shared.remove(for: clip.id)
         }
         items.removeAll { ids.contains($0.id) }
         try? context.save()
@@ -281,6 +283,8 @@ final class ClipboardStore {
             context.delete(clip)
         }
         items.removeAll()
+        ImageSizeCache.shared.removeAll()
+        BlobStore.shared.removeAll()
         try? context.save()
         backupService.scheduleBackupOnIdle()
     }
@@ -331,6 +335,7 @@ final class ClipboardStore {
         let clipsToDelete = items.filter { $0.boardID == id }
         for clip in clipsToDelete {
             context.delete(clip)
+            BlobStore.shared.remove(for: clip.id)
         }
         items.removeAll { $0.boardID == id }
         if let i = boards.firstIndex(where: { $0.id == id }) {
@@ -443,6 +448,8 @@ final class ClipboardStore {
             if let oldClips = try? context.fetch(descriptor) {
                 for clip in oldClips {
                     context.delete(clip)
+                    ImageSizeCache.shared.remove(for: clip.id)
+                    BlobStore.shared.remove(for: clip.id)
                     deleted += 1
                 }
             }
@@ -460,6 +467,8 @@ final class ClipboardStore {
                 if let excessClips = try? context.fetch(descriptor) {
                     for clip in excessClips {
                         context.delete(clip)
+                        ImageSizeCache.shared.remove(for: clip.id)
+                        BlobStore.shared.remove(for: clip.id)
                         deleted += 1
                     }
                 }
@@ -475,6 +484,8 @@ final class ClipboardStore {
             if let oldClips = try? context.fetch(descriptor) {
                 for clip in oldClips {
                     context.delete(clip)
+                    ImageSizeCache.shared.remove(for: clip.id)
+                    BlobStore.shared.remove(for: clip.id)
                     deleted += 1
                 }
             }
