@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import SwiftData
 import SwiftUI
 
 /// 缓存来源 app 的 icon 和主色调，避免每次 SwiftUI 重渲染都调用
@@ -179,75 +180,197 @@ final class AppIconCache: @unchecked Sendable {
 @Observable
 final class ImageSizeCache: @unchecked Sendable {
     static let shared = ImageSizeCache()
+
+    // MARK: 容量上限（LRU 淘汰）
+
+    /// 全尺寸解码图上限：预览浮层同一时刻只显示一张，4 张足够。
+    private let fullImageCapacity: Int
+    /// 缩略图上限：卡片横向滚动的可见数量（~10 张），96 张留足预取余量。
+    private let thumbCapacity: Int
+    /// 尺寸描述上限（纯字符串，极小），防极端情况无限增长。
+    private let sizeCapacity: Int
+
     @ObservationIgnored private let lock = NSLock()
-    @ObservationIgnored private var sizeCache: [UUID: String] = [:]
+    private var sizeCache: [UUID: String] = [:]
+    @ObservationIgnored private var sizeOrder: [UUID] = []   // LRU 队列，末尾 = 最近使用
     @ObservationIgnored private var imageCache: [UUID: NSImage] = [:]
+    @ObservationIgnored private var imageOrder: [UUID] = []  // LRU 队列，末尾 = 最近使用
     private var thumbCache: [UUID: NSImage] = [:]
+    @ObservationIgnored private var thumbOrder: [UUID] = []  // LRU 队列，末尾 = 最近使用
     @ObservationIgnored private var pendingThumbs: Set<UUID> = []
+    @ObservationIgnored private var pendingSizes: Set<UUID> = []
+
+    /// 原始图片数据加载器：按 clip id 直读 BlobStore 文件系统存储。
+    /// blob 已从 DB 移出（Task 3），无需再经临时 ModelContext 间接读取；
+    /// 测试仍可直接注入内存 Data 提供者。
+    @ObservationIgnored var dataLoader: @Sendable (UUID) -> Data? = { id in
+        BlobStore.shared.read(id: id, kind: .image)
+    }
+
+    init(fullImageCapacity: Int = 4, thumbCapacity: Int = 96, sizeCapacity: Int = 512) {
+        self.fullImageCapacity = fullImageCapacity
+        self.thumbCapacity = thumbCapacity
+        self.sizeCapacity = sizeCapacity
+    }
+
+    /// 记录一次访问：把 id 移到 LRU 队列末尾（最近使用）。
+    private func touch(_ id: UUID, in order: inout [UUID]) {
+        order.removeAll { $0 == id }
+        order.append(id)
+    }
+
+    /// 超出容量时从队列头（最久未用）逐出，防止缓存无限增长。
+    private func evictIfNeeded<Value>(_ cache: inout [UUID: Value], _ order: inout [UUID], capacity: Int) {
+        while order.count > capacity, let oldest = order.first {
+            order.removeFirst()
+            cache.removeValue(forKey: oldest)
+        }
+    }
+
+    /// 条目删除/过期时清理对应缓存，避免历史条目被 prune 后其解码位图仍驻留内存。
+    func remove(for id: UUID) {
+        lock.lock()
+        sizeCache.removeValue(forKey: id)
+        sizeOrder.removeAll { $0 == id }
+        imageCache.removeValue(forKey: id)
+        imageOrder.removeAll { $0 == id }
+        thumbCache.removeValue(forKey: id)
+        thumbOrder.removeAll { $0 == id }
+        pendingThumbs.remove(id)
+        pendingSizes.remove(id)
+        lock.unlock()
+    }
+
+    /// 清空全部缓存（用于「清除全部历史」等整库操作）。
+    func removeAll() {
+        lock.lock()
+        sizeCache.removeAll()
+        sizeOrder.removeAll()
+        imageCache.removeAll()
+        imageOrder.removeAll()
+        thumbCache.removeAll()
+        thumbOrder.removeAll()
+        pendingThumbs.removeAll()
+        pendingSizes.removeAll()
+        lock.unlock()
+    }
+
+    /// 测试/诊断：当前各缓存条目数。
+    var debugImageCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return imageCache.count
+    }
+    var debugThumbCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return thumbCache.count
+    }
+    var debugSizeCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return sizeCache.count
+    }
 
     /// 图片尺寸描述（仅读元数据，不做像素解码）。
+    ///
+    /// 未命中时返回 nil 并在后台经 `dataLoader` 读取元数据，完成后写缓存，
+    /// 经 @Observable（sizeCache 不再忽略）触发卡片 footer 刷新。
+    /// 读取走短生命周期临时 context，避免把 externalStorage blob 拉进常驻 context。
     func sizeDescription(for item: Clip) -> String? {
-        guard let data = item.imageData else { return nil }
+        guard item.kind == .image else { return nil }
         lock.lock()
         if let cached = sizeCache[item.id] {
+            touch(item.id, in: &sizeOrder)
             lock.unlock()
             return cached
         }
+        let started = pendingSizes.insert(item.id).inserted
         lock.unlock()
 
+        if started {
+            let id = item.id
+            DispatchQueue.global(qos: .utility).async { [weak self] in
+                guard let data = self?.dataLoader(id) else { return }
+                let desc = Self.readSizeDescription(from: data)
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    self.lock.lock()
+                    if let desc {
+                        self.sizeCache[id] = desc
+                        self.touch(id, in: &self.sizeOrder)
+                        self.evictIfNeeded(&self.sizeCache, &self.sizeOrder, capacity: self.sizeCapacity)
+                    }
+                    self.pendingSizes.remove(id)
+                    self.lock.unlock()
+                }
+            }
+        }
+        return nil
+    }
+
+    /// 从图片数据读取像素尺寸描述（仅读元数据，不做像素解码）。
+    private static func readSizeDescription(from data: Data) -> String? {
         guard let src = CGImageSourceCreateWithData(data as CFData, nil),
               let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
               let w = props[kCGImagePropertyPixelWidth] as? Int,
               let h = props[kCGImagePropertyPixelHeight] as? Int else { return nil }
-        let desc = "\(w)\u{00d7}\(h)"
-
-        lock.lock()
-        sizeCache[item.id] = desc
-        lock.unlock()
-        return desc
+        return "\(w)\u{00d7}\(h)"
     }
 
-    /// 卡片缩略图：命中缓存立即返回；未命中则后台降采样（完成前返回已缓存的全尺寸图或 nil）。
+    /// 卡片缩略图：命中缓存立即返回；未命中则后台降采样，完成前返回 nil（占位图）。
+    ///
+    /// 注意：不再以全尺寸图兜底缩略图——列表滚动时全尺寸位图会驻留内存，
+    /// 是此前进程 RSS 突破 1.6GB 的主要来源之一。未命中时渲染占位符，
+    /// 缩略图异步生成完成后经 @Observable 触发卡片刷新。
     func thumbnail(for item: Clip, maxPixel: Int = 340) -> NSImage? {
-        guard item.kind == .image, let data = item.imageData else { return nil }
+        guard item.kind == .image else { return nil }
         lock.lock()
         if let thumb = thumbCache[item.id] {
+            touch(item.id, in: &thumbOrder)
             lock.unlock()
             return thumb
         }
-        let full = imageCache[item.id]
         let started = pendingThumbs.insert(item.id).inserted
         lock.unlock()
 
         if started {
             let id = item.id
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                guard let data = self?.dataLoader(id) else { return }
                 let thumb = Self.downsample(data: data, maxPixel: maxPixel)
                 DispatchQueue.main.async {
                     guard let self else { return }
                     self.lock.lock()
-                    if let thumb { self.thumbCache[id] = thumb }
+                    if let thumb {
+                        self.thumbCache[id] = thumb
+                        self.touch(id, in: &self.thumbOrder)
+                        self.evictIfNeeded(&self.thumbCache, &self.thumbOrder, capacity: self.thumbCapacity)
+                    }
                     self.pendingThumbs.remove(id)
                     self.lock.unlock()
                 }
             }
         }
-        return full
+        return nil
     }
 
-    /// 全尺寸图（预览浮层用；首次访问解码一次并缓存）。
+    /// 全尺寸图（预览浮层用；首次访问解码一次并缓存，超出容量按 LRU 淘汰）。
     func image(for item: Clip) -> NSImage? {
-        guard item.kind == .image, let data = item.imageData else { return nil }
+        guard item.kind == .image else { return nil }
         lock.lock()
         if let cached = imageCache[item.id] {
+            touch(item.id, in: &imageOrder)
             lock.unlock()
             return cached
         }
         lock.unlock()
 
-        guard let img = NSImage(data: data) else { return nil }
+        guard let data = dataLoader(item.id), let img = NSImage(data: data) else { return nil }
         lock.lock()
         imageCache[item.id] = img
+        touch(item.id, in: &imageOrder)
+        evictIfNeeded(&imageCache, &imageOrder, capacity: fullImageCapacity)
         lock.unlock()
         return img
     }
