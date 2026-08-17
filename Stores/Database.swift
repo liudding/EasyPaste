@@ -7,8 +7,9 @@ import SwiftData
 /// - 数据库从零设计，无旧 `history.json` 导入，无 GRDB migration 包袱。
 /// - 所有表之间**不建外键**（`boardID` / `targetBoardID` 以普通 UUID 存储），
 ///   为阶段二 Harmony / CloudKit 铺路。
-/// - 二进制（`imageData` / `utiData` / `allPasteboardDataRaw`）使用
-///   `@Attribute(.externalStorage)` 存储在辅助文件中，列表查询不加载 blob。
+/// - 二进制（`imageData` / `utiData` / `allPasteboardDataRaw`）已从 DB 移出，
+///   由 `BlobStore` 按 `clip.id` 存文件系统；旧库残留 blob 列由
+///   `LegacyBlobExporter` 一次性导出后删除，打开时零迁移。
 /// - 所有 SwiftData 访问都发生在 `@MainActor`（与 `ClipboardStore` 一致）。
 enum DataManager {
 
@@ -27,6 +28,8 @@ enum DataManager {
             at: targetURL.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
+        // 旧库 blob 一次性导出到文件系统并删除列（幂等；新库无 blob 列则跳过）
+        LegacyBlobExporter.exportIfNeeded(databaseURL: targetURL)
         let schema = Schema([Clip.self, Pasteboard.self, AutomationRule.self])
         let config = ModelConfiguration("EasyPaste", schema: schema, url: targetURL)
         return try ModelContainer(for: schema, configurations: [config])
