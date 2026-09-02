@@ -88,10 +88,10 @@ cp "$PRODUCT_BINARY" "$APP_DIR/Contents/MacOS/$EXECUTABLE_NAME"
 chmod +x "$APP_DIR/Contents/MacOS/$EXECUTABLE_NAME"
 cp "$ICON_FILE" "$APP_DIR/Contents/Resources/AppIcon.icns"
 
-# Resource bundles go at the app-bundle root so SwiftPM's Bundle.module
-# (which walks up from the executable) can resolve them.
+# Resource bundles go in Contents/Resources so the bundle structure is valid.
+# SwiftPM's Bundle.module will find them by walking up from the executable.
 for bundle in "${RESOURCE_BUNDLES[@]}"; do
-  cp -R "$bundle" "$APP_DIR/"
+  cp -R "$bundle" "$APP_DIR/Contents/Resources/"
 done
 
 if [[ -d "$SPARKLE_FRAMEWORK" ]]; then
