@@ -74,9 +74,8 @@ final class PanelController: NSObject, NSWindowDelegate {
             panelState.targetAppName = AppDelegate.invokingApplication?.localizedName
         }
 
-        if panelState.selectedID == nil || !store.filteredItems.contains(where: { $0.id == panelState.selectedID }) {
-            panelState.selectedID = store.filteredItems.first?.id
-        }
+        // 每次展示面板都把选中重置为第一个 clip
+        panelState.selectedID = store.filteredItems.first?.id
 
         let finalFrame = frameForPanel(on: currentScreen())
 

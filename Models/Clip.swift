@@ -257,11 +257,11 @@ final class Clip {
             if let entry = entries.first(where: { $0.uti == key }) {
                 let data = entry.data
                 if let attr = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtf], documentAttributes: nil) {
-                    return attr
+                    return strippingTextTables(attr)
                 }
                 // HTML 用 html 文档类型
                 if let attr = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html], documentAttributes: nil) {
-                    return attr
+                    return strippingTextTables(attr)
                 }
             }
         }
@@ -270,6 +270,26 @@ final class Clip {
             return NSAttributedString(string: text)
         }
         return nil
+    }
+
+    /// TextKit 已知坑：富文本里含 `NSTextTable`（表格，来自 RTF/HTML 解析）时，
+    /// `NSLayoutManager.ensureLayout` 的行数组算法（`_rowArrayForBlock`）会无限递归，
+    /// 主线程 100% CPU 死循环——面板预建 `prewarm()` 强制布局即触发，应用启动即卡死。
+    /// 卡片 body 高 110pt、预览浮层最高 380pt，表格结构本就无法有意义地渲染，
+    /// 这里剥掉表格及其单元格的 `.textBlock` 属性，退化为普通段落排版，规避该死循环。
+    private func strippingTextTables(_ attributed: NSAttributedString) -> NSAttributedString {
+        let mutable = NSMutableAttributedString(attributedString: attributed)
+        let full = NSRange(location: 0, length: mutable.length)
+        var tableRanges: [NSRange] = []
+        mutable.enumerateAttribute(NSAttributedString.Key(rawValue: "NSBlock"), in: full) { value, range, _ in
+            if value is NSTextTable || value is NSTextTableBlock {
+                tableRanges.append(range)
+            }
+        }
+        for range in tableRanges {
+            mutable.removeAttribute(NSAttributedString.Key(rawValue: "NSBlock"), range: range)
+        }
+        return mutable
     }
 
     /// 纯文本摘要缓存：多次访问返回同一结果，避免重复解析 HTML。
