@@ -1,0 +1,46 @@
+name: Build
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Sparkle
+        run: |
+          SPARKLE_VERSION="2.9.4"
+          SPARKLE_DIR="$HOME/.cache/sparkle-${SPARKLE_VERSION}"
+          if [ ! -d "$SPARKLE_DIR" ]; then
+            curl -L "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" -o /tmp/sparkle.tar.xz
+            tar -xJf /tmp/sparkle.tar.xz -C /tmp/
+            EXTRACTED=$(ls -d /tmp/Sparkle-* 2>/dev/null | head -1)
+            cp -R "$EXTRACTED" "$SPARKLE_DIR"
+            rm -f /tmp/sparkle.tar.xz
+          fi
+          echo "SPARKLE_FRAMEWORK=$SPARKLE_DIR/Sparkle.framework" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: |
+          export ARCH=$(uname -m)
+          export VERSION="0.0.0"
+          export SPARKLE_FRAMEWORK="${SPARKLE_FRAMEWORK:-}"
+          bash scripts/package.sh
+
+      - name: Verify the bundle
+        run: |
+          test -x dist/EasyPaste.app/Contents/MacOS/EasyPaste
+          codesign --verify --deep --strict dist/EasyPaste.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EasyPaste-app
+          path: dist/EasyPaste.app
