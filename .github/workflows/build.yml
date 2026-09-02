@@ -20,18 +20,14 @@ jobs:
           SPARKLE_VERSION="2.9.4"
           SPARKLE_DIR="$HOME/.cache/sparkle-${SPARKLE_VERSION}"
           if [ ! -d "$SPARKLE_DIR" ]; then
-            curl -L "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" -o /tmp/sparkle.tar.xz
-            tar -xJf /tmp/sparkle.tar.xz -C /tmp/
-            # Find the extracted directory (could be Sparkle-2.9.4 or similar)
-            EXTRACTED=$(find /tmp -maxdepth 1 -type d -name "Sparkle*" | head -1)
-            if [ -z "$EXTRACTED" ]; then
-              echo "❌ Failed to find Sparkle directory after extraction"
-              exit 1
-            fi
+            mkdir -p /tmp/sparkle-extract
+            cd /tmp/sparkle-extract
+            curl -L "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" -o sparkle.tar.xz
+            tar -xJf sparkle.tar.xz
             mkdir -p "$SPARKLE_DIR"
-            cp -R "$EXTRACTED"/* "$SPARKLE_DIR/"
-            rm -f /tmp/sparkle.tar.xz
-            rm -rf "$EXTRACTED"
+            cp -R ./* "$SPARKLE_DIR/"
+            cd /
+            rm -rf /tmp/sparkle-extract
           fi
           echo "SPARKLE_FRAMEWORK=$SPARKLE_DIR/Sparkle.framework" >> "$GITHUB_ENV"
 
