@@ -36,11 +36,18 @@ BUILD_DIR="$ROOT_DIR/.build/${ARCH}-apple-macosx/${CONFIGURATION}"
 
 # Auto-detect Sparkle from SwiftPM build dir if not explicitly provided
 if [[ -z "$SPARKLE_FRAMEWORK" || ! -d "$SPARKLE_FRAMEWORK" ]]; then
-  SPM_SPARKLE="$BUILD_DIR/Sparkle.framework"
-  if [[ -d "$SPM_SPARKLE" ]]; then
-    SPARKLE_FRAMEWORK="$SPM_SPARKLE"
-    printf '[package] using Sparkle from SwiftPM build: %s\n' "$SPARKLE_FRAMEWORK"
-  fi
+  SEARCH_DIRS=(
+    "$BUILD_DIR"
+    "$ROOT_DIR/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-${ARCH}_x86_64"
+    "$ROOT_DIR/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64"
+  )
+  for dir in "${SEARCH_DIRS[@]}"; do
+    if [[ -d "$dir/Sparkle.framework" ]]; then
+      SPARKLE_FRAMEWORK="$dir/Sparkle.framework"
+      printf '[package] using Sparkle from SwiftPM build: %s\n' "$SPARKLE_FRAMEWORK"
+      break
+    fi
+  done
 fi
 PRODUCT_BINARY="$BUILD_DIR/$EXECUTABLE_NAME"
 ICON_FILE="$ROOT_DIR/AppIcon.icns"
