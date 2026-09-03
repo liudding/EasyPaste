@@ -172,12 +172,18 @@ cat > "$APP_DIR/Contents/Info.plist" <<EOF
 </plist>
 EOF
 
+ENTITLEMENTS_FILE="$ROOT_DIR/EasyPaste.entitlements"
+SIGN_OPTS=()
+if [[ -f "$ENTITLEMENTS_FILE" ]]; then
+  SIGN_OPTS+=(--entitlements "$ENTITLEMENTS_FILE")
+fi
+
 if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
   printf '[package] codesigning app bundle with identity\n'
-  codesign --force --deep --options runtime --sign "$CODESIGN_IDENTITY" "$APP_DIR"
+  codesign --force --deep --options runtime "${SIGN_OPTS[@]}" --sign "$CODESIGN_IDENTITY" "$APP_DIR"
 else
   printf '[package] codesigning app bundle (ad-hoc)\n'
-  codesign --force --deep --sign - "$APP_DIR"
+  codesign --force --deep "${SIGN_OPTS[@]}" --sign - "$APP_DIR"
 fi
 
 mkdir -p "$STAGING_DIR"
