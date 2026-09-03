@@ -29,26 +29,16 @@ jobs:
       run: |
         echo "VERSION=0.0.0" >> $GITHUB_ENV
         
-    - name: Setup Sparkle
-      run: |
-        SPARKLE_VERSION="2.9.4"
-        SPARKLE_DIR="$HOME/.cache/sparkle-${SPARKLE_VERSION}"
-        if [ ! -d "$SPARKLE_DIR" ]; then
-          mkdir -p /tmp/sparkle-extract
-          cd /tmp/sparkle-extract
-          curl -L "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" -o sparkle.tar.xz
-          tar -xJf sparkle.tar.xz
-          mkdir -p "$SPARKLE_DIR"
-          cp -R ./* "$SPARKLE_DIR/"
-          cd /
-          rm -rf /tmp/sparkle-extract
-        fi
-        echo "SPARKLE_FRAMEWORK=$SPARKLE_DIR/Sparkle.framework" >> "$GITHUB_ENV"
-        
     - name: Build EasyPaste.app
       run: |
         export ARCH=$(uname -m)
         bash scripts/package.sh
+        
+    - name: Verify the bundle
+      run: |
+        test -x dist/EasyPaste.app/Contents/MacOS/EasyPaste
+        codesign --verify --deep --strict dist/EasyPaste.app
+        test -d dist/EasyPaste.app/Contents/Frameworks/Sparkle.framework
         
     - name: Create DMG
       run: |
