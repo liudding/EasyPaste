@@ -96,7 +96,16 @@ done
 
 if [[ -d "$SPARKLE_FRAMEWORK" ]]; then
   cp -R "$SPARKLE_FRAMEWORK" "$APP_DIR/Contents/Frameworks/"
-  codesign --force --sign - "$APP_DIR/Contents/Frameworks/Sparkle.framework" 2>/dev/null || true
+  
+  # Sign Sparkle innermost bundles first (like DeskNoty)
+  FW="$APP_DIR/Contents/Frameworks/Sparkle.framework"
+  FW_B="$FW/Versions/B"
+  for xpc in "$FW_B"/XPCServices/*.xpc; do
+    [ -e "$xpc" ] && codesign --force --sign - "$xpc" 2>/dev/null || true
+  done
+  [ -e "$FW_B/Updater.app" ] && codesign --force --sign - "$FW_B/Updater.app" 2>/dev/null || true
+  [ -e "$FW_B/Autoupdate" ] && codesign --force --sign - "$FW_B/Autoupdate" 2>/dev/null || true
+  codesign --force --sign - "$FW" 2>/dev/null || true
   
   # Add rpath so dyld can find Sparkle at runtime
   if ! otool -l "$APP_DIR/Contents/MacOS/$EXECUTABLE_NAME" | grep -q "executable_path/../Frameworks"; then
