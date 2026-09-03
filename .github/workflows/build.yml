@@ -35,7 +35,6 @@ jobs:
         run: |
           export ARCH=$(uname -m)
           export VERSION="0.0.0"
-          export SPARKLE_FRAMEWORK="${SPARKLE_FRAMEWORK:-}"
           bash scripts/package.sh
 
       - name: Verify the bundle

@@ -48,7 +48,6 @@ jobs:
     - name: Build EasyPaste.app
       run: |
         export ARCH=$(uname -m)
-        export SPARKLE_FRAMEWORK="${SPARKLE_FRAMEWORK:-}"
         bash scripts/package.sh
         
     - name: Create DMG
