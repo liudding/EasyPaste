@@ -97,6 +97,11 @@ done
 if [[ -d "$SPARKLE_FRAMEWORK" ]]; then
   cp -R "$SPARKLE_FRAMEWORK" "$APP_DIR/Contents/Frameworks/"
   codesign --force --sign - "$APP_DIR/Contents/Frameworks/Sparkle.framework" 2>/dev/null || true
+  
+  # Add rpath so dyld can find Sparkle at runtime
+  if ! otool -l "$APP_DIR/Contents/MacOS/$EXECUTABLE_NAME" | grep -q "executable_path/../Frameworks"; then
+    install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP_DIR/Contents/MacOS/$EXECUTABLE_NAME" 2>/dev/null || true
+  fi
 fi
 
 CURRENT_YEAR="$(date +%Y)"
