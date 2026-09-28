@@ -451,6 +451,71 @@ struct ClipboardStoreDedupTests {
         // 持久化后的 createdAt 应与内存一致（已被 promote 更新）
         #expect(store2.items.first?.createdAt != firstCreatedAt)
     }
+
+    // MARK: - 粘贴已有 clip 置顶（promoteClip(by id)）
+
+    @Test @MainActor func promoteClipByIDMovesExistingClipToTop() throws {
+        let url = try makeTempDB()
+        let store = ClipboardStore(databaseURL: url)
+
+        let entryA = UTIEntry(uti: "public.plain-text", data: Data("content-a".utf8))
+        let entryB = UTIEntry(uti: "public.plain-text", data: Data("content-b".utf8))
+        let c1 = Clip(kind: .text, text: "first", allPasteboardData: [entryA])
+        c1.contentHash = ClipTypeDetector.computeContentHash([entryA])
+        let c2 = Clip(kind: .text, text: "second", allPasteboardData: [entryB])
+        c2.contentHash = ClipTypeDetector.computeContentHash([entryB])
+
+        store.add(c1)
+        let originalCreatedAt = store.items.first?.createdAt
+        store.add(c2)
+        // c2 最新，位于最前：[c2, c1]
+        #expect(store.items.first?.id == c2.id)
+
+        Thread.sleep(forTimeInterval: 0.01)
+        // 粘贴已有 clip c1 → 视同重新复制，c1 置顶且 createdAt 刷新
+        store.promoteClip(c1.id)
+
+        #expect(store.items.count == 2)
+        #expect(store.items.first?.id == c1.id)
+        #expect(store.items[1].id == c2.id)
+        #expect(store.items.first?.createdAt != originalCreatedAt)
+    }
+
+    @Test @MainActor func promoteClipByIDPersistsAcrossReload() throws {
+        let url = try makeTempDB()
+        let store = ClipboardStore(databaseURL: url)
+
+        let entryA = UTIEntry(uti: "public.plain-text", data: Data("persist-a".utf8))
+        let entryB = UTIEntry(uti: "public.plain-text", data: Data("persist-b".utf8))
+        let c1 = Clip(kind: .text, text: "first", allPasteboardData: [entryA])
+        c1.contentHash = ClipTypeDetector.computeContentHash([entryA])
+        let c2 = Clip(kind: .text, text: "second", allPasteboardData: [entryB])
+        c2.contentHash = ClipTypeDetector.computeContentHash([entryB])
+
+        store.add(c1)
+        store.add(c2)
+        store.promoteClip(c1.id)
+
+        // 重建 store：置顶顺序与刷新后的 createdAt 已持久化（按 createdAt 倒序加载）
+        let store2 = ClipboardStore(databaseURL: url)
+        #expect(store2.items.count == 2)
+        #expect(store2.items.first?.id == c1.id)
+    }
+
+    @Test @MainActor func promoteClipByIDIgnoresUnknownID() throws {
+        let url = try makeTempDB()
+        let store = ClipboardStore(databaseURL: url)
+
+        let entryA = UTIEntry(uti: "public.plain-text", data: Data("content-a".utf8))
+        let c1 = Clip(kind: .text, text: "first", allPasteboardData: [entryA])
+        c1.contentHash = ClipTypeDetector.computeContentHash([entryA])
+        store.add(c1)
+
+        let createdAtBefore = store.items.first?.createdAt
+        store.promoteClip(UUID())
+        #expect(store.items.count == 1)
+        #expect(store.items.first?.createdAt == createdAtBefore)
+    }
 }
 
 /// AppSettings 的 hideDockIcon 测试：默认值、回调触发、快照编解码兼容性。

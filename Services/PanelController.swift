@@ -543,6 +543,8 @@ final class PanelController: NSObject, NSWindowDelegate {
     }
 
     private func paste(_ item: Clip, plain: Bool) {
+        // 粘贴已有 clip 视同「重新复制」：置顶并刷新 createdAt，使其排在列表最前。
+        store.promoteClip(item.id)
         // 同步移除面板，让目标 app 的窗口重新成为 key window，
         // 否则非激活面板仍是 key，⌘V 会被面板吞掉。
         panel?.orderOut(nil)

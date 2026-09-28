@@ -195,6 +195,8 @@ struct PanelView: View {
     }
 
     private func paste(_ item: Clip, plain: Bool) {
+        // 粘贴已有 clip 视同「重新复制」：置顶并刷新 createdAt，使其排在列表最前。
+        store.promoteClip(item.id)
         clipboard.paste(item, plainText: plain)
         panelState.hidePanel()
     }

@@ -235,6 +235,13 @@ final class ClipboardStore {
         backupService.scheduleBackupOnIdle()
     }
 
+    /// 将指定条目置顶（更新 createdAt 并移到列表最前），等价于「重新复制」的置顶效果。
+    /// 粘贴 / 复制已有 clip 时调用，使用户再次使用的条目排在最前。
+    func promoteClip(_ id: UUID) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        promoteClip(at: index)
+    }
+
     /// 将已有条目更新 createdAt 并移至列表最前（重复内容置顶）。
     private func promoteClip(at index: Int) {
         items[index].createdAt = .now

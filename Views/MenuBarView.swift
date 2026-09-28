@@ -15,7 +15,11 @@ struct MenuBarView: View {
             Divider()
             if !store.items.isEmpty {
                 ForEach(store.items.prefix(7)) { item in
-                    Button(String(item.displayTitle.prefix(30))) { clipboard.paste(item) }
+                    Button(String(item.displayTitle.prefix(30))) {
+                        // 粘贴已有 clip 视同「重新复制」：置顶并刷新 createdAt，使其排在列表最前。
+                        store.promoteClip(item.id)
+                        clipboard.paste(item)
+                    }
                 }
                 Divider()
             }
